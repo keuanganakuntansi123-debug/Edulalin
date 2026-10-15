@@ -19,7 +19,7 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 text-white">
+    <section className="relative overflow-hidden bg-linear-to-br from-blue-800 via-blue-700 to-sky-600 text-white">
       {/* Ornamen dekoratif */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.12]"

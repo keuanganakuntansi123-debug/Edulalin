@@ -54,7 +54,7 @@ export default async function TentangPage() {
                   <Badge className="bg-primary/10 text-primary">Pemantauan Hasil</Badge>
                 </div>
               </div>
-              <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-100 p-8 text-center shadow-lg shadow-blue-900/5">
+              <div className="rounded-3xl border border-blue-100 bg-linear-to-br from-blue-50 to-sky-100 p-8 text-center shadow-lg shadow-blue-900/5">
                 <span className="text-6xl">🚸</span>
                 <p className="mt-3 text-lg font-extrabold text-slate-900">Belajar Aman di Jalan</p>
                 <p className="mt-1 text-sm font-medium text-blue-700">Tagline EDULALIN</p>

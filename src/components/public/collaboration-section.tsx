@@ -99,7 +99,7 @@ export async function CollaborationSection({
         }));
 
   return (
-    <section className="overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 py-20">
+    <section className="overflow-hidden bg-linear-to-br from-slate-50 via-white to-blue-50 py-20">
       <div className="container-page">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700">
@@ -128,7 +128,7 @@ export async function CollaborationSection({
                     ) : (
                       <span
                         className={cn(
-                          "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg transition-transform duration-300 group-hover:scale-105",
+                          "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-lg transition-transform duration-300 group-hover:scale-105",
                           item.iconClass
                         )}
                       >

@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreateUserForm } from "./create-user-form";
 import { SchoolFilter } from "./school-filter";
-import { createGuruPolisi, archiveUser, toggleUserStatus, restoreUser, permanentDeleteUser } from "@/app/actions/admin-actions";
-import { Search, Archive, RotateCcw, User, Trash2 } from "lucide-react";
+import { ArchivedActions } from "../archived/archived-actions";
+import { createGuruPolisi, archiveUser, toggleUserStatus } from "@/app/actions/admin-actions";
+import { Search, Archive, User } from "lucide-react";
 
 export const instant = false;
 type SearchParams = { tab?: string; q?: string; school?: string };
@@ -17,14 +18,6 @@ type Params = { searchParams: Promise<SearchParams> };
 async function archiveUserAction(id: string) {
   "use server";
   await archiveUser(id);
-}
-async function restoreUserAction(id: string) {
-  "use server";
-  await restoreUser(id);
-}
-async function permanentDeleteUserAction(id: string) {
-  "use server";
-  await permanentDeleteUser(id);
 }
 async function toggleUserStatusAction(id: string) {
   "use server";
@@ -379,30 +372,11 @@ export default async function AdminUsersPage({ searchParams }: Params) {
                               {deletedByMap.get(u.id) ? ` • Oleh: ${deletedByMap.get(u.id)}` : ""}
                             </p>
                           </div>
-                          <div className="flex shrink-0 gap-2">
+                          <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                             <Link href={`/dashboard/admin/users/${u.id}`}>
                               <Button size="sm" variant="outline">Detail</Button>
                             </Link>
-                            <div className="flex gap-2">
-                              <form action={restoreUserAction.bind(null, u.id)}>
-                                <Button size="sm" variant="outline" className="text-emerald-600">
-                                  <RotateCcw className="h-4 w-4" /> Pulihkan
-                                </Button>
-                              </form>
-                              <form
-                                action={permanentDeleteUserAction.bind(null, u.id)}
-                                onSubmit={(e) => {
-                                  const ok = window.confirm(
-                                    `Hapus permanen akun "${u.name}"?\n\nAkun, data belajar, sesi, dan file miliknya akan dihapus dari sistem secara permanen dan TIDAK DAPAT dipulihkan kembali.`
-                                  );
-                                  if (!ok) e.preventDefault();
-                                }}
-                              >
-                                <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">
-                                  <Trash2 className="h-4 w-4" /> Hapus Permanen
-                                </Button>
-                              </form>
-                            </div>
+                            <ArchivedActions userId={u.id} userName={u.name} />
                           </div>
                         </div>
                       ))}

@@ -91,7 +91,7 @@ export function PublicNavbar() {
             <Button variant="ghost" size="sm" className="text-slate-700 hover:bg-blue-50 hover:text-primary">Login</Button>
           </Link>
           <Link href="/register">
-            <Button size="sm" className="bg-gradient-to-r from-blue-700 to-sky-600 text-white shadow-md shadow-blue-600/25 hover:from-blue-800 hover:to-sky-700">
+            <Button size="sm" className="bg-linear-to-r from-blue-700 to-sky-600 text-white shadow-md shadow-blue-600/25 hover:from-blue-800 hover:to-sky-700">
               Daftar
             </Button>
           </Link>
@@ -140,7 +140,7 @@ export function PublicNavbar() {
               <Button variant="outline" className="w-full text-slate-700">Login</Button>
             </Link>
             <Link href="/register">
-              <Button className="w-full bg-gradient-to-r from-blue-700 to-sky-600 text-white">Daftar</Button>
+              <Button className="w-full bg-linear-to-r from-blue-700 to-sky-600 text-white">Daftar</Button>
             </Link>
           </div>
         </nav>

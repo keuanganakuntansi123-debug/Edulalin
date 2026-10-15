@@ -9,6 +9,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
 import { getRoleLabel } from "@/lib/constants";
+import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export function DashboardShell({
   role,
@@ -43,14 +44,7 @@ export function DashboardShell({
         <SidebarNav role={role} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
         {/* Info user di footer sidebar */}
         <div className="flex items-center gap-3 border-t border-slate-800 bg-slate-900/95 px-4 py-3">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={name} className="h-9 w-9 rounded-full object-cover" />
-          ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-              {name.charAt(0).toUpperCase()}
-            </span>
-          )}
+          <UserAvatar src={avatarUrl} name={name} className="h-9 w-9" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-white">{name}</p>
             <p className="text-xs text-slate-400">{getRoleLabel(role)}</p>
@@ -83,14 +77,7 @@ export function DashboardShell({
             </div>
             <SidebarNav role={role} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
             <div className="flex items-center gap-3 border-t border-slate-800 px-4 py-3">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={name} className="h-9 w-9 rounded-full object-cover" />
-              ) : (
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-                  {name.charAt(0).toUpperCase()}
-                </span>
-              )}
+              <UserAvatar src={avatarUrl} name={name} className="h-9 w-9" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-white">{name}</p>
                 <p className="text-xs text-slate-400">{getRoleLabel(role)}</p>

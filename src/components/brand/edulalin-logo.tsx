@@ -46,7 +46,7 @@ export function EdulalinLogo({
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <span
         className={cn(
-          "relative flex shrink-0 items-center justify-center bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-600/20 ring-1 ring-white/20",
+          "relative flex shrink-0 items-center justify-center bg-linear-to-br from-blue-700 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-600/20 ring-1 ring-white/20",
           box
         )}
       >
@@ -66,7 +66,7 @@ export function EdulalinLogo({
           <path d="M23.5 29v9M26.5 29v9" stroke="#1d4ed8" strokeWidth="1.1" strokeDasharray="2 1.6" strokeLinecap="round" />
           <circle cx="36.5" cy="38" r="2.4" fill="#fbbf24" />
         </svg>
-        <span className="absolute inset-0 rounded-[inherit] bg-gradient-to-t from-black/10 to-transparent" aria-hidden="true" />
+        <span className="absolute inset-0 rounded-[inherit] bg-linear-to-t from-black/10 to-transparent" aria-hidden="true" />
       </span>
       {showText && (
         <span className="leading-tight">

@@ -51,12 +51,12 @@ export default async function KontakPage() {
                             href={item.href}
                             target={item.href.startsWith("http") ? "_blank" : undefined}
                             rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                            className="mt-0.5 block break-words text-sm text-primary hover:underline"
+                            className="mt-0.5 block wrap-break-word text-sm text-primary hover:underline"
                           >
                             {item.value}
                           </a>
                         ) : (
-                          <p className="mt-0.5 break-words text-sm text-muted-foreground">{item.value}</p>
+                          <p className="mt-0.5 wrap-break-word text-sm text-muted-foreground">{item.value}</p>
                         )}
                       </div>
                     </CardContent>

@@ -51,7 +51,7 @@ export default async function ProgramPage() {
               {programs.map((p, i) => (
                 <Reveal key={p.id} delay={i * 90}>
                   <Card className="group h-full overflow-hidden rounded-3xl border-slate-200 transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl">
-                    <div className="flex h-44 items-center justify-center bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-100">
+                    <div className="flex h-44 items-center justify-center bg-linear-to-br from-blue-50 via-sky-50 to-indigo-100">
                       {p.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -77,7 +77,7 @@ export default async function ProgramPage() {
                         <Badge variant="outline">{p._count.programModules} modul terkait</Badge>
                       </div>
                       <Link href={`/program/${p.slug}`} className="mt-5 inline-block">
-                        <Button className="bg-gradient-to-r from-blue-700 to-sky-600 shadow-md shadow-blue-600/20 group-hover:from-blue-800 group-hover:to-sky-700">
+                        <Button className="bg-linear-to-r from-blue-700 to-sky-600 shadow-md shadow-blue-600/20 group-hover:from-blue-800 group-hover:to-sky-700">
                           Lihat Detail
                         </Button>
                       </Link>

@@ -56,7 +56,7 @@ export default async function PublicModuleDetailPage({
 
   return (
     <div className="overflow-x-hidden">
-      <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 py-12 text-white">
+      <section className="bg-linear-to-br from-blue-700 via-blue-600 to-sky-500 py-12 text-white">
         <div className="container-page">
           <Link href="/modul" className="text-sm text-blue-100 hover:text-white">
             ← Kembali ke Modul
@@ -80,7 +80,7 @@ export default async function PublicModuleDetailPage({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={displayThumbnail} alt={module.title} className="h-64 w-full rounded-2xl object-cover" />
               ) : (
-                <div className="flex h-64 items-center justify-center rounded-2xl border border-border bg-gradient-to-br from-blue-50 to-sky-100">
+                <div className="flex h-64 items-center justify-center rounded-2xl border border-border bg-linear-to-br from-blue-50 to-sky-100">
                   <span className="text-6xl">📘</span>
                 </div>
               )}

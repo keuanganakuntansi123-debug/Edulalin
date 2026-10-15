@@ -47,7 +47,7 @@ export default async function LandingPage() {
   return (
     <div className="overflow-x-hidden">
       {/* ===== Hero ===== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-blue-800 via-blue-700 to-sky-600 text-white">
         <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "radial-gradient(circle at 15% 25%, white 0, transparent 32%), radial-gradient(circle at 85% 20%, white 0, transparent 28%), radial-gradient(circle at 70% 85%, white 0, transparent 34%)" }} />
         <svg viewBox="0 0 1440 320" className="absolute bottom-0 left-0 w-full text-blue-900/30" preserveAspectRatio="none" aria-hidden="true">
           <path fill="currentColor" d="M0,224L48,213.3C96,203,192,181,288,186.7C384,192,480,224,576,234.7C672,245,768,235,864,213.3C960,192,1056,160,1152,160C1248,160,1344,192,1392,208L1440,224L1440,320L0,320Z" />
@@ -189,7 +189,7 @@ export default async function LandingPage() {
 
       {/* ===== Ajakan Belajar ===== */}
       {cta && (
-        <section className="relative overflow-hidden bg-gradient-to-r from-blue-800 via-blue-700 to-sky-600 py-16 text-white">
+        <section className="relative overflow-hidden bg-linear-to-r from-blue-800 via-blue-700 to-sky-600 py-16 text-white">
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 0, transparent 30%), radial-gradient(circle at 80% 70%, white 0, transparent 25%)" }} />
           <div className="container-page text-center">
             <Reveal>

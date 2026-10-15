@@ -66,7 +66,7 @@ export default async function ProgramDetailPage({
 
   return (
     <div className="overflow-x-hidden">
-      <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 py-14 text-white">
+      <section className="bg-linear-to-br from-blue-700 via-blue-600 to-sky-500 py-14 text-white">
         <div className="container-page">
           <Link href="/program" className="text-sm text-blue-100 hover:text-white">
             ← Kembali ke Program
@@ -150,7 +150,7 @@ export default async function ProgramDetailPage({
             )}
 
             <Reveal>
-              <Card className="bg-gradient-to-br from-blue-50 to-sky-100">
+              <Card className="bg-linear-to-br from-blue-50 to-sky-100">
                 <CardContent className="pt-5">
                   <h3 className="font-bold">Tertarik mengikuti program?</h3>
                   <p className="mt-1 text-sm text-muted-foreground">

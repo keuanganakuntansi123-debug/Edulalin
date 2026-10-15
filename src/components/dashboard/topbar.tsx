@@ -8,6 +8,7 @@ import { getRoleLabel } from "@/lib/constants";
 import type { Role } from "@/generated/prisma/client";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export function Topbar({
   role,
@@ -75,14 +76,7 @@ export function Topbar({
             }}
             className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-800"
           >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt={name} className="h-8 w-8 rounded-full object-cover" />
-            ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                {name.charAt(0).toUpperCase()}
-              </span>
-            )}
+            <UserAvatar src={avatarUrl} name={name} className="h-8 w-8" />
             <div className="hidden text-left sm:block">
               <p className="max-w-40 truncate text-sm font-medium text-white">{name}</p>
               <p className="text-xs text-slate-400">{getRoleLabel(role)}</p>

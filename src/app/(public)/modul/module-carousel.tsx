@@ -98,7 +98,7 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
       <div
         ref={trackRef}
         onScroll={onScrollSnap}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-none [&::-webkit-scrollbar]:hidden"
       >
         {modules.map((m) => {
           const Icon = TYPE_ICON[m.moduleType] ?? FileText;
@@ -107,10 +107,10 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
             <article
               key={m.id}
               data-carousel-card
-              className="group flex w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:w-[300px]"
+              className="group flex w-70 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:w-75"
             >
               {/* Thumbnail */}
-              <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
+              <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-blue-50 to-sky-100">
                 {m.displayThumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
