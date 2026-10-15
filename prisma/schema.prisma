@@ -1,0 +1,606 @@
+// Prisma schema for EDULALIN — Edukasi Lalu Lintas
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================================
+// Enums
+// =====================================================================
+
+enum Role {
+  ADMIN
+  GURU
+  POLISI
+  MURID
+}
+
+enum EducationLevel {
+  SD
+  SMP
+  SMA
+  SIM
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum PoliceLevel {
+  POLSEK
+  POLRES
+  POLDA
+}
+
+enum ModuleStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ModuleType {
+  PDF
+  VIDEO
+  LINK
+  DOCUMENT
+}
+
+enum QuizStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  DRAFT
+}
+
+enum QuizSourceType {
+  MANUAL
+  PDF
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FileKind {
+  MODULE_CONTENT
+  QUIZ_PDF
+  AVATAR
+  SITE_IMAGE
+}
+
+enum SiteContentKey {
+  HERO_TITLE
+  HERO_SUBTITLE
+  ABOUT_TEXT
+  CONTACT_ADDRESS
+  CONTACT_EMAIL
+  CONTACT_PHONE
+  CONTACT_WHATSAPP
+  CONTACT_SOCIAL
+  FAQ
+}
+
+enum ContentBlockKey {
+  HERO_ANIMATION
+  INTRO
+  STATS_SETTINGS
+  CTA
+  ABOUT_PROFILE
+  ABOUT_VISION
+  ABOUT_MISSION
+  ABOUT_GOALS
+  ABOUT_PARTNERS
+}
+
+enum ProgramStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ContactMessageStatus {
+  NEW
+  READ
+  DONE
+}
+
+// =====================================================================
+// Schools
+// =====================================================================
+
+model School {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  name           String
+  educationLevel EducationLevel
+  address        String
+  city           String
+  province       String
+  logoUrl        String?
+  status         SchoolStatus    @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  users        User[]
+  modules      Module[]
+  quizzes      Quiz[]
+  activityLogs ActivityLog[]
+  moduleScope  ModuleToSchool[]
+  quizScope    QuizToSchool[]
+
+  @@index([educationLevel])
+  @@index([status])
+}
+
+// =====================================================================
+// Users
+// =====================================================================
+
+model User {
+  id             String          @id @default(cuid())
+  name           String
+  email          String          @unique
+  passwordHash   String
+  role           Role
+  avatarUrl      String?
+  birthDate      DateTime?
+  schoolId       String?
+  educationLevel EducationLevel?
+  classLevel     String?
+  subject        String?    // mata pelajaran yang diajarkan (khusus GURU)
+  phone          String?
+  policeLevel    PoliceLevel?    // tingkat kesatuan: Polsek / Polres / Polda
+  policeUnit     String?         // nama kesatuan, mis. Polres Metro Jakarta Selatan
+  policeDivision String?         // divisi / bagian / satuan tempat bertugas
+  verifiedAt     DateTime?
+  status         UserStatus      @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  school             School?              @relation(fields: [schoolId], references: [id])
+  moduleProgress     ModuleProgress[]
+  quizAttempts       QuizAttempt[]
+  activityLogs       ActivityLog[]        @relation("ActorLogs")
+  sessions           UserSession[]
+  passwordResets     PasswordResetToken[]
+  verificationTokens VerificationToken[]
+  uploadedFiles      UploadedFile[]
+
+  @@index([schoolId])
+  @@index([role])
+  @@index([educationLevel])
+  @@index([classLevel])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// =====================================================================
+// Modules
+// =====================================================================
+
+model Module {
+  id             String       @id @default(cuid())
+  title          String
+  description    String
+  thumbnailUrl   String?
+  contentFileId  String?      @unique
+  thumbnailFileId String?     @unique
+  moduleType     ModuleType   @default(PDF)
+  contentUrl     String?
+  educationLevel EducationLevel
+  classLevel     String?
+  schoolId       String? // null => global
+  order          Int          @default(0)
+  durationMin    Int?
+  status         ModuleStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  school          School?        @relation(fields: [schoolId], references: [id])
+  progresses      ModuleProgress[]
+  quizzes         Quiz[]
+  contentFile     UploadedFile?  @relation("ModuleContentFile", fields: [contentFileId], references: [id])
+  thumbnailFile   UploadedFile?  @relation("ModuleThumbnailFile", fields: [thumbnailFileId], references: [id])
+  moduleToSchools ModuleToSchool[]
+  programs        ProgramModule[]
+
+  @@index([schoolId])
+  @@index([educationLevel])
+  @@index([status])
+}
+
+model ModuleToSchool {
+  moduleId String
+  schoolId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@id([moduleId, schoolId])
+  @@index([schoolId])
+}
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  originalName String
+  storedName   String   @unique
+  mimeType     String
+  size         Int
+  kind         FileKind
+  ownerId      String
+  createdAt    DateTime @default(now())
+
+  owner               User?      @relation(fields: [ownerId], references: [id])
+  moduleContent       Module?    @relation("ModuleContentFile")
+  moduleThumbnail     Module?    @relation("ModuleThumbnailFile")
+  quizSource          Quiz?      @relation("QuizSourceFile")
+
+  @@index([ownerId])
+  @@index([kind])
+}
+
+// =====================================================================
+// Site Content (konten publik yang dikelola admin)
+// =====================================================================
+
+model SiteContent {
+  id        String        @id @default(cuid())
+  key       SiteContentKey
+  title     String
+  body      String
+  updatedAt DateTime      @updatedAt
+  createdAt DateTime      @default(now())
+
+  @@unique([key])
+}
+
+/**
+ * Blok konten halaman publik yang dikelola Admin (beranda & tentang).
+ * `published` mengontrol visibilitas ke pengunjung; `draft` adalah versi
+ * pekerjaan Admin yang belum terbit.
+ */
+model ContentBlock {
+  id        String           @id @default(cuid())
+  key       ContentBlockKey  @unique
+  title     String
+  subtitle  String?
+  body      String
+  imageUrl  String?
+  meta      Json?            // pengaturan opsional per blok (mis. statistik, animasi)
+  order     Int              @default(0)
+  published Boolean          @default(true)
+  draftTitle     String?
+  draftSubtitle  String?
+  draftBody      String?
+  draftImageUrl  String?
+  draftMeta      Json?
+  publishedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([published])
+  @@index([order])
+}
+
+model Program {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  description    String
+  imageUrl       String?
+  target         String?       // sasaran peserta
+  objectives     String?       // tujuan pembelajaran (rich text / daftar)
+  content        String?       // penjelasan lengkap
+  order          Int           @default(0)
+  status         ProgramStatus @default(ACTIVE)
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  programModules ProgramModule[]
+
+  @@index([status])
+  @@index([order])
+}
+
+// Hubungan program dengan modul terkait (tanpa mengubah struktur Module)
+model ProgramModule {
+  programId String
+  moduleId  String
+  program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  module    Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([programId, moduleId])
+  @@index([moduleId])
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([order])
+}
+
+model ContactMessage {
+  id        String                @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactMessageStatus  @default(NEW)
+  ipAddress String?
+  createdAt DateTime              @default(now())
+  readAt    DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SiteFeature {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  emoji       String?
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([order])
+}
+
+model MissionItem {
+  id        String   @id @default(cuid())
+  text      String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([order])
+}
+
+model GoalItem {
+  id        String   @id @default(cuid())
+  text      String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([order])
+}
+
+/**
+ * Mitra kolaborasi edukasi (Sekolah, Kepolisian, Jasa Raharja, dan lainnya)
+ * yang ditampilkan pada bagian "Kolaborasi Edukasi" halaman publik.
+ * Logo dan deskripsi dikelola Admin melalui Kelola Konten Website.
+ */
+model CollaborationPartner {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  role        String   // SCHOOL | POLRI | JASA_RAHARJA | OTHER
+  roleLabel   String?  // label peran, mis. "Instansi Pemerintah"
+  description String?
+  logoUrl     String?
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([order])
+  @@index([role])
+}
+
+model ModuleProgress {
+  id          String    @id @default(cuid())
+  moduleId    String
+  userId      String
+  progress    Int       @default(0) // 0-100
+  completed   Boolean   @default(false)
+  lastOpened  DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  module Module @relation(fields: [moduleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([moduleId, userId])
+  @@index([userId])
+  @@index([moduleId])
+}
+
+// =====================================================================
+// Quizzes
+// =====================================================================
+
+model Quiz {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  moduleId       String?
+  sourceType     QuizSourceType @default(MANUAL)
+  sourceFileId   String?      @unique
+  educationLevel EducationLevel
+  classLevel     String?
+  schoolId       String? // null => global
+  minScore       Int          @default(60)
+  maxAttempts    Int?
+  shuffle        Boolean      @default(false)
+  showResult     Boolean      @default(true)
+  showDiscussion Boolean      @default(true)
+  status         QuizStatus   @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  module        Module?        @relation(fields: [moduleId], references: [id])
+  school        School?        @relation(fields: [schoolId], references: [id])
+  sourceFile    UploadedFile?  @relation("QuizSourceFile", fields: [sourceFileId], references: [id])
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
+  quizToSchools QuizToSchool[]
+
+  @@index([moduleId])
+  @@index([schoolId])
+  @@index([educationLevel])
+  @@index([status])
+}
+
+model QuizToSchool {
+  quizId   String
+  schoolId String
+  quiz     Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@id([quizId, schoolId])
+  @@index([schoolId])
+}
+
+model QuizQuestion {
+  id            String   @id @default(cuid())
+  quizId        String
+  text          String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String? // 'A' | 'B' | 'C' | 'D' — nullable untuk hasil ekstraksi PDF
+  weight        Int      @default(1)
+  explanation   String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  quiz    Quiz        @relation(fields: [quizId], references: [id])
+  answers QuizAnswer[]
+
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id          String        @id @default(cuid())
+  quizId      String
+  userId      String
+  status      AttemptStatus @default(IN_PROGRESS)
+  score       Int?
+  passed      Boolean?
+  startedAt   DateTime      @default(now())
+  submittedAt DateTime?
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id])
+  user    User         @relation(fields: [userId], references: [id])
+  answers QuizAnswer[]
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+model QuizAnswer {
+  id             String      @id @default(cuid())
+  attemptId      String
+  questionId     String
+  selectedOption String // 'A' | 'B' | 'C' | 'D'
+  isCorrect      Boolean     @default(false)
+  score          Int         @default(0)
+
+  attempt  QuizAttempt  @relation(fields: [attemptId], references: [id])
+  question QuizQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+// =====================================================================
+// Auth & Sessions
+// =====================================================================
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// =====================================================================
+// Audit Log
+// =====================================================================
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  schoolId  String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor  User?   @relation("ActorLogs", fields: [actorId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
+
+  @@index([actorId])
+  @@index([schoolId])
+  @@index([action])
+  @@index([createdAt])
+}

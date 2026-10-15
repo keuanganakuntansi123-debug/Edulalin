@@ -1,0 +1,306 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --primary: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #fbbf24;
+  --border: #e2e8f0;
+  --ring: #3b82f6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* ============================================================
+   Animasi edukasi lalu lintas (Beranda)
+   Di-disable untuk pengguna prefers-reduced-motion.
+   ============================================================ */
+
+/* Awan bergerak pelan */
+.ed-anim-cloud {
+  animation: ed-drift 26s linear infinite;
+  transform-box: fill-box;
+}
+.ed-anim-cloud-2 {
+  animation-duration: 34s;
+  animation-delay: -12s;
+}
+@keyframes ed-drift {
+  from { transform: translateX(-40px); }
+  to { transform: translateX(40px); }
+}
+
+/* Zebra cross berkedip halus */
+.ed-anim-zebra rect {
+  animation: ed-zebra 2.6s ease-in-out infinite;
+}
+.ed-anim-zebra rect:nth-child(even) {
+  animation-delay: 1.3s;
+}
+@keyframes ed-zebra {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+/* Lampu lalu lintas berubah bertahap */
+.ed-light-red,
+.ed-light-yellow,
+.ed-light-green {
+  animation: ed-light 8s infinite;
+}
+.ed-light-red { opacity: 0.2; animation-delay: 0s; }
+.ed-light-yellow { opacity: 0.2; animation-delay: 0s; }
+.ed-light-green { opacity: 0.2; animation-delay: 0s; }
+@keyframes ed-light {
+  0%, 12% { opacity: 1; }
+  20%, 100% { opacity: 0.2; }
+}
+.ed-light-yellow { animation-name: ed-light-yellow; }
+@keyframes ed-light-yellow {
+  0%, 12% { opacity: 0.2; }
+  24%, 34% { opacity: 1; }
+  42%, 100% { opacity: 0.2; }
+}
+.ed-light-green { animation-name: ed-light-green; }
+@keyframes ed-light-green {
+  0%, 46% { opacity: 0.2; }
+  58%, 68% { opacity: 1; }
+  76%, 100% { opacity: 0.2; }
+}
+
+/* Sepeda bergoyang halus (badan) */
+.ed-anim-rider {
+  animation: ed-rider-bob 0.9s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center 78%;
+}
+@keyframes ed-rider-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(1.4deg); }
+}
+
+/* Roda berputar */
+.ed-anim-wheel {
+  animation: ed-spin 1.1s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ed-anim-wheel-rev {
+  animation-direction: reverse;
+}
+@keyframes ed-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pedal & kaki mengayuh */
+.ed-anim-pedal {
+  animation: ed-pedal 0.55s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes ed-pedal {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.ed-anim-leg {
+  animation: ed-leg 0.55s ease-in-out infinite;
+}
+@keyframes ed-leg {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Lengan mengayuh setang */
+.ed-anim-arm {
+  animation: ed-arm 0.9s ease-in-out infinite;
+}
+@keyframes ed-arm {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-3px); }
+}
+
+/* Garis angin saat melaju */
+.ed-anim-wind {
+  animation: ed-wind 1.6s ease-in-out infinite;
+}
+@keyframes ed-wind {
+  0%, 100% { opacity: 0.2; transform: translateX(0); }
+  50% { opacity: 0.8; transform: translateX(-6px); }
+}
+
+/* Rambu bergoyang ringan */
+.ed-anim-sign {
+  animation: ed-sign 5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+@keyframes ed-sign {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(1.6deg); }
+}
+
+/* Lengan polisi memberi isyarat berhenti */
+.ed-anim-stop-arm {
+  animation: ed-stop-arm 2.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 100% 100%;
+}
+@keyframes ed-stop-arm {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(6deg); }
+}
+.ed-anim-stop-hand {
+  animation: ed-stop-hand 2.2s ease-in-out infinite;
+}
+@keyframes ed-stop-hand {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Anak sekolah berjalan menyeberang */
+.ed-anim-kids {
+  animation: ed-kids 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+}
+@keyframes ed-kids {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.ed-anim-walker {
+  animation: ed-walk 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+}
+.ed-anim-walker-2 {
+  animation-delay: 0.3s;
+}
+@keyframes ed-walk {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-1.2deg); }
+  75% { transform: translateY(-2px) rotate(1.2deg); }
+}
+.ed-anim-walk-leg-a,
+.ed-anim-walk-leg-b {
+  animation: ed-walk-leg 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.ed-anim-walk-leg-b { animation-delay: 0.55s; }
+@keyframes ed-walk-leg {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(14deg); }
+}
+.ed-anim-walk-arm {
+  animation: ed-walk-arm 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+@keyframes ed-walk-arm {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-12deg); }
+}
+
+/* Polisi berdiri stabil */
+.ed-anim-police {
+  animation: ed-police-bob 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+}
+@keyframes ed-police-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Lampu sein kendaraan berkedip */
+.ed-anim-blinker {
+  animation: ed-blinker 1s steps(2, start) infinite;
+}
+@keyframes ed-blinker {
+  0% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+
+/* Kendaraan berhenti (body stabil, roda idle) */
+.ed-anim-car {
+  animation: ed-car-idle 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+}
+@keyframes ed-car-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+/* Reveal saat scroll */
+.ed-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.ed-reveal.ed-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ed-anim-cloud,
+  .ed-anim-zebra rect,
+  .ed-light-red,
+  .ed-light-yellow,
+  .ed-light-green,
+  .ed-anim-rider,
+  .ed-anim-wheel,
+  .ed-anim-pedal,
+  .ed-anim-leg,
+  .ed-anim-arm,
+  .ed-anim-wind,
+  .ed-anim-sign,
+  .ed-anim-stop-arm,
+  .ed-anim-stop-hand,
+  .ed-anim-kids,
+  .ed-anim-walker,
+  .ed-anim-walk-leg-a,
+  .ed-anim-walk-leg-b,
+  .ed-anim-walk-arm,
+  .ed-anim-police,
+  .ed-anim-blinker,
+  .ed-anim-car {
+    animation: none !important;
+  }
+  .ed-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

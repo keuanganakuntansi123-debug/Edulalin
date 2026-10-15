@@ -1,0 +1,21 @@
+﻿node.exe : Loaded Prisma config from prisma7.config.ts.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Loaded Prisma c...sma7.config.ts. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+Error: 
+option requires argument: --from-url
+Usage
+  $ prisma migrate diff [options]
+Options
+  -h, --help               Display this help message
+  -o, --output             Writes to a file instead of stdout
+From and To inputs (1 `--from-...` and 1 `--to-...` must be provided):
+for the diff
+file
+Flags
+default human readable summary (not supported on MongoDB)
+is empty or not (Empty: 0, Error: 1, Not empty: 2). Default behavior is 
+Success: 0, Error: 1.

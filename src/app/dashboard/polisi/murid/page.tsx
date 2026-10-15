@@ -1,0 +1,55 @@
+import { requireRole } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
+import { levelDisplayLabel } from "@/lib/constants";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/form";
+
+export const instant = false;
+
+export default async function PolisiMuridPage() {
+  await requireRole("POLISI");
+
+  const schools = await prisma.school.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: { name: "asc" },
+    include: {
+      _count: { select: { users: { where: { role: "MURID", deletedAt: null } } } },
+    },
+  });
+
+  const total = schools.reduce((a, s) => a + s._count.users, 0);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Jumlah Murid</h1>
+      <p className="mt-1 text-muted-foreground">Distribusi murid per sekolah ({total} total).</p>
+
+      <div className="mt-6 space-y-3">
+        {schools.map((s) => {
+          const pct = total ? Math.round((s._count.users / total) * 100) : 0;
+          return (
+            <Card key={s.id}>
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{s.name}</p>
+                    <p className="text-xs text-muted-foreground">{levelDisplayLabel(s.educationLevel)}</p>
+                  </div>
+                  <span className="font-semibold">{s._count.users} murid ({pct}%)</span>
+                </div>
+                <Progress value={pct} className="mt-3" />
+              </CardContent>
+            </Card>
+          );
+        })}
+        {schools.length === 0 && (
+          <Card>
+            <CardContent className="pt-6 text-center text-muted-foreground">
+              Belum ada data sekolah.
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
