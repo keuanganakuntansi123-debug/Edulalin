@@ -71,9 +71,13 @@ export default async function AdminUserDetailPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
-          {user.avatarUrl ? (
+          {user.embeddedAvatar ?? user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarUrl} alt={user.name} className="h-16 w-16 rounded-full object-cover" />
+            <img
+              src={user.embeddedAvatar ?? user.avatarUrl ?? ""}
+              alt={user.name}
+              className="h-16 w-16 rounded-full object-cover"
+            />
           ) : (
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
               {user.name.charAt(0).toUpperCase()}

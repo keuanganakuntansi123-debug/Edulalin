@@ -83,7 +83,14 @@ export async function saveUploadedFile(input: {
   file: File;
   kind: FileKind;
   ownerId: string;
-}): Promise<{ id: string; url: string; originalName: string; mimeType: string; size: number }> {
+}): Promise<{
+  id: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  embedded?: string;
+}> {
   const { file, kind, ownerId } = input;
   const mime = file.type || "application/octet-stream";
   if (!isAllowedMime(kind, mime)) {
@@ -109,13 +116,26 @@ export async function saveUploadedFile(input: {
     },
   });
 
-  return {
+  const result: {
+    id: string;
+    url: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    embedded?: string;
+  } = {
     id: record.id,
     url: `/api/files/${storedName}`,
     originalName: record.originalName,
     mimeType: record.mimeType,
     size: record.size,
   };
+  // Avatar: embiada base64 supaya foto tetap tersimpan saat redeploy
+  // (storage serverless /tmp dapat berubah). Hanya untuk gambar profil kecil.
+  if (kind === "AVATAR") {
+    result.embedded = `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+  return result;
 }
 
 export async function getStoredFilePath(storedName: string): Promise<string | null> {

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
 
-  if (user.role !== "ADMIN" && user.role !== "GURU" && user.role !== "MURID") {
+  if (user.role !== "ADMIN" && user.role !== "GURU" && user.role !== "POLISI" && user.role !== "MURID") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah" }, { status: 403 });
   }
 
@@ -31,11 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });
   }
   const fKind = kind as FileKind;
-  // Murid hanya boleh unggah foto profil
-  if (user.role === "MURID" && fKind !== "AVATAR") {
+  // Murid & polisi hanya boleh unggah foto profil
+  if ((user.role === "MURID" || user.role === "POLISI") && fKind !== "AVATAR") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
-  if (user.role === "GURU" && fKind !== "MODULE_CONTENT") {
+  // Guru boleh unggah materi modul + foto profil sendiri
+  if (user.role === "GURU" && fKind !== "MODULE_CONTENT" && fKind !== "AVATAR") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
   if (!isAllowedMime(fKind, file.type || "")) {

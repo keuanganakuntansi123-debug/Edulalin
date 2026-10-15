@@ -24,7 +24,7 @@ export default async function AdminSettingsPage() {
             name={user.name}
             email={user.email}
             phone={user.phone}
-            avatarUrl={user.avatarUrl}
+            avatarUrl={user.embeddedAvatar ?? user.avatarUrl}
             schoolName={null}
             educationLevel={null}
             classLevel={null}

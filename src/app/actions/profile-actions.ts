@@ -12,6 +12,9 @@ export async function updateProfile(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const avatarFileId = formData.get("avatarFileId") ? String(formData.get("avatarFileId")) : null;
+  const embeddedAvatar = formData.get("embeddedAvatar")
+    ? String(formData.get("embeddedAvatar"))
+    : null;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const newPassword = String(formData.get("newPassword") ?? "");
   const currentPassword = String(formData.get("currentPassword") ?? "");
@@ -58,11 +61,18 @@ export async function updateProfile(formData: FormData) {
       })()
     : undefined;
 
+  const embedded =
+    embeddedAvatar && embeddedAvatar.startsWith("data:image/")
+      ? embeddedAvatar
+      : undefined;
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
       ...data,
       ...(avatarUrl ? { avatarUrl } : {}),
+      ...(embedded ? { embeddedAvatar: embedded } : {}),
+      ...(avatarUrl && !embedded ? { embeddedAvatar: null } : {}),
     },
   });
 
@@ -103,7 +113,10 @@ export async function removeAvatar() {
       }
     }
   }
-  await prisma.user.update({ where: { id: user.id }, data: { avatarUrl: null } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { avatarUrl: null, embeddedAvatar: null },
+  });
   revalidatePath("/dashboard", "layout");
   return { ok: true };
 }

@@ -14,7 +14,12 @@ export default async function DashboardLayout({
   const pathname = headerList.get("x-pathname") ?? "/dashboard";
 
   return (
-    <DashboardShell role={user.role} name={user.name} avatarUrl={user.avatarUrl} pathname={pathname}>
+    <DashboardShell
+      role={user.role}
+      name={user.name}
+      avatarUrl={user.embeddedAvatar ?? user.avatarUrl}
+      pathname={pathname}
+    >
       {children}
     </DashboardShell>
   );

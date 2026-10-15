@@ -28,7 +28,7 @@ export default async function DashboardSettingsPage() {
             name={user.name}
             email={user.email}
             phone={user.phone}
-            avatarUrl={user.avatarUrl}
+            avatarUrl={user.embeddedAvatar ?? user.avatarUrl}
             schoolName={user.school?.name ?? null}
             educationLevel={user.educationLevel ? levelDisplayLabel(user.educationLevel) : null}
             classLevel={user.classLevel}

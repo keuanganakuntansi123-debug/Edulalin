@@ -10,7 +10,7 @@ import { updateProfile, removeAvatar } from "@/app/actions/profile-actions";
 import { useRouter } from "next/navigation";
 import { policeLevelLabel } from "@/lib/constants";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string };
+type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string; embedded?: string };
 
 export function ProfileForm({
   name,
@@ -70,7 +70,7 @@ export function ProfileForm({
           {avatarUrl || avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={avatar?.url ?? avatarUrl ?? ""}
+              src={avatar?.embedded ?? avatar?.url ?? avatarUrl ?? ""}
               alt={name}
               className="h-20 w-20 rounded-full object-cover ring-2 ring-primary/30"
             />
@@ -103,6 +103,7 @@ export function ProfileForm({
       </div>
 
       {avatar && <input type="hidden" name="avatarFileId" value={avatar.id} />}
+      {avatar?.embedded && <input type="hidden" name="embeddedAvatar" value={avatar.embedded} />}
 
       <div className="grid gap-2">
         <Label htmlFor="name">Nama Lengkap</Label>

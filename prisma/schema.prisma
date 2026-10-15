@@ -159,6 +159,7 @@ model User {
   passwordHash   String
   role           Role
   avatarUrl      String?
+  embeddedAvatar String?   // data URI foto profil (persist saat storage /tmp ephemeral)
   birthDate      DateTime?
   schoolId       String?
   educationLevel EducationLevel?
