@@ -26,7 +26,24 @@ export default async function ModulPage({
   const activeCategory = kategori ?? "";
 
   const modules = await prisma.module.findMany({
-    where: { deletedAt: null, status: "ACTIVE" },
+    where: {
+      deletedAt: null,
+      status: "ACTIVE",
+      OR: [
+        // Modul global tampil untuk semua
+        { schoolId: null, moduleToSchools: { none: {} } },
+        // Modul yang ditargetkan ke sekolah aktif (tidak terhapus)
+        {
+          moduleToSchools: {
+            some: { school: { status: "ACTIVE", deletedAt: null } },
+          },
+        },
+        // Modul milik satu sekolah aktif
+        {
+          school: { is: { status: "ACTIVE", deletedAt: null } },
+        },
+      ],
+    },
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,

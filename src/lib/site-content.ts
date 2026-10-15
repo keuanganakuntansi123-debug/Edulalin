@@ -92,7 +92,7 @@ export async function getPublishedBlocks(): Promise<Map<ContentBlockKey, Publish
 
 export async function getSiteStats() {
   const [schools, murids, modules, quizzes] = await Promise.all([
-    prisma.school.count(),
+    prisma.school.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { role: "MURID", deletedAt: null } }),
     prisma.module.count({ where: { deletedAt: null, status: "ACTIVE" } }),
     prisma.quiz.count({ where: { deletedAt: null } }),

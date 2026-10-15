@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { LEVEL_LABEL, EDUCATION_LEVELS, levelDisplayLabel } from "@/lib/constants";
-import { updateSchool, deleteSchool } from "@/app/actions/admin-actions";
+import { updateSchool } from "@/app/actions/admin-actions";
 import { ArrowLeft, Search, School, Users, UserRound } from "lucide-react";
 
 export const instant = false;
@@ -15,11 +15,6 @@ export const instant = false;
 async function updateSchoolAction(id: string, formData: FormData) {
   "use server";
   await updateSchool(id, formData);
-}
-
-async function deleteSchoolAction(id: string) {
-  "use server";
-  await deleteSchool(id);
 }
 
 export default async function AdminSchoolDetailPage({
@@ -306,11 +301,14 @@ export default async function AdminSchoolDetailPage({
             </div>
           </form>
           <div className="mt-4 border-t border-border pt-4">
-            <form action={deleteSchoolAction.bind(null, school.id)}>
-              <Button variant="ghost" className="text-red-600">
-                Nonaktifkan Sekolah
-              </Button>
-            </form>
+            <p className="text-xs text-muted-foreground">
+              Untuk menghapus sekolah beserta menonaktifkan akun Guru & Murid, gunakan tombol
+              <strong> Hapus</strong> pada halaman{" "}
+              <Link href="/dashboard/admin/schools" className="font-medium text-primary">
+                Kelola Sekolah
+              </Link>
+              .
+            </p>
           </div>
         </CardContent>
       </Card>

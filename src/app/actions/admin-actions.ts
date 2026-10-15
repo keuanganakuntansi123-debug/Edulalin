@@ -18,6 +18,16 @@ function fireActivity(input: Parameters<typeof logActivity>[0]) {
   logActivity(input).catch(() => undefined);
 }
 
+/** Strip key opsional dari object tanpa mutate original (untuk omit isSim). */
+function omitKey<T extends Record<string, unknown>, K extends keyof T>(
+  obj: T,
+  key: K
+): Omit<T, K> {
+  const { [key]: _omitted, ...rest } = obj;
+  void _omitted;
+  return rest;
+}
+
 export async function createModule(formData: FormData) {
   const user = await requireRole("ADMIN");
   const contentFileId = formData.get("contentFileId") ? String(formData.get("contentFileId")) : null;
@@ -39,6 +49,7 @@ export async function createModule(formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
   if (!parsed.success) return { error: "Data tidak valid" };
+  const moduleData = omitKey(parsed.data, "isSim");
 
   // Validasi sekolah tujuan benar-benar terdaftar
   if (schoolIds.length) {
@@ -57,7 +68,7 @@ export async function createModule(formData: FormData) {
 
   const mod = await prisma.module.create({
     data: {
-      ...parsed.data,
+      ...moduleData,
       educationLevel,
       classLevel: null,
       contentUrl: finalContentUrl,
@@ -78,6 +89,7 @@ export async function createModule(formData: FormData) {
     metadata: { title: mod.title, schoolIds },
   });
   revalidatePath("/dashboard/admin/modules");
+  revalidatePath("/modul");
   return { ok: true, id: mod.id };
 }
 
@@ -102,6 +114,7 @@ export async function updateModule(id: string, formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
   if (!parsed.success) return { error: "Data tidak valid" };
+  const moduleData = omitKey(parsed.data, "isSim");
 
   const existing = await prisma.module.findUnique({ where: { id } });
   if (!existing) return { error: "Modul tidak ditemukan" };
@@ -124,7 +137,7 @@ export async function updateModule(id: string, formData: FormData) {
     const updated = await tx.module.update({
       where: { id },
       data: {
-        ...parsed.data,
+        ...moduleData,
         educationLevel,
         classLevel: null,
         contentUrl: finalContentUrl,
@@ -164,6 +177,7 @@ export async function updateModule(id: string, formData: FormData) {
     metadata: { title: mod.title, schoolIds },
   });
   revalidatePath("/dashboard/admin/modules");
+  revalidatePath("/modul");
   return { ok: true };
 }
 
@@ -262,6 +276,7 @@ export async function toggleModuleStatus(id: string) {
     metadata: { status: updated.status },
   });
   revalidatePath("/dashboard/admin/modules");
+  revalidatePath("/modul");
   return { ok: true };
 }
 
@@ -280,6 +295,7 @@ export async function archiveModule(id: string) {
     metadata: { title: mod.title },
   });
   revalidatePath("/dashboard/admin/modules");
+  revalidatePath("/modul");
   return { ok: true };
 }
 
@@ -722,24 +738,121 @@ export async function updateSchool(id: string, formData: FormData) {
   return { ok: true };
 }
 
+/**
+ * Soft delete sekolah. Menonaktifkan seluruh akun Guru/Murid yang terhubung
+ * dan mencabut semua sesi aktif mereka sehingga tidak dapat login lagi.
+ * Data & riwayat tetap tersimpan (soft delete) sehingga Admin dapat memulihkan.
+ */
 export async function deleteSchool(id: string) {
-  const user = await requireRole("ADMIN");
+  const actor = await requireRole("ADMIN");
   const school = await prisma.school.findUnique({ where: { id } });
   if (!school) return { error: "Sekolah tidak ditemukan" };
-  const users = await prisma.user.count({ where: { schoolId: id, deletedAt: null } });
-  if (users > 0) return { error: "Sekolah masih memiliki pengguna aktif" };
+  if (school.deletedAt) return { error: "Sekolah sudah dalam status terhapus" };
 
-  await prisma.school.update({ where: { id }, data: { status: "INACTIVE" } });
-  // Soft delete via status saja (tidak hard delete karena referensi)
+  const result = await prisma.$transaction(async (tx) => {
+    // Akun GURU & MURID yang terhubung sekolah dinonaktifkan (sesuai permintaan).
+    const affectedUsers = await tx.user.findMany({
+      where: {
+        schoolId: id,
+        deletedAt: null,
+        role: { in: ["GURU", "MURID"] },
+      },
+      select: { id: true },
+    });
+    const affectedCount = affectedUsers.length;
+
+    // Set nonaktif akun GURU/MURID sekolah (termasuk PENDING agar tidak bisa login).
+    await tx.user.updateMany({
+      where: {
+        schoolId: id,
+        deletedAt: null,
+        status: "ACTIVE",
+        role: { in: ["GURU", "MURID"] },
+      },
+      data: { status: "INACTIVE" },
+    });
+    await tx.user.updateMany({
+      where: {
+        schoolId: id,
+        deletedAt: null,
+        status: "PENDING",
+        role: { in: ["GURU", "MURID"] },
+      },
+      data: { status: "INACTIVE" },
+    });
+
+    // Cabut seluruh sesi aktif milik user sekolah ini (aman untuk semua role).
+    const allUserIds = await tx.user.findMany({
+      where: { schoolId: id, deletedAt: null },
+      select: { id: true },
+    });
+    const allIds = allUserIds.map((u) => u.id);
+    if (allIds.length > 0) {
+      await tx.userSession.deleteMany({ where: { userId: { in: allIds } } });
+    }
+
+    await tx.school.update({
+      where: { id },
+      data: { status: "INACTIVE", deletedAt: new Date(), deletedBy: actor.id },
+    });
+
+    return affectedCount;
+  });
+
   fireActivity({
-    actorId: user.id,
+    actorId: actor.id,
     schoolId: id,
     action: "SCHOOL_DELETE",
     entity: "SCHOOL",
     entityId: id,
-    metadata: { name: school.name },
+    metadata: {
+      name: school.name,
+      affectedCount: result,
+    },
   });
   revalidatePath("/dashboard/admin/schools");
+  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/admin", "layout");
+  return { ok: true };
+}
+
+/**
+ * Pulihkan sekolah yang dihapus (soft delete). Mengembalikan status sekolah
+ * menjadi aktif dan mengaktifkan kembali akun Guru/Murid yang sebelumnya aktif.
+ */
+export async function restoreSchool(id: string) {
+  const actor = await requireRole("ADMIN");
+  const school = await prisma.school.findUnique({ where: { id } });
+  if (!school) return { error: "Sekolah tidak ditemukan" };
+  if (!school.deletedAt) return { error: "Sekolah tidak dalam status terhapus" };
+
+  await prisma.school.update({
+    where: { id },
+    data: { status: "ACTIVE", deletedAt: null, deletedBy: null },
+  });
+
+  // Mengaktifkan kembali akun GURU/MURID yang sebelumnya terhubung sekolah
+  // (non-terhapus permanen). Hak akses sesuai role masing-masing.
+  const restored = await prisma.user.updateMany({
+    where: {
+      schoolId: id,
+      deletedAt: null,
+      role: { in: ["GURU", "MURID"] },
+    },
+    data: { status: "ACTIVE" },
+  });
+
+  fireActivity({
+    actorId: actor.id,
+    schoolId: id,
+    action: "SCHOOL_RESTORE",
+    entity: "SCHOOL",
+    entityId: id,
+    metadata: { name: school.name, restoredUserCount: restored.count },
+  });
+  revalidatePath("/dashboard/admin/schools");
+  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/admin", "layout");
   return { ok: true };
 }
 

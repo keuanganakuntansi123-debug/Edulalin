@@ -23,6 +23,7 @@ export default async function AdminDashboardPage() {
 
   const [sekolah, totalGuru, totalMurid] = await Promise.all([
     prisma.school.findMany({
+      where: { deletedAt: null },
       orderBy: { name: "asc" },
       include: {
         _count: {

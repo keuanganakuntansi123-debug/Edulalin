@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Search, FileText, Video, Link2, File } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { LEVEL_LABEL, DISPLAY_CATEGORIES, categoryOf } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { ModuleCarousel } from "./module-carousel";
 
 type DisplayModule = {
   id: string;
@@ -19,20 +17,6 @@ type DisplayModule = {
   displayThumbnail: string | null;
   contentFile: { originalName: string; mimeType: string } | null;
   durationMin: number | null;
-};
-
-const TYPE_ICON: Record<string, typeof FileText> = {
-  PDF: FileText,
-  VIDEO: Video,
-  LINK: Link2,
-  DOCUMENT: File,
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  PDF: "PDF",
-  VIDEO: "Video",
-  LINK: "Link",
-  DOCUMENT: "Dokumen",
 };
 
 export function ModuleCatalog({
@@ -106,57 +90,27 @@ export function ModuleCatalog({
         ))}
       </div>
 
-      {/* Daftar */}
+      {/* Daftar (carousel horizontal) */}
       {filtered.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-border bg-white p-10 text-center">
-          <p className="text-lg font-semibold">Modul tidak ditemukan</p>
+          <p className="text-lg font-semibold">Materi belum tersedia</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tidak ada modul yang cocok dengan pencarian atau kategori ini.
+            Belum ada modul yang sesuai dengan pencarian atau kategori ini. Silakan cek kembali
+            nanti — modul yang diterbitkan Admin akan otomatis tampil di sini.
           </p>
         </div>
       ) : (
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((m) => {
-            const Icon = TYPE_ICON[m.moduleType] ?? FileText;
-            return (
-              <article
-                key={m.id}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
-                  {m.displayThumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={m.displayThumbnail}
-                      alt={m.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-                      <Icon className="h-7 w-7" />
-                    </span>
-                  )}
-                  <Badge className="absolute left-3 top-3 bg-white/90 text-primary shadow-sm">
-                    {m.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[m.educationLevel as keyof typeof LEVEL_LABEL]}
-                  </Badge>
-                </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <h3 className="font-bold leading-snug">{m.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{m.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline">{TYPE_LABEL[m.moduleType] ?? m.moduleType}</Badge>
-                    {m.classLevel && <Badge variant="secondary">Kelas {m.classLevel}</Badge>}
-                    {m.durationMin != null && <Badge variant="outline">{m.durationMin} mnt</Badge>}
-                  </div>
-                  <div className="mt-4 flex items-center gap-2 border-t border-border/60 pt-4">
-                    <Link href={`/modul/${m.id}`} className="flex-1">
-                      <Button size="sm" className="w-full">Lihat Modul</Button>
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+        <div className="mt-10">
+          <ModuleCarousel
+            modules={filtered.map((m) => ({
+              id: m.id,
+              title: m.title,
+              description: m.description,
+              educationLevel: m.educationLevel,
+              moduleType: m.moduleType,
+              displayThumbnail: m.displayThumbnail,
+            }))}
+          />
         </div>
       )}
     </div>

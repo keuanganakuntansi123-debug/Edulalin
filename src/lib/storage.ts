@@ -4,9 +4,20 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { FileKind } from "@/generated/prisma/client";
 
-const STORAGE_DIR =
-  process.env.STORAGE_DIR ??
-  path.join(process.cwd(), "storage");
+const DEFAULT_STORAGE_DIR =
+  process.env.VERCEL === "1"
+    ? path.join("/tmp", "storage")
+    : path.join(process.cwd(), "storage");
+
+const STORAGE_DIR = process.env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR;
+
+/**
+ * Akses filesystem lokal. Lokasi dinamis (env), jadi Turbopack melacak
+ * seluruh proyek — opt out dipakai supaya build tidak degradasi.
+ * Akses selalu dibatasi ke subfolder storage (basename sanitasi).
+ */
+const storagePath = (name: string): string =>
+  path.join(/* turbopackIgnore: true */ STORAGE_DIR, name);
 
 /** Maksimal ukuran per jenis file (byte). */
 export const MAX_SIZES: Record<FileKind, number> = {
@@ -85,7 +96,7 @@ export async function saveUploadedFile(input: {
   await ensureStoredDir();
   const storedName = `${crypto.randomUUID()}${extFor(mime)}`;
   const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(STORAGE_DIR, storedName), buffer);
+  await fs.writeFile(storagePath(storedName), buffer);
 
   const record = await prisma.uploadedFile.create({
     data: {
@@ -109,7 +120,7 @@ export async function saveUploadedFile(input: {
 
 export async function getStoredFilePath(storedName: string): Promise<string | null> {
   const safe = path.basename(storedName);
-  const full = path.join(STORAGE_DIR, safe);
+  const full = storagePath(safe);
   try {
     await fs.access(full);
     return full;
@@ -121,7 +132,7 @@ export async function getStoredFilePath(storedName: string): Promise<string | nu
 export async function removeStoredFile(storedName: string): Promise<void> {
   const safe = path.basename(storedName);
   try {
-    await fs.unlink(path.join(STORAGE_DIR, safe));
+    await fs.unlink(storagePath(safe));
   } catch {
     // file tidak ada — abaikan
   }

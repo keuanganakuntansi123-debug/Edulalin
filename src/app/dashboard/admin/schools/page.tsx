@@ -1,11 +1,21 @@
-import Link from "next/link";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { EDUCATION_LEVELS, LEVEL_LABEL, levelDisplayLabel } from "@/lib/constants";
+import { EDUCATION_LEVELS, LEVEL_LABEL } from "@/lib/constants";
+import { SchoolCard, DeletedSchoolRow } from "./school-card";
+import { deleteSchool, restoreSchool } from "@/app/actions/admin-actions";
+import { Archive } from "lucide-react";
 
 export const instant = false;
+
+async function deleteSchoolAction(id: string) {
+  "use server";
+  return await deleteSchool(id);
+}
+
+async function restoreSchoolAction(id: string) {
+  "use server";
+  return await restoreSchool(id);
+}
 
 export default async function AdminSchoolsPage({
   searchParams,
@@ -19,6 +29,7 @@ export default async function AdminSchoolsPage({
     where: {
       ...(level ? { educationLevel: level as "SD" | "SMP" | "SMA" | "SIM" } : {}),
       ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+      deletedAt: null,
     },
     orderBy: { name: "asc" },
     include: {
@@ -28,6 +39,16 @@ export default async function AdminSchoolsPage({
         },
       },
     },
+  });
+
+  const deletedSchools = await prisma.school.findMany({
+    where: {
+      deletedAt: { not: null },
+      ...(level ? { educationLevel: level as "SD" | "SMP" | "SMA" | "SIM" } : {}),
+      ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+    },
+    orderBy: { deletedAt: "desc" },
+    take: 50,
   });
 
   // Hitung guru & murid per sekolah tanpa N+1
@@ -49,7 +70,7 @@ export default async function AdminSchoolsPage({
     <div>
       <h1 className="text-2xl font-bold">Kelola Sekolah</h1>
       <p className="mt-1 text-muted-foreground">
-        Sekolah terdaftar otomatis saat murid mendaftar. Admin dapat melihat, mengedit, dan menonaktifkan sekolah.
+        Sekolah terdaftar otomatis saat murid mendaftar. Admin dapat melihat, mengedit, atau menghapus sekolah.
       </p>
 
       {/* Filter */}
@@ -78,48 +99,63 @@ export default async function AdminSchoolsPage({
       <div className="mt-6 grid gap-6">
         <div className="grid gap-3 sm:grid-cols-2">
           {schools.map((s) => (
-            <Link key={s.id} href={`/dashboard/admin/schools/${s.id}`}>
-              <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
-                <CardContent className="flex h-full flex-col justify-between pt-5">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-semibold leading-tight">{s.name}</h3>
-                      {s.status === "ACTIVE" ? (
-                        <Badge variant="success">Aktif</Badge>
-                      ) : (
-                        <Badge variant="secondary">Nonaktif</Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {levelDisplayLabel(s.educationLevel)} • NPSN {s.code} • {s.city}
-                    </p>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-lg bg-blue-50 p-2 text-center">
-                      <p className="text-lg font-bold text-blue-700">{countMap.get(s.id)?.guru ?? 0}</p>
-                      <p className="text-xs text-muted-foreground">Guru</p>
-                    </div>
-                    <div className="rounded-lg bg-emerald-50 p-2 text-center">
-                      <p className="text-lg font-bold text-emerald-700">{countMap.get(s.id)?.murid ?? 0}</p>
-                      <p className="text-xs text-muted-foreground">Murid</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs font-medium text-primary">
-                    Lihat detail →
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+            <SchoolCard
+              key={s.id}
+              school={{
+                id: s.id,
+                code: s.code,
+                name: s.name,
+                educationLevel: s.educationLevel,
+                city: s.city,
+                status: s.status,
+              }}
+              guru={countMap.get(s.id)?.guru ?? 0}
+              murid={countMap.get(s.id)?.murid ?? 0}
+              action={deleteSchoolAction}
+            />
           ))}
           {schools.length === 0 && (
-            <Card className="lg:col-span-2">
-              <CardContent className="pt-6 text-center text-muted-foreground">
-                Tidak ada sekolah yang cocok.
-              </CardContent>
-            </Card>
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground lg:col-span-2">
+              Tidak ada sekolah aktif yang cocok.
+            </div>
           )}
         </div>
 
+        {/* Sekolah Terhapus */}
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <Archive className="h-5 w-5 text-muted-foreground" />
+            Sekolah Terhapus
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {deletedSchools.length}
+            </span>
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Sekolah yang dihapus (soft delete). Data tetap tersimpan dan dapat dipulihkan kapan saja.
+            Saat dipulihkan, akun Guru & Murid yang sebelumnya aktif kembali dapat mengakses sistem.
+          </p>
+          <div className="mt-4 grid gap-3">
+            {deletedSchools.map((s) => (
+              <DeletedSchoolRow
+                key={s.id}
+                school={{
+                  id: s.id,
+                  code: s.code,
+                  name: s.name,
+                  educationLevel: s.educationLevel,
+                  city: s.city,
+                  status: s.status,
+                }}
+                action={restoreSchoolAction}
+              />
+            ))}
+            {deletedSchools.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                Belum ada sekolah yang dihapus.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

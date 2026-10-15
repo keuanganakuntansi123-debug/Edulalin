@@ -30,5 +30,12 @@ export async function getCurrentUser() {
     include: { school: true },
   });
   if (!user || user.status === "INACTIVE") return null;
+  // Sekolah yang nonaktif / terhapus otomatis mencabut akses user.
+  if (
+    user.school &&
+    (user.school.status === "INACTIVE" || user.school.deletedAt !== null)
+  ) {
+    return null;
+  }
   return user;
 }

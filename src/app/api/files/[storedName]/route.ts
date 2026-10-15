@@ -21,8 +21,10 @@ export async function GET(
   const record = await prisma.uploadedFile.findUnique({ where: { storedName } });
   if (!record) return NextResponse.json({ error: "File tidak ditemukan" }, { status: 404 });
 
-  // Gambar konten publik boleh diakses siapa saja (untuk halaman publik).
-  if (record.kind !== "SITE_IMAGE") {
+  // Thumbnail modul & gambar konten publik boleh diakses siapa saja (pratinjau).
+  // Konten materi (MODULE_CONTENT) & file lain tetap memerlukan autentikasi + otorisasi.
+  const isPublicThumbnail = await isModuleThumbnail(record.id);
+  if (record.kind !== "SITE_IMAGE" && !isPublicThumbnail) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
     const allow = await canAccessFile(user, record);
@@ -64,6 +66,19 @@ type UploadedFileRow = {
   moduleThumbnailId?: string | null;
   quizSourceId?: string | null;
 };
+
+/** Cek apakah file dipakai sebagai thumbnail modul (pratinjau publik). */
+async function isModuleThumbnail(fileId: string): Promise<boolean> {
+  const mod = await prisma.module.findFirst({
+    where: {
+      thumbnailFileId: fileId,
+      deletedAt: null,
+      status: "ACTIVE",
+    },
+    select: { id: true },
+  });
+  return Boolean(mod);
+}
 
 async function canAccessFile(
   user: {

@@ -78,7 +78,7 @@ export default async function AdminReportsPage({
 
   const [schools, guruList, muridList, polisiList, totalKuis, moduleStats, quizAttempts] =
     await Promise.all([
-      prisma.school.findMany({ orderBy: { name: "asc" } }),
+      prisma.school.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } }),
       prisma.user.findMany({
         where: { role: "GURU", deletedAt: null },
         select: { id: true, schoolId: true, status: true, createdAt: true },
