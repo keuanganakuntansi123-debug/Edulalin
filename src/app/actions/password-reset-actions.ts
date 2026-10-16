@@ -110,6 +110,11 @@ Jika Anda tidak meminta reset password, abaikan email ini.
   });
 
   if (!mail.ok) {
+    // Email gagal terkirim — hapus OTP yang baru dibuat agar percobaan
+    // berikutnya tidak terblokir oleh cooldown 60 detik.
+    await prisma.verificationToken.deleteMany({
+      where: { userId: user.id, type: "PASSWORD_RESET_OTP", usedAt: null },
+    });
     logActivity({
       actorId: user.id,
       schoolId: user.schoolId,
