@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { submitQuizSchema } from "@/lib/validations";
 import { logActivity } from "@/lib/audit";
+import { notifyQuizResult } from "@/lib/notification-service";
 import type { Role } from "@/generated/prisma/client";
 import { canAccessSim } from "@/lib/module-service";
 
@@ -13,7 +14,7 @@ export type QuizResult =
  * Jangan pernah percaya nilai dari frontend — score dihitung dari jawaban tersimpan.
  */
 export async function submitQuiz(
-  actor: { id: string; role: Role; schoolId: string | null; birthDate?: Date | null },
+  actor: { id: string; name: string; role: Role; schoolId: string | null; birthDate?: Date | null },
   input: { attemptId: string; answers: { questionId: string; selectedOption: "A" | "B" | "C" | "D" }[] }
 ): Promise<QuizResult> {
   const parsed = submitQuizSchema.safeParse(input);
@@ -40,6 +41,7 @@ export async function submitQuiz(
   const globalQuiz = quiz.schoolId == null && !hasTargets;
   if (
     actor.role !== "ADMIN" &&
+    actor.role !== "POLISI" &&
     !globalQuiz &&
     quiz.schoolId !== actor.schoolId &&
     !(actor.schoolId && targetIds.includes(actor.schoolId))
@@ -47,8 +49,13 @@ export async function submitQuiz(
     return { success: false, message: "Akses ditolak" };
   }
 
-  // SIM gate: usia >= 17 untuk kuis jenjang SIM
-  if (quiz.educationLevel === "SIM" && !canAccessSim(actor.birthDate)) {
+  // SIM gate: usia >= 17 untuk kuis jenjang SIM (kecuali Polisi/Admin — latihan profesional)
+  if (
+    quiz.educationLevel === "SIM" &&
+    actor.role !== "POLISI" &&
+    actor.role !== "ADMIN" &&
+    !canAccessSim(actor.birthDate)
+  ) {
     return { success: false, message: "Modul SIM tersedia setelah Anda berusia 17 tahun." };
   }
 
@@ -95,6 +102,18 @@ export async function submitQuiz(
     entity: "QUIZ",
     entityId: quiz.id,
     metadata: { attemptId: attempt.id, score, passed },
+  });
+
+  await notifyQuizResult({
+    actorId: actor.id,
+    actorRole: actor.role,
+    actorName: actor.name,
+    schoolId: actor.schoolId,
+    quizId: quiz.id,
+    quizTitle: quiz.title,
+    attemptId: attempt.id,
+    score,
+    passed,
   });
 
   return { success: true, result: { score, passed, total: quiz.questions.length, correct } };

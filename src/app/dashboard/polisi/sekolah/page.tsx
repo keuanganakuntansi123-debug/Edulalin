@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { levelDisplayLabel } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const instant = false;
 
@@ -36,6 +39,13 @@ export default async function PolisiSekolahPage() {
               <p className="mt-2 text-xs text-muted-foreground">
                 {s._count.users} murid terdaftar
               </p>
+              <div className="mt-3">
+                <Link href={`/dashboard/polisi/sekolah/${s.id}`}>
+                  <Button size="sm" variant="outline">
+                    <Eye className="h-4 w-4" /> Lihat Detail Sekolah
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         ))}

@@ -9,6 +9,7 @@ export type ParsedQuestion = {
   optionC: string;
   optionD: string;
   answer?: string; // 'A' | 'B' | 'C' | 'D' bila terbaca dari PDF
+  explanation?: string; // pembahasan bila tersedia di PDF
 };
 
 /**
@@ -18,6 +19,7 @@ export type ParsedQuestion = {
  *  - Opsi A/B/C/D (dengan variasi a., b., c., d., A., B., dsb.)
  *  - Kunci jawaban berupa baris "Kunci Jawaban: A", "Jawaban: B", "KUNCI: C", atau
  *    "1. A" pada blok kunci di bagian akhir dokumen.
+ *  - Pembahasan (opsional) setelah setiap soal, mis. baris "Pembahasan: ...".
  */
 export async function extractQuestionsFromPdf(
   storedName: string
@@ -79,10 +81,11 @@ export async function extractQuestionsFromPdf(
   // Bangun kumpulan soal
   const questions: ParsedQuestion[] = [];
   let currentIndex = 0;
-  let current: { text: string; options: Map<string, string> } | null = null;
+  let current: { text: string; options: Map<string, string>; explanation: string[] } | null = null;
 
   const questionRe = /^(?:(\d{1,3})\s*[.)]\s*|\*\s*)(.+)$/;
   const answerRe = /^([A-Da-d])\s*[.)\]:]?\s*(.+)$/;
+  const pembahasanRe = /^(?:pembahasan|penjelasan)\s*[:.\-]?\s*(.+)$/i;
 
   for (const line of lines) {
     const qMatch = line.match(questionRe);
@@ -92,10 +95,20 @@ export async function extractQuestionsFromPdf(
         questions.push(finalizeQuestion(current, answerByIndex, currentIndex));
       }
       currentIndex = num - 1 < 0 ? questions.length : num - 1;
-      current = { text: qMatch[2], options: new Map() };
+      current = { text: qMatch[2], options: new Map(), explanation: [] };
       continue;
     }
     if (!current) continue;
+    const pembMatch = line.match(pembahasanRe);
+    if (pembMatch) {
+      current.explanation.push(pembMatch[1]);
+      continue;
+    }
+    // Lanjutan pembahasan (baris tanpa nomor soal, setelah pembahasan dimulai)
+    if (current.explanation.length > 0 && current.options.size > 0) {
+      current.explanation.push(line);
+      continue;
+    }
     const aMatch = line.match(answerRe);
     if (aMatch) {
       const key = aMatch[1].toUpperCase();
@@ -122,11 +135,12 @@ export async function extractQuestionsFromPdf(
 }
 
 function finalizeQuestion(
-  current: { text: string; options: Map<string, string> },
+  current: { text: string; options: Map<string, string>; explanation: string[] },
   answerByIndex: Map<number, string>,
   index: number
 ): ParsedQuestion {
   const get = (k: string) => current.options.get(k) ?? "";
+  const explanation = current.explanation.join(" ").trim();
   return {
     text: current.text,
     optionA: get("A"),
@@ -134,5 +148,6 @@ function finalizeQuestion(
     optionC: get("C"),
     optionD: get("D"),
     answer: answerByIndex.get(index + 1),
+    explanation: explanation || undefined,
   };
 }

@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
   const [totalModul, totalKuis, totalAttempts] = await Promise.all([
     prisma.module.count({ where: { status: "ACTIVE", deletedAt: null } }),
     prisma.quiz.count({ where: { status: "ACTIVE", deletedAt: null } }),
-    prisma.quizAttempt.count({ where: { status: "COMPLETED" } }),
+    prisma.quizAttempt.count({ where: { status: "COMPLETED", user: { role: "MURID" } } }),
   ]);
 
   const recentLogs = await prisma.activityLog.findMany({

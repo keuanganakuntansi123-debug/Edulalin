@@ -111,7 +111,7 @@ export default async function AdminReportsPage({
         take: 10,
       }),
       prisma.quizAttempt.findMany({
-        where: { status: "COMPLETED" },
+        where: { status: "COMPLETED", user: { role: "MURID" } },
         select: { score: true, passed: true, submittedAt: true, userId: true },
         take: 2000,
       }),

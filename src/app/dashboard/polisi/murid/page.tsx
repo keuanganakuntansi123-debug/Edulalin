@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { levelDisplayLabel } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/form";
+import Link from "next/link";
+import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const instant = false;
 
@@ -38,6 +41,13 @@ export default async function PolisiMuridPage() {
                   <span className="font-semibold">{s._count.users} murid ({pct}%)</span>
                 </div>
                 <Progress value={pct} className="mt-3" />
+                <div className="mt-3 flex gap-2">
+                  <Link href={`/dashboard/polisi/kuis?schoolId=${s.id}`}>
+                    <Button size="sm" variant="outline">
+                      <Eye className="h-4 w-4" /> Lihat Kuis Murid
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           );

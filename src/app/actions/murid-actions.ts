@@ -9,6 +9,22 @@ import { logActivity } from "@/lib/audit";
 import { redirect } from "next/navigation";
 import { canAccessSim } from "@/lib/module-service";
 
+export async function policeSaveQuizAnswers(input: {
+  attemptId: string;
+  answers: { questionId: string; selectedOption: "A" | "B" | "C" | "D" }[];
+}) {
+  const user = await requireRole("POLISI");
+  const result = await submitQuiz(user, input);
+  if (!result.success) return { error: result.message };
+  return {
+    ok: true,
+    score: result.result.score,
+    passed: result.result.passed,
+    total: result.result.total,
+    correct: result.result.correct,
+  };
+}
+
 export async function saveProgressAction(formData: FormData) {
   const user = await requireRole("MURID");
   const moduleId = String(formData.get("moduleId") ?? "");

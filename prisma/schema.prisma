@@ -183,6 +183,7 @@ model User {
   passwordResets     PasswordResetToken[]
   verificationTokens VerificationToken[]
   uploadedFiles      UploadedFile[]
+  notifications      Notification[]
 
   @@index([schoolId])
   @@index([role])
@@ -190,6 +191,27 @@ model User {
   @@index([classLevel])
   @@index([status])
   @@index([deletedAt])
+}
+
+/**
+ * Notifikasi per-penerima (dashboard Guru/Polisi).
+ * Contoh: hasil pengerjaan kuis murid baru saja selesai.
+ */
+model Notification {
+  id          String    @id @default(cuid())
+  recipientId String
+  type        String    @default("QUIZ_RESULT")
+  title       String
+  body        String
+  link        String?
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  recipient   User      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([readAt])
+  @@index([createdAt])
 }
 
 // =====================================================================

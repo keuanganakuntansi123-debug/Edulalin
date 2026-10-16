@@ -2,6 +2,10 @@ import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CheckCircle2, XCircle, Eye } from "lucide-react";
+import { DeleteAttemptButton } from "./delete-attempt-button";
 
 export const instant = false;
 
@@ -9,11 +13,11 @@ export default async function GuruQuizPage() {
   const user = await requireRole("GURU");
 
   const attempts = await prisma.quizAttempt.findMany({
-    where: { status: "COMPLETED", user: { schoolId: user.schoolId } },
+    where: { status: "COMPLETED", user: { schoolId: user.schoolId, role: "MURID" } },
     orderBy: { submittedAt: "desc" },
     take: 100,
     include: {
-      user: { select: { name: true } },
+      user: { select: { name: true, classLevel: true } },
       quiz: { select: { title: true, minScore: true } },
     },
   });
@@ -23,8 +27,10 @@ export default async function GuruQuizPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Quiz & Nilai</h1>
-      <p className="mt-1 text-muted-foreground">Nilai kuis murid di sekolah Anda.</p>
+      <h1 className="text-2xl font-bold">Kuis Murid</h1>
+      <p className="mt-1 text-muted-foreground">
+        Hasil pengerjaan kuis murid di {user.school?.name ?? "sekolah Anda"}. Notifikasi muncul otomatis saat murid menyelesaikan kuis.
+      </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {[
@@ -50,29 +56,49 @@ export default async function GuruQuizPage() {
               <th className="px-4 py-3">Nilai</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Waktu</th>
+              <th className="px-4 py-3 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {attempts.map((a) => (
               <tr key={a.id}>
-                <td className="px-4 py-3 font-medium">{a.user.name}</td>
+                <td className="px-4 py-3 font-medium">
+                  {a.user.name}
+                  {a.user.classLevel && <span className="ml-1 text-xs text-muted-foreground">• Kelas {a.user.classLevel}</span>}
+                </td>
                 <td className="px-4 py-3">{a.quiz.title}</td>
                 <td className="px-4 py-3">
-                  <span className="font-semibold">{a.score ?? 0}</span>
+                  <span className={`font-semibold ${a.passed ? "text-emerald-600" : "text-red-600"}`}>
+                    {a.score ?? 0}
+                  </span>
                   <span className="text-xs text-muted-foreground"> / 100</span>
                 </td>
                 <td className="px-4 py-3">
-                  {a.passed ? <Badge variant="success">Lulus</Badge> : <Badge variant="danger">Belum Lulus</Badge>}
+                  {a.passed ? (
+                    <Badge variant="success"><CheckCircle2 className="mr-1 h-3 w-3" /> Lulus</Badge>
+                  ) : (
+                    <Badge variant="danger"><XCircle className="mr-1 h-3 w-3" /> Belum Lulus</Badge>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {a.submittedAt ? a.submittedAt.toLocaleDateString("id-ID") : "-"}
+                  {a.submittedAt ? new Date(a.submittedAt).toLocaleDateString("id-ID") : "-"}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <Link href={`/dashboard/guru/quiz/${a.id}`}>
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4" /> Lihat Detail
+                      </Button>
+                    </Link>
+                    <DeleteAttemptButton attemptId={a.id} />
+                  </div>
                 </td>
               </tr>
             ))}
             {attempts.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  Belum ada kuis yang dikerjakan.
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  Belum ada kuis yang dikerjakan murid.
                 </td>
               </tr>
             )}

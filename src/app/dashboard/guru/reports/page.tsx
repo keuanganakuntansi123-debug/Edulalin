@@ -34,7 +34,7 @@ export default async function GuruReportsPage() {
     }),
     prisma.user.count({ where: { role: "MURID", schoolId: user.schoolId, deletedAt: null } }),
     prisma.quizAttempt.count({
-      where: { status: "COMPLETED", user: { schoolId: user.schoolId } },
+      where: { status: "COMPLETED", user: { schoolId: user.schoolId, role: "MURID" } },
     }),
   ]);
 

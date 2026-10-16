@@ -8,6 +8,7 @@ import { getRoleLabel } from "@/lib/constants";
 import type { Role } from "@/generated/prisma/client";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { QuizNotificationBell } from "@/components/dashboard/quiz-notification-bell";
 import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export function Topbar({
@@ -43,9 +44,11 @@ export function Topbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
-        {/* Notifikasi — Admin: pesan kontak real-time; role lain: placeholder */}
+        {/* Notifikasi — Admin: pesan kontak; Guru/Polisi: hasil kuis murid */}
         {role === "ADMIN" ? (
           <NotificationBell />
+        ) : role === "GURU" || role === "POLISI" ? (
+          <QuizNotificationBell />
         ) : (
           <div className="relative">
             <button

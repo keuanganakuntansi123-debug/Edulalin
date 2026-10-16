@@ -18,7 +18,7 @@ export default async function PolisiStatistikPage() {
         where: { role: "MURID", deletedAt: null },
         select: {
           quizAttempts: {
-            where: { status: "COMPLETED" },
+            where: { status: "COMPLETED", user: { role: "MURID" } },
             select: { score: true },
           },
           moduleProgress: { select: { completed: true } },

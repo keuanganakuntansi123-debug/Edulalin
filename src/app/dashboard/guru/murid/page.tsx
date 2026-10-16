@@ -4,6 +4,8 @@ import { levelDisplayLabel } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/form";
+import Link from "next/link";
+import { Eye } from "lucide-react";
 
 export const instant = false;
 
@@ -17,7 +19,8 @@ export default async function GuruMuridPage() {
       moduleProgress: true,
       quizAttempts: {
         where: { status: "COMPLETED" },
-        select: { score: true, passed: true },
+        select: { score: true, passed: true, id: true, quiz: { select: { title: true } }, submittedAt: true },
+        orderBy: { submittedAt: "desc" },
       },
     },
   });
@@ -65,6 +68,26 @@ export default async function GuruMuridPage() {
                   </div>
                   <Progress value={progressPct} className="mt-1" />
                 </div>
+                {m.quizAttempts.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {m.quizAttempts.slice(0, 3).map((a) => (
+                      <div key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-xs">
+                        <span className="truncate text-muted-foreground">{a.quiz.title}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className={a.passed ? "font-semibold text-emerald-600" : "font-semibold text-red-600"}>
+                            {a.score ?? 0}/100
+                          </span>
+                          <Link href={`/dashboard/guru/quiz/${a.id}`} aria-label="Lihat detail">
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                          </Link>
+                        </span>
+                      </div>
+                    ))}
+                    {m.quizAttempts.length > 3 && (
+                      <p className="text-xs text-muted-foreground">… dan {m.quizAttempts.length - 3} lainnya</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

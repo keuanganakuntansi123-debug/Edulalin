@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
         optionC: q.optionC,
         optionD: q.optionD,
         correctOption: q.answer ?? null,
+        explanation: q.explanation ?? null,
         order: idx + 1,
       })),
     });
