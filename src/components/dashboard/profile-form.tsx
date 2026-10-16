@@ -5,7 +5,8 @@ import { Input, Label } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { FileUpload } from "@/components/upload/file-upload";
-import { X, Lock, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
+import { X, Lock, Mail, KeyRound } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { updateProfile, removeAvatar } from "@/app/actions/profile-actions";
 import { useRouter } from "next/navigation";
 import { policeLevelLabel } from "@/lib/constants";
@@ -40,8 +41,6 @@ export function ProfileForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [avatar, setAvatar] = useState<UploadedMeta | null>(null);
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
 
   const submit = (formData: FormData) => {
     startTransition(async () => {
@@ -194,44 +193,26 @@ export function ProfileForm({
             <Label htmlFor="currentPassword">Password Saat Ini</Label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <PasswordInput
                 id="currentPassword"
                 name="currentPassword"
-                type={showCurrent ? "text" : "password"}
                 placeholder="Password saat ini"
                 autoComplete="current-password"
-                className="pl-9 pr-10"
+                className="pl-9"
               />
-              <button
-                type="button"
-                onClick={() => setShowCurrent((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-slate-700"
-                aria-label={showCurrent ? "Sembunyikan" : "Tampilkan"}
-              >
-                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="newPassword">Password Baru (kosongkan jika tidak diubah)</Label>
             <div className="relative">
               <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <PasswordInput
                 id="newPassword"
                 name="newPassword"
-                type={showNew ? "text" : "password"}
                 placeholder="Min. 8 karakter, huruf & angka"
                 autoComplete="new-password"
-                className="pl-9 pr-10"
+                className="pl-9"
               />
-              <button
-                type="button"
-                onClick={() => setShowNew((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-slate-700"
-                aria-label={showNew ? "Sembunyikan" : "Tampilkan"}
-              >
-                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
           </div>
         </div>

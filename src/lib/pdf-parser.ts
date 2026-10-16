@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { getStoredFilePath } from "@/lib/storage";
+import { ensurePdfGlobals } from "@/lib/pdf-setup";
 
 export type ParsedQuestion = {
   text: string;
@@ -26,6 +27,9 @@ export async function extractQuestionsFromPdf(
 
   let raw: string;
   try {
+    // Polyfill DOMMatrix/DOMPoint/Path2D/ImageData sebelum pdfjs-dist di-load
+    // (mencegah error "DOMMatrix is not defined" di bawah Turbopack/Next.js).
+    await ensurePdfGlobals();
     // pdf-parse v2: class PDFParse dengan getText()
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: await fs.readFile(filePath) });

@@ -104,6 +104,7 @@ type Message = {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   subject: string;
   message: string;
   status: "NEW" | "READ" | "DONE";
@@ -1394,7 +1395,10 @@ function KontakTab({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{m.name}</span>
-                    <span className="text-xs text-muted-foreground">{m.email}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {m.email}
+                      {m.phone ? ` • ${m.phone}` : ""}
+                    </span>
                   </div>
                   <Badge
                     variant={

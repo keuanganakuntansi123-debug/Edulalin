@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { Input, Label, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "@/components/ui/toaster";
-import { BookOpen, ShieldCheck, User, Mail, KeyRound, School, BookMarked, Building2, Layers } from "lucide-react";
+import { BookOpen, ShieldCheck, User, Mail, School, BookMarked, Building2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function CreateUserForm({
@@ -108,8 +109,7 @@ export function CreateUserForm({
           <div className="grid gap-2">
             <Label htmlFor="guru-password">Password Sementara</Label>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="guru-password" name="password" type="password" placeholder="Min. 8 karakter" required className="pl-9" />
+              <PasswordInput id="guru-password" name="password" placeholder="Min. 8 karakter" required />
             </div>
           </div>
           <Button type="submit" className="w-full" disabled={pending}>
@@ -172,8 +172,7 @@ export function CreateUserForm({
           <div className="grid gap-2">
             <Label htmlFor="polisi-password">Password Sementara</Label>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="polisi-password" name="password" type="password" placeholder="Min. 8 karakter" required className="pl-9" />
+              <PasswordInput id="polisi-password" name="password" placeholder="Min. 8 karakter" required />
             </div>
           </div>
           <Button type="submit" className="w-full" disabled={pending}>

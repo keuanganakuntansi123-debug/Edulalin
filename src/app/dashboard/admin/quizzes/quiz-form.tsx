@@ -15,7 +15,7 @@ type PdfExtractResult = {
   fileId: string;
   originalName: string;
   extracted: number;
-  questions: { text: string; optionA: string; optionB: string; optionC: string; optionD: string }[];
+  questions: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; answer?: string }[];
 };
 
 export function QuizForm({
@@ -32,6 +32,10 @@ export function QuizForm({
   const [mode, setMode] = useState<"manual" | "pdf">("manual");
   const [pdfFile, setPdfFile] = useState<UploadedMeta | null>(null);
   const [pdfResult, setPdfResult] = useState<PdfExtractResult | null>(null);
+
+  const missingAnswers = pdfResult
+    ? pdfResult.questions.filter((q) => !q.answer).length
+    : 0;
 
   const submit = (formData: FormData) => {
     startTransition(async () => {
@@ -150,6 +154,12 @@ export function QuizForm({
                   <p className="text-xs text-muted-foreground">
                     {pdfResult.extracted} soal berhasil diekstrak. Kuis dibuat sebagai draf agar Anda dapat memeriksa dan mengisi kunci jawaban sebelum menerbitkan.
                   </p>
+                  {missingAnswers > 0 && (
+                    <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                      ⚠️ {missingAnswers} soal tidak memiliki kunci jawaban terbaca. Periksa dan isi kunci jawaban
+                      sebelum menerbitkan kuis.
+                    </p>
+                  )}
                   <div className="mt-3 grid gap-1">
                     {pdfResult.questions.slice(0, 3).map((q, i) => (
                       <p key={i} className="line-clamp-1 rounded bg-white p-2 text-xs text-muted-foreground">

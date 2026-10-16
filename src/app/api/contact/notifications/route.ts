@@ -32,9 +32,11 @@ export async function GET(req: NextRequest) {
       id: m.id,
       name: m.name,
       email: m.email,
+      phone: m.phone,
       subject: m.subject,
       message: m.message,
       status: m.status,
+      readAt: m.readAt ? m.readAt.toISOString() : null,
       createdAt: m.createdAt.toISOString(),
     })),
   });

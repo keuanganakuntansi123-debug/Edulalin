@@ -30,6 +30,9 @@ export default async function PolisiDashboardPage() {
       <DashboardWelcome
         role="POLISI"
         name={user.name}
+        policeLevel={user.policeLevel}
+        policeUnit={user.policeUnit}
+        policeDivision={user.policeDivision}
         description="Pantau edukasi keselamatan lalu lintas di seluruh sekolah mitra EDULALIN."
         actions={
           <Link href="/dashboard/polisi/statistik">

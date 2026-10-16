@@ -71,6 +71,8 @@ export default async function GuruDashboardPage() {
       <DashboardWelcome
         role="GURU"
         name={user.name}
+        schoolName={user.school?.name}
+        subject={user.subject}
         description={
           user.school
             ? `Anda mengajar di ${user.school.name}. Pantau murid dan nilai pembelajaran lalu lintas dari sekolah Anda.`

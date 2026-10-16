@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Phone } from "lucide-react";
 
 export function ContactForm() {
   const [pending, startTransition] = useTransition();
@@ -14,10 +14,11 @@ export function ContactForm() {
   const submit = (formData: FormData) => {
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+    const phone = String(formData.get("phone") ?? "").trim();
     const subject = String(formData.get("subject") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
 
-    if (!name || !email || !subject || !message) {
+    if (!name || !email || !phone || !subject || !message) {
       toast({ title: "Lengkapi formulir", description: "Semua kolom wajib diisi.", variant: "error" });
       return;
     }
@@ -25,12 +26,16 @@ export function ContactForm() {
       toast({ title: "Email tidak valid", description: "Periksa kembali alamat email Anda.", variant: "error" });
       return;
     }
+    if (!/^[0-9+\-\s()]{7,20}$/.test(phone)) {
+      toast({ title: "Nomor telepon tidak valid", description: "Periksa kembali nomor telepon Anda.", variant: "error" });
+      return;
+    }
 
     startTransition(async () => {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({ name, email, phone, subject, message }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -52,6 +57,13 @@ export function ContactForm() {
       <div className="grid gap-2">
         <Label htmlFor="contact-email">Email</Label>
         <Input id="contact-email" name="email" type="email" placeholder="email@contoh.id" required autoComplete="email" />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="contact-phone">Nomor Telepon</Label>
+        <div className="relative">
+          <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input id="contact-phone" name="phone" type="tel" placeholder="08xxxxxxxxxx" required autoComplete="tel" className="pl-9" />
+        </div>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="contact-subject">Subjek Pesan</Label>

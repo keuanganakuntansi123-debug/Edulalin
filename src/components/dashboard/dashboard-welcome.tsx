@@ -1,6 +1,6 @@
 import type { Role } from "@/generated/prisma/client";
 import { RoleIllustration } from "@/components/dashboard/role-illustration";
-import { getRoleLabel } from "@/lib/constants";
+import { getRoleLabel, policeLevelLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,13 +13,35 @@ export function DashboardWelcome({
   description,
   actions,
   accent,
+  schoolName,
+  subject,
+  policeLevel,
+  policeUnit,
+  policeDivision,
 }: {
   role: Role;
   name: string;
   description?: string;
   actions?: React.ReactNode;
   accent?: string;
+  schoolName?: string | null;
+  subject?: string | null;
+  policeLevel?: string | null;
+  policeUnit?: string | null;
+  policeDivision?: string | null;
 }) {
+  const identityItems: { label: string; value: string | null | undefined }[] = [];
+  if (role === "GURU") {
+    identityItems.push({ label: "Sekolah", value: schoolName });
+    identityItems.push({ label: "Mata Pelajaran", value: subject });
+  }
+  if (role === "POLISI") {
+    identityItems.push({ label: "Kesatuan", value: policeUnit });
+    identityItems.push({ label: "Wilayah", value: policeLevel ? policeLevelLabel(policeLevel) : null });
+    identityItems.push({ label: "Divisi / Bagian", value: policeDivision });
+  }
+  const hasIdentity = identityItems.some((i) => i.value);
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-800 via-blue-700 to-sky-600 text-white shadow-lg shadow-blue-900/10">
       {/* Dekorasi latar */}
@@ -43,6 +65,21 @@ export function DashboardWelcome({
           <p className="mt-1.5 text-sm leading-relaxed text-blue-100">
             {description ?? "Kelola aktivitas edukasi keselamatan berlalu lintas Anda di EDULALIN."}
           </p>
+          {hasIdentity && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {identityItems
+                .filter((i) => i.value)
+                .map((i) => (
+                  <span
+                    key={i.label}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+                  >
+                    <span className="text-blue-200">{i.label}:</span>
+                    {i.value}
+                  </span>
+                ))}
+            </div>
+          )}
           {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
         </div>
         <div className={cn("w-full max-w-xs sm:max-w-sm lg:w-80 lg:shrink-0", accent)}>

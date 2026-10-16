@@ -20,6 +20,15 @@ function genericError(): AuthResult<never> {
   };
 }
 
+function accountUnavailableError(): AuthResult<never> {
+  return {
+    success: false,
+    errors: {},
+    message:
+      "Akun tidak dapat digunakan: akun dinonaktifkan atau terhubung ke sekolah yang sudah tidak aktif. Hubungi Admin.",
+  };
+}
+
 /** Login dengan email & password. Hanya user aktif yang bisa masuk. */
 export async function login(input: LoginInput): Promise<AuthResult<{ redirectTo: string }>> {
   const parsed = loginSchema.safeParse(input);
@@ -29,8 +38,12 @@ export async function login(input: LoginInput): Promise<AuthResult<{ redirectTo:
   const { email, password } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  // Pesan generik agar tidak membocorkan email terdaftar
-  if (!user || user.deletedAt || user.status === "INACTIVE") return genericError();
+  // Akun tidak ditemukan / dinonaktifkan / terhapus — beri tahu pengguna agar
+  // dapat menghubungi admin, tanpa membocorkan detail akun.
+  if (!user) return genericError();
+  if (user.deletedAt || user.status === "INACTIVE" || user.status === "PENDING") {
+    return accountUnavailableError();
+  }
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return genericError();
 
@@ -67,11 +80,26 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
   }
 
   // Cari sekolah berdasarkan nama (tidak peka huruf besar/kecil).
+  // Hanya sekolah AKTIF (belum dihapus) yang dipakai, supaya murid baru tidak
+  // terhubung ke sekolah yang sudah diarsipkan/dihapus (yang memblokir login).
   // Jika belum ada, sekolah dibuat otomatis sehingga data tetap terintegrasi.
   const schoolName = data.schoolName.trim();
   let school = await prisma.school.findFirst({
-    where: { name: { equals: schoolName, mode: "insensitive" } },
+    where: { name: { equals: schoolName, mode: "insensitive" }, deletedAt: null },
   });
+  if (!school) {
+    // Coba aktifkan kembali sekolah nonaktif dengan nama sama (jika ada),
+    // supaya murid terhubung ke sekolah terdaftar yang valid.
+    const inactive = await prisma.school.findFirst({
+      where: { name: { equals: schoolName, mode: "insensitive" }, deletedAt: { not: null } },
+    });
+    if (inactive) {
+      school = await prisma.school.update({
+        where: { id: inactive.id },
+        data: { status: "ACTIVE", deletedAt: null, deletedBy: null },
+      });
+    }
+  }
   if (!school) {
     const slug = schoolName
       .toLowerCase()
