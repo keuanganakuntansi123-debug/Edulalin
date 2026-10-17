@@ -23,8 +23,10 @@ export default async function QuizAttemptPage({
       deletedAt: null,
       AND: [
         { OR: [{ schoolId: null }, { schoolId: user.schoolId }] },
-        user.educationLevel === "SMA" || user.educationLevel === "SIM"
+        user.educationLevel === "SMA"
           ? { educationLevel: { in: ["SMA", "SIM"] } }
+          : user.educationLevel === "SMK"
+            ? { educationLevel: { in: ["SMK", "SIM"] } }
           : { educationLevel: user.educationLevel ?? undefined },
       ],
     },

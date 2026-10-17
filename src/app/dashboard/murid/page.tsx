@@ -40,8 +40,10 @@ export default async function MuridDashboardPage() {
                 : []),
             ],
           },
-          user.educationLevel === "SMA" || user.educationLevel === "SIM"
+          user.educationLevel === "SMA"
             ? { educationLevel: { in: ["SMA", "SIM"] } }
+            : user.educationLevel === "SMK"
+              ? { educationLevel: { in: ["SMK", "SIM"] } }
             : { educationLevel: user.educationLevel ?? undefined },
         ],
       },
@@ -109,7 +111,7 @@ export default async function MuridDashboardPage() {
           <CardTitle>Kartu SIM</CardTitle>
         </CardHeader>
         <CardContent>
-          {user.educationLevel === "SMA" || user.educationLevel === "SIM" ? (
+          {user.educationLevel === "SMA" || user.educationLevel === "SMK" || user.educationLevel === "SIM" ? (
             simAvailable ? (
             <div className="flex items-center justify-between rounded-xl bg-amber-50 p-4">
               <div>

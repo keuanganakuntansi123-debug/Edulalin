@@ -25,6 +25,7 @@ export const MAX_SIZES: Record<FileKind, number> = {
   QUIZ_PDF: 20 * 1024 * 1024, // 20 MB
   AVATAR: 5 * 1024 * 1024, // 5 MB
   SITE_IMAGE: 5 * 1024 * 1024, // 5 MB (gambar konten publik)
+  SCHOOL_LOGO: 2 * 1024 * 1024, // 2 MB
 };
 
 const ALLOWED_MIME: Record<FileKind, string[]> = {
@@ -46,6 +47,7 @@ const ALLOWED_MIME: Record<FileKind, string[]> = {
   QUIZ_PDF: ["application/pdf"],
   AVATAR: ["image/jpeg", "image/png", "image/webp"],
   SITE_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
+  SCHOOL_LOGO: ["image/jpeg", "image/png", "image/webp"],
 };
 
 export function ensureStoredDir() {

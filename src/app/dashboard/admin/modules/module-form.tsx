@@ -28,6 +28,7 @@ export function ModuleForm({
     title?: string;
     description?: string;
     isSim?: boolean;
+    educationLevel?: string;
     moduleType?: string;
     contentUrl?: string | null;
     thumbnailUrl?: string | null;
@@ -38,9 +39,12 @@ export function ModuleForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [moduleType, setModuleType] = useState(defaultValues?.moduleType ?? "PDF");
+  const [educationLevel, setEducationLevel] = useState(defaultValues?.educationLevel ?? "SMA");
   const [content, setContent] = useState<UploadedMeta | null>(null);
   const [thumbnail, setThumbnail] = useState<UploadedMeta | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const isSimSelected = educationLevel === "SIM";
 
   const submit = (formData: FormData) => {
     startTransition(async () => {
@@ -70,26 +74,34 @@ export function ModuleForm({
         <Textarea id="description" name="description" defaultValue={defaultValues?.description} placeholder="Deskripsi singkat" required />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            name="isSim"
-            defaultChecked={defaultValues?.isSim ?? false}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-          />
-          <span>
-            <span className="flex items-center gap-1.5 text-sm font-medium">
-              <IdCard className="h-4 w-4 text-primary" /> Modul SIM
-            </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Tandai materi sebagai Modul SIM. Materi ini tergabung dalam kategori SMA/SMK dan
-              hanya dapat dibuka murid SMA/SMK berusia minimal 17 tahun. Guru & Kepolisian tetap
-              dapat mengakses tanpa batasan usia.
-            </span>
-          </span>
-        </label>
+      <div className="grid gap-2">
+        <Label htmlFor="educationLevel">Jenjang Materi</Label>
+        <Select
+          id="educationLevel"
+          name="educationLevel"
+          value={educationLevel}
+          onChange={(e) => setEducationLevel(e.target.value)}
+        >
+          <option value="SD">SD</option>
+          <option value="SMP">SMP</option>
+          <option value="SMA">SMA</option>
+          <option value="SMK">SMK</option>
+          <option value="SIM">SIM</option>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Materi hanya tampil untuk murid pada jenjang yang dipilih. SMA dan SMK dikelola terpisah.
+        </p>
       </div>
+
+      {isSimSelected && (
+        <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
+          <IdCard className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Modul SIM tergabung dalam kategori SMA/SMK dan hanya dapat dibuka murid SMA/SMK
+            berusia minimal 17 tahun. Guru & Kepolisian tetap dapat mengakses tanpa batasan usia.
+          </span>
+        </div>
+      )}
 
       <div className="grid gap-2">
         <Label htmlFor="moduleType">Tipe Materi</Label>

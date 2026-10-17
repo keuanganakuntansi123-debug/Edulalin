@@ -1,6 +1,6 @@
 import type { Role } from "@/generated/prisma/client";
 import { RoleIllustration } from "@/components/dashboard/role-illustration";
-import { getRoleLabel, policeLevelLabel } from "@/lib/constants";
+import { getRoleLabel, policeLevelLabel, levelDisplayLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,6 +14,7 @@ export function DashboardWelcome({
   actions,
   accent,
   schoolName,
+  schoolLevel,
   subject,
   policeLevel,
   policeUnit,
@@ -25,6 +26,7 @@ export function DashboardWelcome({
   actions?: React.ReactNode;
   accent?: string;
   schoolName?: string | null;
+  schoolLevel?: string | null;
   subject?: string | null;
   policeLevel?: string | null;
   policeUnit?: string | null;
@@ -33,6 +35,7 @@ export function DashboardWelcome({
   const identityItems: { label: string; value: string | null | undefined }[] = [];
   if (role === "GURU") {
     identityItems.push({ label: "Sekolah", value: schoolName });
+    identityItems.push({ label: "Jenjang", value: schoolLevel ? levelDisplayLabel(schoolLevel) : null });
     identityItems.push({ label: "Mata Pelajaran", value: subject });
   }
   if (role === "POLISI") {

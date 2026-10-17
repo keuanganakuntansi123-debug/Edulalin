@@ -30,6 +30,7 @@ export const moduleSchema = z.object({
   title: z.string().min(3, "Judul minimal 3 karakter"),
   description: z.string().min(5, "Deskripsi minimal 5 karakter"),
   isSim: z.boolean().default(false),
+  educationLevel: z.string().optional().nullable(),
   schoolId: z.string().optional().nullable(),
   moduleType: z.enum(["PDF", "VIDEO", "LINK", "DOCUMENT"]),
   contentUrl: z.string().optional().nullable(),
@@ -44,6 +45,7 @@ export const quizSchema = z.object({
   description: z.string().optional(),
   moduleId: z.string().optional().nullable(),
   schoolId: z.string().optional().nullable(),
+  educationLevel: z.string().optional().nullable(),
   minScore: z.coerce.number().int().min(0).max(100).default(60),
   maxAttempts: z.coerce.number().int().positive().optional().nullable(),
   shuffle: z.boolean().default(false),
@@ -76,9 +78,9 @@ export const submitQuizSchema = z.object({
 });
 
 export const schoolSchema = z.object({
-  code: z.string().min(2),
+  code: z.string().optional().nullable(),
   name: z.string().min(3),
-  educationLevel: z.enum(["SD", "SMP", "SMA", "SIM"]),
+  educationLevel: z.enum(["SD", "SMP", "SMA", "SMK", "SIM"]),
   address: z.string().min(3),
   city: z.string().min(2),
   province: z.string().min(2),
@@ -92,7 +94,7 @@ export const createUserSchema = z.object({
   role: z.enum(["GURU", "POLISI"]),
   birthDate: z.coerce.date().optional().nullable(),
   schoolId: z.string().optional().nullable(),
-  educationLevel: z.enum(["SD", "SMP", "SMA", "SIM"]).optional().nullable(),
+  educationLevel: z.enum(["SD", "SMP", "SMA", "SMK", "SIM"]).optional().nullable(),
   classLevel: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]).default("ACTIVE"),

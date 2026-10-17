@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { Trash2, RotateCcw, AlertTriangle, X, Loader2 } from "lucide-react";
 import { levelDisplayLabel } from "@/lib/constants";
+import { SchoolLogo } from "@/components/school/school-logo";
 
 type SchoolRow = {
   id: string;
   code: string;
   name: string;
-  educationLevel: "SD" | "SMP" | "SMA" | "SIM";
+  educationLevel: "SD" | "SMP" | "SMA" | "SMK" | "SIM";
   city: string;
   status: "ACTIVE" | "INACTIVE";
+  logoUrl?: string | null;
 };
 
 type DeleteAction = (id: string) => Promise<{ ok?: boolean; error?: string } | void>;
@@ -97,6 +99,77 @@ function DeleteSchoolModal({
   );
 }
 
+/** Modal konfirmasi hapus permanen sekolah (tidak dapat dibatalkan). */
+function PermanentDeleteSchoolModal({
+  school,
+  action,
+  onClose,
+}: {
+  school: SchoolRow;
+  action: DeleteAction;
+  onClose: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+
+  const confirm = () => {
+    startTransition(async () => {
+      const res = await action(school.id);
+      if (res && "error" in res && res.error) {
+        toast({ title: "Gagal", description: String(res.error), variant: "error" });
+      } else {
+        toast({
+          title: "Sekolah dihapus permanen",
+          description: "Data sekolah, akun Guru/Murid, serta riwayat terkait telah dihapus dan tidak dapat dipulihkan.",
+          variant: "success",
+        });
+        onClose();
+      }
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={pending ? undefined : onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus permanen sekolah">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={pending}
+          className="absolute right-4 top-4 text-muted-foreground hover:text-foreground disabled:opacity-40"
+          aria-label="Tutup"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 text-lg font-bold">Hapus Permanen Sekolah?</h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Anda akan menghapus permanen <strong className="text-foreground">{school.name}</strong>.{" "}
+          <strong className="text-red-600">Tindakan ini tidak dapat dibatalkan.</strong>
+        </p>
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">⚠️ Yang akan dihapus dari database:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Data sekolah beserta modul, kuis, dan relasi terkait.</li>
+            <li>Akun Guru & Murid yang terhubung (tidak dapat login lagi).</li>
+            <li>Nilai, jawaban kuis, progres modul, dan riwayat aktivitas terkait.</li>
+          </ul>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Batal
+          </Button>
+          <Button type="button" variant="default" className="bg-red-600 hover:bg-red-700" onClick={confirm} disabled={pending}>
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {pending ? "Menghapus..." : "Hapus Permanen"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Card sekolah aktif di halaman Kelola Sekolah. */
 export function SchoolCard({
   school,
@@ -116,9 +189,12 @@ export function SchoolCard({
       <div className="group relative flex h-full flex-col rounded-2xl border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex flex-1 flex-col p-5">
           <div className="flex items-start justify-between gap-2">
-            <Link href={`/dashboard/admin/schools/${school.id}`} className="min-w-0">
-              <h3 className="font-semibold leading-tight text-foreground hover:text-primary">{school.name}</h3>
-            </Link>
+            <div className="flex min-w-0 items-start gap-3">
+              <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="md" />
+              <Link href={`/dashboard/admin/schools/${school.id}`} className="min-w-0">
+                <h3 className="font-semibold leading-tight text-foreground hover:text-primary">{school.name}</h3>
+              </Link>
+            </div>
             {school.status === "ACTIVE" ? (
               <Badge variant="success">Aktif</Badge>
             ) : (
@@ -127,7 +203,7 @@ export function SchoolCard({
           </div>
           <Link href={`/dashboard/admin/schools/${school.id}`}>
             <p className="mt-1 text-xs text-muted-foreground">
-              {levelDisplayLabel(school.educationLevel)} • NPSN {school.code} • {school.city}
+              {levelDisplayLabel(school.educationLevel)} • {school.city}
             </p>
           </Link>
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -174,11 +250,14 @@ export function SchoolCard({
 export function DeletedSchoolRow({
   school,
   action,
+  deleteAction,
 }: {
   school: SchoolRow;
   action: DeleteAction;
+  deleteAction: DeleteAction;
 }) {
   const [pending, startTransition] = useTransition();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const restore = () => {
     startTransition(async () => {
@@ -193,19 +272,35 @@ export function DeletedSchoolRow({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-slate-50 p-4">
-      <div className="min-w-0">
-        <p className="font-medium">{school.name}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {levelDisplayLabel(school.educationLevel)} • NPSN {school.code} • {school.city}
-        </p>
+      <div className="flex min-w-0 items-center gap-3">
+        <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="sm" />
+        <div className="min-w-0">
+          <p className="font-medium">{school.name}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {levelDisplayLabel(school.educationLevel)} • {school.city}
+          </p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <Badge variant="danger">Terhapus</Badge>
-        <Button type="button" size="sm" variant="outline" className="text-emerald-600" onClick={restore} disabled={pending}>
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-          Pulihkan
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="text-emerald-600" onClick={restore} disabled={pending}>
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            Pulihkan
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => setConfirmingDelete(true)} disabled={pending}>
+            <Trash2 className="h-4 w-4" />
+            Hapus Permanen
+          </Button>
+        </div>
       </div>
+      {confirmingDelete && deleteAction && (
+        <PermanentDeleteSchoolModal
+          school={school}
+          action={deleteAction}
+          onClose={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

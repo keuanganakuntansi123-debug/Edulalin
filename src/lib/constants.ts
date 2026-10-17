@@ -1,30 +1,48 @@
 import type { Role, EducationLevel } from "@/generated/prisma/client";
 
 export const ROLES: Role[] = ["ADMIN", "GURU", "POLISI", "MURID"];
-export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SIM"];
+export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SMK", "SIM"];
 
 /** Kategori yang ditampilkan di UI. Modul/kuis SIM digabung ke SMA/SMK. */
-export const DISPLAY_CATEGORIES = ["SD", "SMP", "SMA"] as const;
+export const DISPLAY_CATEGORIES = ["SD", "SMP", "SMA", "SMK"] as const;
 export type DisplayCategory = (typeof DISPLAY_CATEGORIES)[number];
 
 export const DISPLAY_CATEGORY_LABEL: Record<DisplayCategory, string> = {
   SD: "SD",
   SMP: "SMP",
   SMA: "SMA/SMK",
+  SMK: "SMK",
 };
 
 /** Petakan jenjang data (termasuk SIM) ke kategori tampilan. */
 export function categoryOf(level: EducationLevel | string | null | undefined): DisplayCategory {
   if (level === "SIM") return "SMA";
-  if (level === "SD" || level === "SMP" || level === "SMA") return level;
+  if (level === "SD" || level === "SMP" || level === "SMA" || level === "SMK") return level;
   return "SMA";
 }
 
 /** Label jenjang untuk ditampilkan. Modul/kuis SIM tampil sebagai "SMA/SMK". */
 export function levelDisplayLabel(level: EducationLevel | string | null | undefined): string {
   if (level === "SIM") return "SMA/SMK";
-  if (level === "SD" || level === "SMP" || level === "SMA") return LEVEL_LABEL[level];
+  if (level === "SD" || level === "SMP" || level === "SMA" || level === "SMK") return LEVEL_LABEL[level];
   return level ? String(level) : "-";
+}
+
+/**
+ * Pencocokan jenjang untuk konten pembelajaran (modul/kuis).
+ * - SD/SMP hanya melihat jenjangnya sendiri.
+ * - SMA melihat konten SMA + SIM (usia 17+ diperiksa terpisah).
+ * - SMK melihat konten SMK + SIM.
+ */
+export function educationLevelMatch(
+  userLevel: EducationLevel | string | null | undefined,
+  contentLevel: EducationLevel | string | null | undefined
+): boolean {
+  if (userLevel == null || contentLevel == null) return false;
+  if (contentLevel === "SIM") {
+    return userLevel === "SMA" || userLevel === "SMK" || userLevel === "SIM";
+  }
+  return userLevel === contentLevel;
 }
 
 /**
@@ -38,11 +56,14 @@ export function resolveCategory(
   isSim?: boolean
 ): EducationLevel {
   if (isSim) return "SIM";
-  const valid = levels.filter((l): l is EducationLevel => l === "SD" || l === "SMP" || l === "SMA" || l === "SIM");
+  const valid = levels.filter(
+    (l): l is EducationLevel =>
+      l === "SD" || l === "SMP" || l === "SMA" || l === "SMK" || l === "SIM"
+  );
   if (valid.length === 0) return "SMA";
   const counts: Partial<Record<EducationLevel, number>> = {};
   for (const l of valid) counts[l] = (counts[l] ?? 0) + 1;
-  const order: EducationLevel[] = ["SD", "SMP", "SMA"];
+  const order: EducationLevel[] = ["SD", "SMP", "SMA", "SMK"];
   let best: EducationLevel = "SMA";
   let bestCount = -1;
   for (const l of order) {
@@ -66,6 +87,7 @@ export const LEVEL_LABEL: Record<EducationLevel, string> = {
   SD: "SD",
   SMP: "SMP",
   SMA: "SMA",
+  SMK: "SMK",
   SIM: "SIM",
 };
 
@@ -90,7 +112,8 @@ export function normalizeEducationLevel(input: string, classLevel?: string | nul
 
   if (/sd|dasar|ibtidaiyah|mi\b|sdn/.test(raw)) return "SD";
   if (/smp|menengah pertama|tsanawiyah|mts/.test(raw)) return "SMP";
-  if (/sma|smk|menengah atas|madrasah aliyah|\bma\b|mak\b/.test(raw)) return "SMA";
+  if (/smk|sekolah menengah kejuruan/.test(raw)) return "SMK";
+  if (/sma|menengah atas|madrasah aliyah|\bma\b|mak\b/.test(raw)) return "SMA";
   if (/sim|surat izin mengemudi/.test(raw)) return "SIM";
 
   // Fallback dari kelas jika jenjang tidak dikenali

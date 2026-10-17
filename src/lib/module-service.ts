@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getAge } from "@/lib/constants";
+import { educationLevelMatch, getAge } from "@/lib/constants";
 import type { Role, EducationLevel } from "@/generated/prisma/client";
 
 export type ModuleScope = {
@@ -23,13 +23,12 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
     where: {
       deletedAt: null,
       status: "ACTIVE",
-      AND: [
-        // Murid SMA/SMK melihat modul SMA + SIM (SIM digabung ke SMA/SMK).
-        // Murid SD/SMP hanya melihat modul jenjangnya sendiri.
-        educationLevel === "SMA" || educationLevel === "SIM"
-          ? { educationLevel: { in: ["SMA", "SIM"] } }
-          : { educationLevel },
-      ],
+      // Murid SMA/SMK melihat modul jenjangnya + SIM; SD/SMP hanya jenjangnya.
+      ...(educationLevel === "SMA"
+        ? { educationLevel: { in: ["SMA", "SIM"] } }
+        : educationLevel === "SMK"
+          ? { educationLevel: { in: ["SMK", "SIM"] } }
+          : { educationLevel: educationLevel ?? undefined }),
     },
     include: {
       moduleToSchools: { select: { schoolId: true } },
@@ -39,6 +38,9 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
 
 
   const visible = modules.filter((m) => {
+    if (m.educationLevel !== "SIM" && !educationLevelMatch(educationLevel, m.educationLevel)) {
+      return false;
+    }
     const targets = m.moduleToSchools.map((s) => s.schoolId);
     if (m.schoolId != null) return m.schoolId === schoolId;
     if (targets.length > 0) return schoolId != null && targets.includes(schoolId);
@@ -109,10 +111,16 @@ export async function getModuleForUser(params: {
     const isSimModule = mod.educationLevel === "SIM";
     if (isSimModule) {
       // Modul SIM tergabung dalam kategori SMA/SMK — hanya murid SMA/SMK.
-      if (user.educationLevel !== "SMA" && user.educationLevel !== "SIM") return null;
+      if (
+        user.educationLevel !== "SMA" &&
+        user.educationLevel !== "SMK" &&
+        user.educationLevel !== "SIM"
+      ) {
+        return null;
+      }
       // Murid di bawah 17 tahun tidak dapat membuka Modul SIM (backend).
       if (!canAccessSim(user.birthDate)) return null;
-    } else if (mod.educationLevel !== user.educationLevel) {
+    } else if (!educationLevelMatch(user.educationLevel, mod.educationLevel)) {
       return null;
     }
   }

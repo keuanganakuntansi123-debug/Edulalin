@@ -35,8 +35,10 @@ export default async function QuizPage() {
               : []),
           ],
         },
-        user.educationLevel === "SMA" || user.educationLevel === "SIM"
+        user.educationLevel === "SMA"
           ? { educationLevel: { in: ["SMA", "SIM"] } }
+          : user.educationLevel === "SMK"
+            ? { educationLevel: { in: ["SMK", "SIM"] } }
           : { educationLevel: user.educationLevel ?? undefined },
       ],
     },

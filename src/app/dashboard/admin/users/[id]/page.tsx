@@ -5,8 +5,21 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { levelDisplayLabel, ROLE_LABEL, policeLevelLabel } from "@/lib/constants";
-import { ArrowLeft, Mail, School, CalendarDays, Phone, ShieldCheck, BookMarked } from "lucide-react";
+import {
+  levelDisplayLabel,
+  ROLE_LABEL,
+  policeLevelLabel,
+  getAge,
+} from "@/lib/constants";
+import {
+  ArrowLeft,
+  Mail,
+  School,
+  CalendarDays,
+  Phone,
+  ShieldCheck,
+  BookMarked,
+} from "lucide-react";
 import { archiveUser, restoreUser, toggleUserStatus } from "@/app/actions/admin-actions";
 
 export const instant = false;
@@ -22,6 +35,15 @@ async function restoreAction(id: string) {
 async function toggleAction(id: string) {
   "use server";
   await toggleUserStatus(id);
+}
+
+/** Nilai kosong/kurung ditampilkan sebagai "Belum dilengkapi", bukan "-". */
+function identity(value: string | null | undefined): string {
+  return value && value.trim() ? value : "Belum dilengkapi";
+}
+
+function identityDate(value: Date | null | undefined): string {
+  return value ? value.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : "Belum dilengkapi";
 }
 
 export default async function AdminUserDetailPage({
@@ -131,21 +153,29 @@ export default async function AdminUserDetailPage({
             <CardTitle>Data Identitas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /> {user.email}</div>
-            <div className="flex items-center gap-3"><School className="h-4 w-4 text-muted-foreground" /> {user.school?.name ?? "-"}</div>
+            <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /> {identity(user.email)}</div>
+            <div className="flex items-center gap-3"><School className="h-4 w-4 text-muted-foreground" /> {identity(user.school?.name)}</div>
             <div className="flex items-center gap-3">
               <School className="h-4 w-4 text-muted-foreground" />
-              {user.educationLevel ? `${levelDisplayLabel(user.educationLevel)}${user.classLevel ? ` / Kelas ${user.classLevel}` : ""}` : "-"}
+              Jenjang:{" "}
+              {user.educationLevel
+                ? `${levelDisplayLabel(user.educationLevel)}${user.classLevel ? ` / Kelas ${user.classLevel}` : ""}`
+                : user.school?.educationLevel
+                  ? `${levelDisplayLabel(user.school.educationLevel)} (sekolah)`
+                  : "Belum dilengkapi"}
             </div>
-            {user.birthDate && (
+            {user.role === "MURID" && (
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                {user.birthDate.toLocaleDateString("id-ID")}
+                Tanggal Lahir: {identityDate(user.birthDate)}
+                {user.birthDate && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{getAge(user.birthDate)} tahun</span>}
               </div>
             )}
-            {user.phone && (
-              <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /> {user.phone}</div>
-            )}
+            <div className="flex items-center gap-3">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              Tanggal Daftar: {user.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
+            </div>
+            <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /> Telepon: {identity(user.phone)}</div>
             {user.role === "POLISI" && (
               <div className="mt-2 space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700">
@@ -153,22 +183,22 @@ export default async function AdminUserDetailPage({
                 </p>
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  Tingkat: {policeLevelLabel(user.policeLevel)}
+                  Tingkat: {identity(policeLevelLabel(user.policeLevel) !== "-" ? policeLevelLabel(user.policeLevel) : null)}
                 </div>
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  Nama Kesatuan: {user.policeUnit ?? "-"}
+                  Nama Kesatuan: {identity(user.policeUnit)}
                 </div>
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  Divisi/Bagian: {user.policeDivision ?? "-"}
+                  Wilayah/Divisi: {identity(user.policeDivision)}
                 </div>
               </div>
             )}
-            {user.role === "GURU" && user.subject && (
+            {user.role === "GURU" && (
               <div className="flex items-center gap-3">
                 <BookMarked className="h-4 w-4 text-muted-foreground" />
-                Mata Pelajaran: {user.subject}
+                Mata Pelajaran: {identity(user.subject)}
               </div>
             )}
           </CardContent>

@@ -24,7 +24,10 @@ export async function GET(
   // Thumbnail modul & gambar konten publik boleh diakses siapa saja (pratinjau).
   // Konten materi (MODULE_CONTENT) & file lain tetap memerlukan autentikasi + otorisasi.
   const isPublicThumbnail = await isModuleThumbnail(record.id);
-  if (record.kind !== "SITE_IMAGE" && !isPublicThumbnail) {
+  const isSchoolLogo =
+    record.kind === "SCHOOL_LOGO" &&
+    Boolean(await prisma.school.findFirst({ where: { logoFileId: record.id }, select: { id: true } }));
+  if (record.kind !== "SITE_IMAGE" && !isPublicThumbnail && !isSchoolLogo) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
     const allow = await canAccessFile(user, record);
@@ -60,7 +63,7 @@ type UploadedFileRow = {
   storedName: string;
   mimeType: string;
   size: number;
-  kind: "MODULE_CONTENT" | "QUIZ_PDF" | "AVATAR" | "SITE_IMAGE";
+  kind: "MODULE_CONTENT" | "QUIZ_PDF" | "AVATAR" | "SITE_IMAGE" | "SCHOOL_LOGO";
   ownerId: string;
   moduleContentId?: string | null;
   moduleThumbnailId?: string | null;
@@ -121,7 +124,13 @@ async function canAccessFile(
           const isSimModule = moduleRef.educationLevel === "SIM";
           if (isSimModule) {
             // Modul SIM tergabung dalam SMA/SMK — hanya murid SMA/SMK, usia >= 17.
-            if (user.educationLevel !== "SMA" && user.educationLevel !== "SIM") return false;
+            if (
+              user.educationLevel !== "SMA" &&
+              user.educationLevel !== "SMK" &&
+              user.educationLevel !== "SIM"
+            ) {
+              return false;
+            }
             if (!user.birthDate) return false;
             const age = Math.floor((Date.now() - user.birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
             if (age < 17) return false;

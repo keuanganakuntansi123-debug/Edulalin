@@ -14,6 +14,7 @@ const CATEGORIES = [
   { value: "SD", label: "Modul SD", emoji: "🧒" },
   { value: "SMP", label: "Modul SMP", emoji: "🧑" },
   { value: "SMA", label: "Modul SMA/SMK", emoji: "🧑‍🎓" },
+  { value: "SMK", label: "Modul SMK", emoji: "👷" },
 ];
 
 export default async function ModulPage({

@@ -61,7 +61,7 @@ describe("dashboardPath", () => {
 
 describe("label konstan", () => {
   it("memetakan semua level pendidikan", () => {
-    expect(LEVEL_LABEL).toEqual({ SD: "SD", SMP: "SMP", SMA: "SMA", SIM: "SIM" });
+    expect(LEVEL_LABEL).toEqual({ SD: "SD", SMP: "SMP", SMA: "SMA", SMK: "SMK", SIM: "SIM" });
   });
 
   it("memetakan semua role", () => {
@@ -89,7 +89,9 @@ describe("normalizeEducationLevel", () => {
 
   it("mengenali jenjang SMA/SMK", () => {
     expect(normalizeEducationLevel("SMA")).toBe("SMA");
-    expect(normalizeEducationLevel("SMK Negeri 1")).toBe("SMA");
+    expect(normalizeEducationLevel("SMK Negeri 1")).toBe("SMK");
+    expect(normalizeEducationLevel("SMK")).toBe("SMK");
+    expect(normalizeEducationLevel("Sekolah Menengah Kejuruan")).toBe("SMK");
     expect(normalizeEducationLevel("Madrasah Aliyah")).toBe("SMA");
   });
 

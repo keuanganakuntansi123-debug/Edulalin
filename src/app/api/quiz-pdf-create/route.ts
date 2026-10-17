@@ -14,6 +14,7 @@ const schema = z.object({
   moduleId: z.string().optional().nullable(),
   schoolIds: z.array(z.string()).default([]),
   sourceFileId: z.string().min(1),
+  educationLevel: z.string().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -44,7 +45,11 @@ export async function POST(req: NextRequest) {
     where: { id: { in: data.schoolIds } },
     select: { educationLevel: true },
   });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const rawLevel = (data.educationLevel ?? "").toUpperCase();
+  const educationLevel =
+    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
+      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
+      : resolveCategory(schoolLevels.map((s) => s.educationLevel));
 
   const file = await prisma.uploadedFile.findUnique({ where: { id: data.sourceFileId } });
   if (!file || file.kind !== "QUIZ_PDF") {

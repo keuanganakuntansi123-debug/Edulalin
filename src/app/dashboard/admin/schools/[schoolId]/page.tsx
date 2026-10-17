@@ -9,6 +9,8 @@ import { Input, Label } from "@/components/ui/form";
 import { LEVEL_LABEL, EDUCATION_LEVELS, levelDisplayLabel } from "@/lib/constants";
 import { updateSchool } from "@/app/actions/admin-actions";
 import { ArrowLeft, Search, School, Users, UserRound } from "lucide-react";
+import { SchoolLogo } from "@/components/school/school-logo";
+import { SchoolLogoManager } from "@/components/school/school-logo-manager";
 
 export const instant = false;
 
@@ -70,6 +72,11 @@ export default async function AdminSchoolDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
+            <SchoolLogo
+              logoUrl={school.logoUrl ?? null}
+              name={school.name}
+              size="lg"
+            />
             <h1 className="text-2xl font-bold">{school.name}</h1>
             {school.status === "ACTIVE" ? (
               <Badge variant="success">Aktif</Badge>
@@ -78,7 +85,7 @@ export default async function AdminSchoolDetailPage({
             )}
           </div>
           <p className="mt-1 text-muted-foreground">
-            {levelDisplayLabel(school.educationLevel)} • NPSN {school.code} • {school.address || school.city}, {school.province}
+            {levelDisplayLabel(school.educationLevel)} • {school.address || school.city}, {school.province}
           </p>
         </div>
       </div>
@@ -250,14 +257,17 @@ export default async function AdminSchoolDetailPage({
           <CardTitle>Edit Sekolah</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-6">
+            <SchoolLogoManager
+              schoolId={school.id}
+              schoolName={school.name}
+              logoUrl={school.logoUrl}
+            />
+          </div>
           <form action={updateSchoolAction.bind(null, school.id)} className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="name">Nama Sekolah</Label>
               <Input id="name" name="name" defaultValue={school.name} required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="code">Kode / NPSN</Label>
-              <Input id="code" name="code" defaultValue={school.code} required />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="educationLevel">Jenjang</Label>

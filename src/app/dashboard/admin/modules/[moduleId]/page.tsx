@@ -57,6 +57,7 @@ export default async function AdminModuleDetailPage({
                 title: mod.title,
                 description: mod.description,
                 isSim: mod.educationLevel === "SIM",
+                educationLevel: mod.educationLevel,
                 moduleType: mod.moduleType,
                 contentUrl: mod.contentUrl,
                 durationMin: mod.durationMin,

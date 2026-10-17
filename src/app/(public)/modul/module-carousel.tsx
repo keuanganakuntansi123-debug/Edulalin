@@ -28,12 +28,14 @@ const CATEGORY_LABEL: Record<string, string> = {
   SD: "SD",
   SMP: "SMP",
   SMA: "SMA/SMK",
+  SMK: "SMK",
 };
 
 const CATEGORY_EMOJI: Record<string, string> = {
   SD: "🧒",
   SMP: "🧑",
   SMA: "🧑‍🎓",
+  SMK: "👷",
 };
 
 export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {

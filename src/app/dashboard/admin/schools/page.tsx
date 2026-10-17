@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { EDUCATION_LEVELS, LEVEL_LABEL } from "@/lib/constants";
 import { SchoolCard, DeletedSchoolRow } from "./school-card";
-import { deleteSchool, restoreSchool } from "@/app/actions/admin-actions";
+import { deleteSchool, restoreSchool, permanentDeleteSchool } from "@/app/actions/admin-actions";
 import { Archive } from "lucide-react";
 
 export const instant = false;
@@ -17,6 +17,11 @@ async function restoreSchoolAction(id: string) {
   return await restoreSchool(id);
 }
 
+async function permanentDeleteSchoolAction(id: string) {
+  "use server";
+  return await permanentDeleteSchool(id);
+}
+
 export default async function AdminSchoolsPage({
   searchParams,
 }: {
@@ -24,10 +29,14 @@ export default async function AdminSchoolsPage({
 }) {
   await requireRole("ADMIN");
   const { level, q } = await searchParams;
+  const levelFilter =
+    level === "SD" || level === "SMP" || level === "SMA" || level === "SMK" || level === "SIM"
+      ? (level as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
+      : undefined;
 
   const schools = await prisma.school.findMany({
     where: {
-      ...(level ? { educationLevel: level as "SD" | "SMP" | "SMA" | "SIM" } : {}),
+      ...(levelFilter ? { educationLevel: levelFilter } : {}),
       ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
       deletedAt: null,
     },
@@ -44,7 +53,7 @@ export default async function AdminSchoolsPage({
   const deletedSchools = await prisma.school.findMany({
     where: {
       deletedAt: { not: null },
-      ...(level ? { educationLevel: level as "SD" | "SMP" | "SMA" | "SIM" } : {}),
+      ...(levelFilter ? { educationLevel: levelFilter } : {}),
       ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
     },
     orderBy: { deletedAt: "desc" },
@@ -108,6 +117,7 @@ export default async function AdminSchoolsPage({
                 educationLevel: s.educationLevel,
                 city: s.city,
                 status: s.status,
+                logoUrl: s.logoUrl,
               }}
               guru={countMap.get(s.id)?.guru ?? 0}
               murid={countMap.get(s.id)?.murid ?? 0}
@@ -145,8 +155,10 @@ export default async function AdminSchoolsPage({
                   educationLevel: s.educationLevel,
                   city: s.city,
                   status: s.status,
+                  logoUrl: s.logoUrl,
                 }}
                 action={restoreSchoolAction}
+                deleteAction={permanentDeleteSchoolAction}
               />
             ))}
             {deletedSchools.length === 0 && (

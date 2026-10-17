@@ -35,11 +35,13 @@ export async function createModule(formData: FormData) {
   const contentUrl = formData.get("contentUrl") ? String(formData.get("contentUrl")) : null;
   const thumbnailUrl = formData.get("thumbnailUrl") ? String(formData.get("thumbnailUrl")) : null;
   const schoolIds = formData.getAll("schoolIds").map(String).filter(Boolean);
-  const isSim = formData.get("isSim") === "on";
+  const rawLevel = String(formData.get("educationLevel") ?? "").toUpperCase();
+  const isSim = rawLevel === "SIM";
   const parsed = moduleSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
     isSim,
+    educationLevel: rawLevel,
     schoolId: formData.get("schoolId") || null,
     moduleType: formData.get("moduleType") || "PDF",
     contentUrl,
@@ -49,7 +51,7 @@ export async function createModule(formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
   if (!parsed.success) return { error: "Data tidak valid" };
-  const moduleData = omitKey(parsed.data, "isSim");
+  const moduleData = omitKey(omitKey(parsed.data, "isSim"), "educationLevel");
 
   // Validasi sekolah tujuan benar-benar terdaftar
   if (schoolIds.length) {
@@ -60,7 +62,10 @@ export async function createModule(formData: FormData) {
     where: { id: { in: schoolIds } },
     select: { educationLevel: true },
   });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
+  const educationLevel =
+    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
+      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
+      : resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
 
   // Gantikan URL dengan file jika diunggah
   const finalContentUrl = contentFileId ? undefined : contentUrl;
@@ -100,11 +105,13 @@ export async function updateModule(id: string, formData: FormData) {
   const contentUrl = formData.get("contentUrl") ? String(formData.get("contentUrl")) : null;
   const thumbnailUrl = formData.get("thumbnailUrl") ? String(formData.get("thumbnailUrl")) : null;
   const schoolIds = formData.getAll("schoolIds").map(String).filter(Boolean);
-  const isSim = formData.get("isSim") === "on";
+  const rawLevel = String(formData.get("educationLevel") ?? "").toUpperCase();
+  const isSim = rawLevel === "SIM";
   const parsed = moduleSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
     isSim,
+    educationLevel: rawLevel,
     schoolId: formData.get("schoolId") || null,
     moduleType: formData.get("moduleType") || "PDF",
     contentUrl,
@@ -114,7 +121,7 @@ export async function updateModule(id: string, formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
   if (!parsed.success) return { error: "Data tidak valid" };
-  const moduleData = omitKey(parsed.data, "isSim");
+  const moduleData = omitKey(omitKey(parsed.data, "isSim"), "educationLevel");
 
   const existing = await prisma.module.findUnique({ where: { id } });
   if (!existing) return { error: "Modul tidak ditemukan" };
@@ -127,7 +134,10 @@ export async function updateModule(id: string, formData: FormData) {
     where: { id: { in: schoolIds } },
     select: { educationLevel: true },
   });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
+  const educationLevel =
+    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
+      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
+      : resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
 
   const finalContentUrl = contentFileId ? undefined : contentUrl;
   const finalThumbnailUrl = thumbnailFileId ? undefined : thumbnailUrl;
@@ -185,11 +195,13 @@ export async function createQuiz(formData: FormData) {
   const user = await requireRole("ADMIN");
   const schoolIds = formData.getAll("schoolIds").map(String).filter(Boolean);
   const sourceFileId = formData.get("sourceFileId") ? String(formData.get("sourceFileId")) : null;
+  const rawLevel = String(formData.get("educationLevel") ?? "").toUpperCase();
   const parsed = quizSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
     moduleId: formData.get("moduleId") || null,
     schoolId: formData.get("schoolId") || null,
+    educationLevel: rawLevel,
     minScore: Number(formData.get("minScore") ?? 60),
     maxAttempts: formData.get("maxAttempts") || null,
     shuffle: formData.get("shuffle") === "on",
@@ -206,7 +218,10 @@ export async function createQuiz(formData: FormData) {
     where: { id: { in: schoolIds } },
     select: { educationLevel: true },
   });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const educationLevel =
+    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
+      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
+      : resolveCategory(schoolLevels.map((s) => s.educationLevel));
   const quiz = await prisma.quiz.create({
     data: {
       ...parsed.data,
@@ -359,7 +374,7 @@ export async function createGuruPolisi(formData: FormData) {
       passwordHash: await hashPassword(password),
       role: role as "GURU" | "POLISI",
       schoolId,
-      educationLevel: (educationLevel as "SD" | "SMP" | "SMA" | "SIM" | null) ?? null,
+      educationLevel: (educationLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM" | null) ?? null,
       classLevel,
       subject,
       policeLevel: (policeLevel as "POLSEK" | "POLRES" | "POLDA" | null) ?? null,
@@ -716,7 +731,7 @@ export async function archiveQuizHard(id: string) {
 export async function updateSchool(id: string, formData: FormData) {
   const user = await requireRole("ADMIN");
   const parsed = (await import("@/lib/validations")).schoolSchema.safeParse({
-    code: formData.get("code"),
+    code: "", // kode internal tidak diedit admin; nilai lama dipertahankan
     name: formData.get("name"),
     educationLevel: formData.get("educationLevel"),
     address: formData.get("address"),
@@ -725,7 +740,10 @@ export async function updateSchool(id: string, formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
   if (!parsed.success) return { error: "Data tidak valid" };
-  const school = await prisma.school.update({ where: { id }, data: parsed.data });
+  // Perbarui data sekolah tanpa menyentuh kolom internal `code` (NPSN dihapus dari UI).
+  const { code: _internalCode, ...updates } = parsed.data;
+  void _internalCode;
+  const school = await prisma.school.update({ where: { id }, data: updates });
   fireActivity({
     actorId: user.id,
     schoolId: school.id,
@@ -733,6 +751,78 @@ export async function updateSchool(id: string, formData: FormData) {
     entity: "SCHOOL",
     entityId: school.id,
     metadata: { name: school.name },
+  });
+  revalidatePath("/dashboard/admin/schools");
+  return { ok: true };
+}
+
+/**
+ * Atur logo sekolah (unggah/ganti/hapus) oleh Admin.
+ * File logo disimpan di UploadedFile (persisten) dan direferensikan
+ * lewat School.logoFileId sehingga setiap sekolah memiliki logo masing-masing.
+ */
+export async function setSchoolLogo(
+  formData: FormData
+): Promise<{ ok?: boolean; error?: string }> {
+  const actor = await requireRole("ADMIN");
+  const schoolId = String(formData.get("schoolId") ?? "");
+  const logoFileId = String(formData.get("logoFileId") ?? "") || null;
+  const removeLogo = formData.get("removeLogo") === "1";
+
+  const school = await prisma.school.findUnique({ where: { id: schoolId } });
+  if (!school) return { error: "Sekolah tidak ditemukan" };
+
+  if (removeLogo) {
+    // Hapus referensi; file fisik dihapus setelah relasi dilepas.
+    const oldFileId = school.logoFileId;
+    await prisma.school.update({ where: { id: schoolId }, data: { logoFileId: null, logoUrl: null } });
+    if (oldFileId) {
+      const old = await prisma.uploadedFile.findUnique({ where: { id: oldFileId } });
+      if (old && old.kind === "SCHOOL_LOGO") {
+        await prisma.uploadedFile.delete({ where: { id: old.id } });
+        removeStoredFile(old.storedName).catch(() => undefined);
+      }
+    }
+    fireActivity({
+      actorId: actor.id,
+      schoolId: school.id,
+      action: "SCHOOL_LOGO_REMOVE",
+      entity: "SCHOOL",
+      entityId: school.id,
+      metadata: { name: school.name },
+    });
+    revalidatePath("/dashboard/admin/schools");
+    return { ok: true };
+  }
+
+  if (!logoFileId) return { error: "File logo tidak ditemukan" };
+  const file = await prisma.uploadedFile.findUnique({ where: { id: logoFileId } });
+  if (!file || file.kind !== "SCHOOL_LOGO") {
+    return { error: "File logo tidak valid" };
+  }
+
+  const oldFileId = school.logoFileId;
+  await prisma.school.update({
+    where: { id: schoolId },
+    data: { logoFileId: file.id, logoUrl: `/api/files/${file.storedName}` },
+  });
+
+  // Hapus file lama bila mengganti logo.
+  if (oldFileId && oldFileId !== file.id) {
+    const old = await prisma.uploadedFile.findUnique({ where: { id: oldFileId } });
+    if (old && old.kind === "SCHOOL_LOGO") {
+      await prisma.uploadedFile.delete({ where: { id: old.id } });
+      removeStoredFile(old.storedName).catch(() => undefined);
+    }
+  }
+
+  fireActivity({
+    actorId: actor.id,
+    schoolId: school.id,
+    action: oldFileId ? "SCHOOL_LOGO_UPDATE" : "SCHOOL_LOGO_UPLOAD",
+    entity: "SCHOOL",
+    entityId: school.id,
+    metadata: { name: school.name, fileId: file.id },
   });
   revalidatePath("/dashboard/admin/schools");
   return { ok: true };
@@ -849,6 +939,145 @@ export async function restoreSchool(id: string) {
     entity: "SCHOOL",
     entityId: id,
     metadata: { name: school.name, restoredUserCount: restored.count },
+  });
+  revalidatePath("/dashboard/admin/schools");
+  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/admin", "layout");
+  return { ok: true };
+}
+
+/**
+ * Hapus permanen sekolah (hanya Admin). Menghapus sekolah beserta akun
+ * Guru/Murid terkait dan seluruh relasi: modul, kuis, jawaban, attempt,
+ * progres, sesi, token, notifikasi, file, dan aktivitas yang terkait.
+ * Tindakan tidak dapat dibatalkan — sekolah tidak muncul lagi di daftar aktif/terhapus.
+ */
+export async function permanentDeleteSchool(id: string) {
+  const actor = await requireRole("ADMIN");
+  const school = await prisma.school.findUnique({ where: { id } });
+  if (!school) return { error: "Sekolah tidak ditemukan" };
+  if (!school.deletedAt) {
+    return { error: "Sekolah harus dihapus (soft delete) terlebih dahulu sebelum dihapus permanen" };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // 1. User terkait: hapus data dependen agar FK tidak melanggar.
+    const userIds = await tx.user.findMany({ where: { schoolId: id }, select: { id: true } });
+    const ids = userIds.map((u) => u.id);
+
+    if (ids.length > 0) {
+      // Jawaban kuis -> attempt -> user
+      const attempts = await tx.quizAttempt.findMany({
+        where: { userId: { in: ids } },
+        select: { id: true },
+      });
+      if (attempts.length > 0) {
+        await tx.quizAnswer.deleteMany({ where: { attemptId: { in: attempts.map((a) => a.id) } } });
+      }
+      await tx.quizAttempt.deleteMany({ where: { userId: { in: ids } } });
+      await tx.moduleProgress.deleteMany({ where: { userId: { in: ids } } });
+      await tx.userSession.deleteMany({ where: { userId: { in: ids } } });
+      await tx.passwordResetToken.deleteMany({ where: { userId: { in: ids } } });
+      await tx.verificationToken.deleteMany({ where: { userId: { in: ids } } });
+      await tx.notification.deleteMany({ where: { recipientId: { in: ids } } });
+
+      // File milik user (avatar, dsb).
+      const userFiles = await tx.uploadedFile.findMany({
+        where: { ownerId: { in: ids } },
+        select: { storedName: true },
+      });
+      await tx.uploadedFile.deleteMany({ where: { ownerId: { in: ids } } });
+      for (const f of userFiles) removeStoredFile(f.storedName).catch(() => undefined);
+
+      // ActivityLog milik user (actorId) di-set null; log terkait sekolah dihapus khusus sekolah.
+      await tx.user.deleteMany({ where: { id: { in: ids } } });
+    }
+
+    // Modul memakai onDelete cascade untuk ModuleToSchool & ProgramModule,
+    // tetapi ModuleProgress & Quiz ber-FK ke module dengan RESTRICT — harus dibersihkan.
+    const allModules = await tx.module.findMany({
+      where: { OR: [{ schoolId: id }, { moduleToSchools: { some: { schoolId: id } } }] },
+      select: { id: true },
+    });
+    const allModuleIds = allModules.map((m) => m.id);
+    if (allModuleIds.length > 0) {
+      await tx.moduleProgress.deleteMany({ where: { moduleId: { in: allModuleIds } } });
+      const moduleQuizzes = await tx.quiz.findMany({
+        where: { moduleId: { in: allModuleIds } },
+        select: { id: true },
+      });
+      const moduleQuizIds = moduleQuizzes.map((q) => q.id);
+      if (moduleQuizIds.length > 0) {
+        const a2 = await tx.quizAttempt.findMany({
+          where: { quizId: { in: moduleQuizIds } },
+          select: { id: true },
+        });
+        if (a2.length > 0) {
+          await tx.quizAnswer.deleteMany({ where: { attemptId: { in: a2.map((a) => a.id) } } });
+        }
+        await tx.quizAttempt.deleteMany({ where: { quizId: { in: moduleQuizIds } } });
+        await tx.quizQuestion.deleteMany({ where: { quizId: { in: moduleQuizIds } } });
+        await tx.quiz.deleteMany({ where: { id: { in: moduleQuizIds } } });
+      }
+      await tx.moduleToSchool.deleteMany({ where: { moduleId: { in: allModuleIds } } });
+      // File konten/thumbnail modul — hapus baris setelah modul dihapus (SET NULL aman).
+      const modFiles = await tx.uploadedFile.findMany({
+        where: {
+          OR: [
+            { moduleContent: { id: { in: allModuleIds } } },
+            { moduleThumbnail: { id: { in: allModuleIds } } },
+          ],
+        },
+        select: { storedName: true },
+      });
+      await tx.module.deleteMany({ where: { id: { in: allModuleIds } } });
+      for (const f of modFiles) removeStoredFile(f.storedName).catch(() => undefined);
+    }
+
+    const schoolQuizzes = await tx.quiz.findMany({
+      where: { OR: [{ schoolId: id }, { quizToSchools: { some: { schoolId: id } } }] },
+      select: { id: true },
+    });
+    const schoolQuizIds = schoolQuizzes.map((q) => q.id);
+    if (schoolQuizIds.length > 0) {
+      const a3 = await tx.quizAttempt.findMany({
+        where: { quizId: { in: schoolQuizIds } },
+        select: { id: true },
+      });
+      if (a3.length > 0) {
+        await tx.quizAnswer.deleteMany({ where: { attemptId: { in: a3.map((a) => a.id) } } });
+      }
+      await tx.quizAttempt.deleteMany({ where: { quizId: { in: schoolQuizIds } } });
+      await tx.quizQuestion.deleteMany({ where: { quizId: { in: schoolQuizIds } } });
+      await tx.quizToSchool.deleteMany({ where: { quizId: { in: schoolQuizIds } } });
+      const quizFiles = await tx.uploadedFile.findMany({
+        where: { quizSource: { id: { in: schoolQuizIds } } },
+        select: { storedName: true },
+      });
+      await tx.quiz.deleteMany({ where: { id: { in: schoolQuizIds } } });
+      for (const f of quizFiles) removeStoredFile(f.storedName).catch(() => undefined);
+    }
+
+    // 4. Log aktivitas & file logo sekolah.
+    await tx.activityLog.deleteMany({ where: { schoolId: id } });
+    if (school.logoFileId) {
+      const logo = await tx.uploadedFile.findUnique({ where: { id: school.logoFileId } });
+      if (logo && logo.kind === "SCHOOL_LOGO") {
+        await tx.uploadedFile.delete({ where: { id: logo.id } });
+        removeStoredFile(logo.storedName).catch(() => undefined);
+      }
+    }
+
+    // 5. Hapus sekolah itu sendiri.
+    await tx.school.delete({ where: { id } });
+  });
+
+  fireActivity({
+    actorId: actor.id,
+    action: "SCHOOL_PERMANENT_DELETE",
+    entity: "SCHOOL",
+    entityId: id,
+    metadata: { name: school.name },
   });
   revalidatePath("/dashboard/admin/schools");
   revalidatePath("/dashboard/admin/users");

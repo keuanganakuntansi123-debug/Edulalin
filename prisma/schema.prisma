@@ -25,6 +25,7 @@ enum EducationLevel {
   SD
   SMP
   SMA
+  SMK
   SIM
 }
 
@@ -80,6 +81,7 @@ enum FileKind {
   QUIZ_PDF
   AVATAR
   SITE_IMAGE
+  SCHOOL_LOGO
 }
 
 enum SiteContentKey {
@@ -130,6 +132,7 @@ model School {
   city           String
   province       String
   logoUrl        String?
+  logoFileId     String?         @unique
   status         SchoolStatus    @default(ACTIVE)
   deletedAt      DateTime?
   deletedBy      String?
@@ -142,6 +145,7 @@ model School {
   activityLogs ActivityLog[]
   moduleScope  ModuleToSchool[]
   quizScope    QuizToSchool[]
+  logoFile     UploadedFile?     @relation("SchoolLogoFile", fields: [logoFileId], references: [id])
 
   @@index([educationLevel])
   @@index([status])
@@ -274,6 +278,7 @@ model UploadedFile {
   moduleContent       Module?    @relation("ModuleContentFile")
   moduleThumbnail     Module?    @relation("ModuleThumbnailFile")
   quizSource          Quiz?      @relation("QuizSourceFile")
+  schoolLogo          School?    @relation("SchoolLogoFile")
 
   @@index([ownerId])
   @@index([kind])

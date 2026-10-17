@@ -32,6 +32,7 @@ export function QuizForm({
   const [mode, setMode] = useState<"manual" | "pdf">("manual");
   const [pdfFile, setPdfFile] = useState<UploadedMeta | null>(null);
   const [pdfResult, setPdfResult] = useState<PdfExtractResult | null>(null);
+  const [educationLevel, setEducationLevel] = useState("SMA");
 
   const missingAnswers = pdfResult
     ? pdfResult.questions.filter((q) => !q.answer).length
@@ -50,6 +51,7 @@ export function QuizForm({
             moduleId: String(formData.get("moduleId") ?? ""),
             schoolIds: formData.getAll("schoolIds").map(String),
             sourceFileId: pdfResult.fileId,
+            educationLevel,
           }),
         });
         const data = await res.json();
@@ -143,6 +145,25 @@ export function QuizForm({
           schools={schools}
           helper="Pilih satu atau beberapa sekolah tujuan. Kuis tidak otomatis terbit ke semua sekolah."
         />
+
+        <div className="grid gap-2">
+          <Label htmlFor="educationLevel">Jenjang Kuis</Label>
+          <Select
+            id="educationLevel"
+            name="educationLevel"
+            value={educationLevel}
+            onChange={(e) => setEducationLevel(e.target.value)}
+          >
+            <option value="SD">SD</option>
+            <option value="SMP">SMP</option>
+            <option value="SMA">SMA</option>
+            <option value="SMK">SMK</option>
+            <option value="SIM">SIM</option>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Kuis hanya tampil untuk murid pada jenjang yang dipilih. SMA dan SMK dikelola terpisah.
+          </p>
+        </div>
 
         {mode === "pdf" && (
           <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">

@@ -7,7 +7,7 @@ import type { FileKind } from "@/generated/prisma/client";
 
 export const instant = false;
 
-const KINDS: FileKind[] = ["MODULE_CONTENT", "QUIZ_PDF", "AVATAR", "SITE_IMAGE"];
+const KINDS: FileKind[] = ["MODULE_CONTENT", "QUIZ_PDF", "AVATAR", "SITE_IMAGE", "SCHOOL_LOGO"];
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
   }
   if (kind === "SITE_IMAGE" && user.role !== "ADMIN") {
     return NextResponse.json({ error: "Hanya Admin yang dapat mengunggah gambar konten" }, { status: 403 });
+  }
+  if (kind === "SCHOOL_LOGO" && user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Hanya Admin yang dapat mengunggah logo sekolah" }, { status: 403 });
   }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });

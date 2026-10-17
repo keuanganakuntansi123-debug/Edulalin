@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SchoolStats } from "@/components/charts/school-stats";
-import { policeLevelLabel } from "@/lib/constants";
+import { policeLevelLabel, levelDisplayLabel } from "@/lib/constants";
 
 export const instant = false;
 
@@ -123,6 +123,7 @@ export default async function AdminReportsPage({
     const murid = muridList.filter((m) => m.schoolId === s.id).length;
     return {
       name: s.name,
+      level: levelDisplayLabel(s.educationLevel),
       guru,
       murid,
       registrations: guru + murid,
@@ -315,6 +316,7 @@ export default async function AdminReportsPage({
                 <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">Sekolah</th>
+                      <th className="px-3 py-2">Jenjang</th>
                     <th className="px-3 py-2">Guru</th>
                     <th className="px-3 py-2">Murid</th>
                     <th className="px-3 py-2">Terdaftar</th>
@@ -324,6 +326,7 @@ export default async function AdminReportsPage({
                   {schoolData.map((s) => (
                     <tr key={s.name}>
                       <td className="px-3 py-2 font-medium">{s.name}</td>
+                      <td className="px-3 py-2">{s.level}</td>
                       <td className="px-3 py-2">{s.guru}</td>
                       <td className="px-3 py-2">{s.murid}</td>
                       <td className="px-3 py-2 text-muted-foreground">
@@ -333,7 +336,7 @@ export default async function AdminReportsPage({
                   ))}
                   {schoolData.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">Belum ada sekolah.</td>
+                      <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Belum ada sekolah.</td>
                     </tr>
                   )}
                 </tbody>

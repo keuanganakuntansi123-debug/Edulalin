@@ -72,6 +72,7 @@ export default async function GuruDashboardPage() {
         role="GURU"
         name={user.name}
         schoolName={user.school?.name}
+        schoolLevel={user.school?.educationLevel}
         subject={user.subject}
         description={
           user.school
