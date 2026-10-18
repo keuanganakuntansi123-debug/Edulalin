@@ -32,6 +32,7 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
     },
     include: {
       moduleToSchools: { select: { schoolId: true } },
+      thumbnailFile: { select: { storedName: true } },
     },
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   });
@@ -93,6 +94,7 @@ export async function getModuleForUser(params: {
     include: {
       moduleToSchools: { select: { schoolId: true } },
       contentFile: { select: { storedName: true, originalName: true, mimeType: true } },
+      thumbnailFile: { select: { storedName: true } },
     },
   });
   if (!mod) return null;

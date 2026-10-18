@@ -168,6 +168,7 @@ model User {
   schoolId       String?
   educationLevel EducationLevel?
   classLevel     String?
+  major          String?   // jurusan (khusus murid SMA/SMK, mis. MIPA / IPS / TKJ)
   subject        String?    // mata pelajaran yang diajarkan (khusus GURU)
   phone          String?
   policeLevel    PoliceLevel?    // tingkat kesatuan: Polsek / Polres / Polda

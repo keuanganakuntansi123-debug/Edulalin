@@ -2,11 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+import { levelDisplayLabel } from "@/lib/constants";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AttemptDetailQuestions } from "@/components/quiz/attempt-detail-questions";
-import { DeleteAttemptButton } from "../delete-attempt-button";
+import { PrintSingleAttemptButton } from "../print-scores-client";
 
 export const instant = false;
 
@@ -21,7 +22,16 @@ export default async function GuruQuizAttemptDetailPage({
   const attempt = await prisma.quizAttempt.findUnique({
     where: { id: attemptId },
     include: {
-      user: { select: { name: true, classLevel: true, schoolId: true } },
+      user: {
+        select: {
+          name: true,
+          classLevel: true,
+          major: true,
+          educationLevel: true,
+          schoolId: true,
+          school: { select: { name: true } },
+        },
+      },
       quiz: { select: { title: true, minScore: true, educationLevel: true } },
       answers: true,
     },
@@ -63,10 +73,35 @@ export default async function GuruQuizAttemptDetailPage({
           <h1 className="text-2xl font-bold">Detail Hasil Kuis</h1>
           <p className="mt-1 text-muted-foreground">
             {attempt.user.name}
-            {attempt.user.classLevel ? ` • Kelas ${attempt.user.classLevel}` : ""} • {attempt.quiz.title}
+            {attempt.user.educationLevel ? ` • ${levelDisplayLabel(attempt.user.educationLevel)}` : ""}
+            {attempt.user.classLevel ? ` • Kelas ${attempt.user.classLevel}` : ""}
+            {attempt.user.major ? ` • ${attempt.user.major}` : ""} • {attempt.quiz.title}
           </p>
         </div>
-        <DeleteAttemptButton attemptId={attempt.id} />
+        <PrintSingleAttemptButton
+          attempt={{
+            id: attempt.id,
+            studentName: attempt.user.name,
+            className: attempt.user.classLevel,
+            major: attempt.user.major,
+            educationLevel: attempt.user.educationLevel,
+            schoolName: attempt.user.school?.name ?? "-",
+            quizTitle: attempt.quiz.title,
+            score: attempt.score ?? 0,
+            passed: attempt.passed ?? false,
+            minScore: attempt.quiz.minScore,
+            submittedAt: attempt.submittedAt ? attempt.submittedAt.toISOString() : null,
+          }}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 rounded-xl border border-border bg-white p-4 text-sm sm:grid-cols-2">
+        <p><span className="text-muted-foreground">Nama Murid:</span> <span className="font-medium">{attempt.user.name}</span></p>
+        <p><span className="text-muted-foreground">Sekolah:</span> <span className="font-medium">{attempt.user.school?.name ?? "-"}</span></p>
+        <p><span className="text-muted-foreground">Jenjang:</span> <span className="font-medium">{attempt.user.educationLevel ? levelDisplayLabel(attempt.user.educationLevel) : "-"}</span></p>
+        <p><span className="text-muted-foreground">Kelas:</span> <span className="font-medium">{attempt.user.classLevel ?? "-"}</span></p>
+        <p><span className="text-muted-foreground">Jurusan:</span> <span className="font-medium">{attempt.user.major ?? "-"}</span></p>
+        <p><span className="text-muted-foreground">Kuis:</span> <span className="font-medium">{attempt.quiz.title}</span></p>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-4">

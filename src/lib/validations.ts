@@ -8,6 +8,7 @@ export const registerSchema = z
     schoolName: z.string().min(2, "Nama sekolah wajib diisi"),
     educationLevel: z.string().optional(),
     classLevel: z.string().min(1, "Kelas wajib diisi"),
+    major: z.string().optional(),
     phone: z.string().optional(),
     password: z
       .string()

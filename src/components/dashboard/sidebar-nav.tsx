@@ -16,6 +16,7 @@ import {
   GraduationCap,
   BookMarked,
   Trophy,
+  Eye,
   ChevronRight,
 } from "lucide-react";
 import type { Role } from "@/generated/prisma/client";
@@ -68,8 +69,7 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
         { href: "/dashboard/polisi/sekolah", label: "Daftar Sekolah", icon: School },
         { href: "/dashboard/polisi/murid", label: "Jumlah Murid", icon: Users },
         { href: "/dashboard/polisi/modul", label: "Modul Murid", icon: BookOpen },
-        { href: "/dashboard/polisi/kuis", label: "Kuis Murid", icon: ClipboardList },
-        { href: "/dashboard/polisi/kuis/kerjakan", label: "Kerjakan Kuis", icon: Trophy },
+        { href: "/dashboard/polisi/kuis", label: "Pemantauan Kuis Murid", icon: Eye },
         { href: "/dashboard/polisi/statistik", label: "Ringkasan Statistik", icon: BarChart3 },
       ],
     },

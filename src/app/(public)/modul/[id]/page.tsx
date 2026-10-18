@@ -63,7 +63,7 @@ export default async function PublicModuleDetailPage({
           </Link>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge className="bg-white/20 text-white">
-              {module.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[module.educationLevel]}
+              {LEVEL_LABEL[module.educationLevel]}
             </Badge>
             {module.classLevel && <Badge className="bg-white/20 text-white">Kelas {module.classLevel}</Badge>}
             <Badge className="bg-white/20 text-white">{module.moduleType}</Badge>
@@ -93,8 +93,8 @@ export default async function PublicModuleDetailPage({
             {isSim && (
               <Reveal>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-                  🪪 <strong>Modul SIM</strong> tergabung dalam kategori SMA/SMK dan tersedia untuk
-                  murid SMA/SMK yang telah berusia minimal 17 tahun.
+                  🪪 <strong>Modul SIM</strong> tersedia untuk murid yang telah berusia minimal
+                  17 tahun.
                 </div>
               </Reveal>
             )}
@@ -107,15 +107,22 @@ export default async function PublicModuleDetailPage({
                     <p className="mt-2 text-sm text-muted-foreground">
                       Anda telah masuk. Buka materi melalui dashboard sesuai hak akses Anda.
                     </p>
-                    <Link href={dashboardPath(session!.role)} className="mt-4 inline-block">
-                      <Button className="w-full">Buka Dashboard</Button>
-                    </Link>
+                    <div className="mt-4 grid gap-2">
+                      {session!.role === "MURID" ? (
+                        <Link href={`/dashboard/murid/materi/${module.id}`} className="inline-block">
+                          <Button className="w-full">Buka Materi</Button>
+                        </Link>
+                      ) : null}
+                      <Link href={dashboardPath(session!.role)} className="inline-block">
+                        <Button variant="outline" className="w-full">Buka Dashboard</Button>
+                      </Link>
+                    </div>
                   </>
                 ) : (
                   <>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Konten modul hanya dapat diakses pengguna yang berhak melalui akun yang terdaftar.
-                      Silakan masuk untuk membuka materi.
+                      Materi pembelajaran hanya dapat diakses oleh pelajar dari sekolah yang
+                      terdaftar di EDULALIN. Silakan login untuk mengakses modul.
                     </p>
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <Link href="/login">

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Eye } from "lucide-react";
+import { SchoolLogo } from "@/components/school/school-logo";
 
 export const instant = false;
 
@@ -29,6 +30,7 @@ export default async function PolisiSekolahDetailPage({
           id: true,
           name: true,
           classLevel: true,
+          major: true,
           educationLevel: true,
           quizAttempts: {
             where: { status: "COMPLETED" },
@@ -71,10 +73,15 @@ export default async function PolisiSekolahDetailPage({
         <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Sekolah
       </Link>
 
-      <h1 className="text-2xl font-bold">{school.name}</h1>
-      <p className="mt-1 text-muted-foreground">
-        {levelDisplayLabel(school.educationLevel)} • {school.city}, {school.province}
-      </p>
+      <div className="flex items-center gap-4">
+        <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="lg" />
+        <div>
+          <h1 className="text-2xl font-bold">{school.name}</h1>
+          <p className="mt-1 text-muted-foreground">
+            {levelDisplayLabel(school.educationLevel)} • {school.city}, {school.province}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-4">
         {[
@@ -111,7 +118,7 @@ export default async function PolisiSekolahDetailPage({
           <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Murid</th>
-              <th className="px-4 py-3">Kelas</th>
+              <th className="px-4 py-3">Kelas / Jurusan</th>
               <th className="px-4 py-3">Quiz</th>
               <th className="px-4 py-3">Nilai</th>
               <th className="px-4 py-3">Status</th>
@@ -122,7 +129,11 @@ export default async function PolisiSekolahDetailPage({
             {school.users.map((u) => (
               <tr key={u.id} className="align-top">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{u.classLevel ?? "-"}</td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {u.educationLevel ?? "-"}
+                  {u.classLevel ? ` • Kelas ${u.classLevel}` : ""}
+                  {u.major ? ` • ${u.major}` : ""}
+                </td>
                 <td className="px-4 py-3">
                   {u.quizAttempts.length === 0 ? (
                     <span className="text-muted-foreground">Belum ada</span>

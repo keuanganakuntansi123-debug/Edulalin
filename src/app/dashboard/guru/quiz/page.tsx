@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Eye } from "lucide-react";
-import { DeleteAttemptButton } from "./delete-attempt-button";
+import { PrintScoresClient } from "./print-scores-client";
 
 export const instant = false;
 
@@ -15,9 +15,17 @@ export default async function GuruQuizPage() {
   const attempts = await prisma.quizAttempt.findMany({
     where: { status: "COMPLETED", user: { schoolId: user.schoolId, role: "MURID" } },
     orderBy: { submittedAt: "desc" },
-    take: 100,
+    take: 500,
     include: {
-      user: { select: { name: true, classLevel: true } },
+      user: {
+        select: {
+          name: true,
+          classLevel: true,
+          major: true,
+          educationLevel: true,
+          school: { select: { name: true } },
+        },
+      },
       quiz: { select: { title: true, minScore: true } },
     },
   });
@@ -48,10 +56,32 @@ export default async function GuruQuizPage() {
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-border">
+        <div className="flex items-center justify-between border-b border-border bg-slate-50 px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            {attempts.length} hasil pengerjaan murid
+          </p>
+          <PrintScoresClient
+            schoolName={user.school?.name ?? "Sekolah"}
+            attempts={attempts.map((a) => ({
+              id: a.id,
+              studentName: a.user.name,
+              className: a.user.classLevel,
+              major: a.user.major,
+              educationLevel: a.user.educationLevel,
+              schoolName: a.user.school?.name ?? user.school?.name ?? "-",
+              quizTitle: a.quiz.title,
+              score: a.score ?? 0,
+              passed: a.passed ?? false,
+              minScore: a.quiz.minScore,
+              submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
+            }))}
+          />
+        </div>
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Murid</th>
+              <th className="px-4 py-3">Kelas / Jurusan</th>
               <th className="px-4 py-3">Quiz</th>
               <th className="px-4 py-3">Nilai</th>
               <th className="px-4 py-3">Status</th>
@@ -65,6 +95,10 @@ export default async function GuruQuizPage() {
                 <td className="px-4 py-3 font-medium">
                   {a.user.name}
                   {a.user.classLevel && <span className="ml-1 text-xs text-muted-foreground">• Kelas {a.user.classLevel}</span>}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {a.user.educationLevel ?? "-"}
+                  {a.user.major ? ` • ${a.user.major}` : ""}
                 </td>
                 <td className="px-4 py-3">{a.quiz.title}</td>
                 <td className="px-4 py-3">
@@ -90,14 +124,13 @@ export default async function GuruQuizPage() {
                         <Eye className="h-4 w-4" /> Lihat Detail
                       </Button>
                     </Link>
-                    <DeleteAttemptButton attemptId={a.id} />
                   </div>
                 </td>
               </tr>
             ))}
             {attempts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   Belum ada kuis yang dikerjakan murid.
                 </td>
               </tr>

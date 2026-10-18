@@ -35,6 +35,7 @@ export async function registerAction(
     schoolName: String(formData.get("schoolName") ?? ""),
     educationLevel: String(formData.get("educationLevel") ?? ""),
     classLevel: String(formData.get("classLevel") ?? ""),
+    major: String(formData.get("major") ?? ""),
     phone: String(formData.get("phone") ?? "") || undefined,
     password: String(formData.get("password") ?? ""),
     confirmPassword: String(formData.get("confirmPassword") ?? ""),

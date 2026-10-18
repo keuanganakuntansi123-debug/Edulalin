@@ -22,7 +22,17 @@ export default async function QuizAttemptPage({
       status: "ACTIVE",
       deletedAt: null,
       AND: [
-        { OR: [{ schoolId: null }, { schoolId: user.schoolId }] },
+        {
+          OR: [
+            { schoolId: null },
+            ...(user.schoolId
+              ? [
+                  { schoolId: user.schoolId },
+                  { quizToSchools: { some: { schoolId: user.schoolId } } },
+                ]
+              : []),
+          ],
+        },
         user.educationLevel === "SMA"
           ? { educationLevel: { in: ["SMA", "SIM"] } }
           : user.educationLevel === "SMK"

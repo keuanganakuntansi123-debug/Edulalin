@@ -83,7 +83,7 @@ export default async function QuizPage() {
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
                   <Badge variant={simLocked ? "warning" : "secondary"}>
-                    {q.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[q.educationLevel]}
+                    {LEVEL_LABEL[q.educationLevel]}
                   </Badge>
                   {q.module && <Badge className="bg-slate-100 text-slate-600">Modul</Badge>}
                 </div>

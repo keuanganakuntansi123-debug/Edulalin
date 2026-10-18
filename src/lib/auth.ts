@@ -74,6 +74,11 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
   const data = parsed.data;
   const educationLevel = normalizeEducationLevel(data.educationLevel ?? "", data.classLevel);
 
+  // Normalisasi data wajib HURUF KAPITAL (per ketentuan platform).
+  const normalizedName = data.name.trim().toUpperCase();
+  const normalizedClass = (data.classLevel ?? "").trim().toUpperCase();
+  const normalizedMajor = (data.major ?? "").trim().toUpperCase();
+
   const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
   if (existing) {
     return { success: false, errors: {}, message: "Email sudah terdaftar" };
@@ -83,7 +88,7 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
   // Hanya sekolah AKTIF (belum dihapus) yang dipakai, supaya murid baru tidak
   // terhubung ke sekolah yang sudah diarsipkan/dihapus (yang memblokir login).
   // Jika belum ada, sekolah dibuat otomatis sehingga data tetap terintegrasi.
-  const schoolName = data.schoolName.trim();
+  const schoolName = data.schoolName.trim().toUpperCase();
   let school = await prisma.school.findFirst({
     where: { name: { equals: schoolName, mode: "insensitive" }, deletedAt: null },
   });
@@ -123,14 +128,15 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
   const passwordHash = await hashPassword(data.password);
   const user = await prisma.user.create({
     data: {
-      name: data.name.trim(),
+      name: normalizedName,
       email: data.email.toLowerCase(),
       passwordHash,
       role: "MURID",
       birthDate: data.birthDate,
       schoolId: school.id,
       educationLevel,
-      classLevel: data.classLevel,
+      classLevel: normalizedClass || null,
+      major: normalizedMajor || null,
       phone: data.phone ?? null,
       status: "ACTIVE",
       verifiedAt: new Date(),

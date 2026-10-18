@@ -71,7 +71,7 @@ export default async function GuruReportsPage() {
                   <div>
                     <p className="font-medium">{m.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {m.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[m.educationLevel]}{m.educationLevel === "SIM" ? " • SIM" : m.classLevel ? ` • Kelas ${m.classLevel}` : ""}
+                      {LEVEL_LABEL[m.educationLevel]}{m.classLevel ? ` • Kelas ${m.classLevel}` : ""}
                     </p>
                   </div>
                   <Badge variant="secondary">{done}/{muridCount} murid selesai</Badge>

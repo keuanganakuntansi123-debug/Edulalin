@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
   if (kind === "SITE_IMAGE" && user.role !== "ADMIN") {
     return NextResponse.json({ error: "Hanya Admin yang dapat mengunggah gambar konten" }, { status: 403 });
   }
-  if (kind === "SCHOOL_LOGO" && user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Hanya Admin yang dapat mengunggah logo sekolah" }, { status: 403 });
+  if (kind === "SCHOOL_LOGO" && user.role !== "ADMIN" && user.role !== "GURU") {
+    return NextResponse.json({ error: "Hanya Admin dan Guru yang dapat mengunggah logo sekolah" }, { status: 403 });
   }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });
@@ -38,8 +38,13 @@ export async function POST(req: NextRequest) {
   if ((user.role === "MURID" || user.role === "POLISI") && fKind !== "AVATAR") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
-  // Guru boleh unggah materi modul + foto profil sendiri
-  if (user.role === "GURU" && fKind !== "MODULE_CONTENT" && fKind !== "AVATAR") {
+  // Guru boleh unggah materi modul + foto profil sendiri + logo sekolah
+  if (
+    user.role === "GURU" &&
+    fKind !== "MODULE_CONTENT" &&
+    fKind !== "AVATAR" &&
+    fKind !== "SCHOOL_LOGO"
+  ) {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
   if (!isAllowedMime(fKind, file.type || "")) {

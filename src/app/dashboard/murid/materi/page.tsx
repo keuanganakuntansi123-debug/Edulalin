@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Video, Link as LinkIcon, FileText, Lock } from "lucide-react";
+import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
 
@@ -39,18 +40,31 @@ export default async function MateriPage() {
           const prog = m.progresses[0];
           const Icon = TYPE_ICON[m.moduleType];
           const simLocked = m.isSim && m.simLocked;
+          const thumbUrl = m.thumbnailFile?.storedName ? fileUrl(m.thumbnailFile.storedName) : null;
           return (
             <Card key={m.id} className={simLocked ? "border-amber-300 bg-amber-50/40" : "hover:shadow-md transition-shadow"}>
-              <CardContent className="pt-5">
-                <div className="flex items-center justify-between">
-                  <Badge variant={simLocked ? "warning" : "secondary"}>
-                    {m.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[m.educationLevel]}
-                  </Badge>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Icon className="h-4 w-4" /> {m.moduleType}
-                  </span>
+              <CardContent className="p-0">
+                <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-slate-100">
+                  {thumbUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumbUrl} alt={m.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
+                      <BookOpen className="h-10 w-10 text-primary/40" />
+                    </div>
+                  )}
+                  <div className="absolute left-2 top-2 flex gap-1.5">
+                    <Badge variant={simLocked ? "warning" : "secondary"}>{LEVEL_LABEL[m.educationLevel]}</Badge>
+                  </div>
                 </div>
-                <h3 className="mt-3 font-semibold line-clamp-1">{m.title}</h3>
+                <div className="p-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold line-clamp-1">{m.title}</h3>
+                    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                      <Icon className="h-4 w-4" /> {m.moduleType}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-primary">{m.educationLevel}</p>
                 {simLocked ? (
                   <>
                     <p className="mt-1 text-sm text-amber-700">
@@ -63,9 +77,10 @@ export default async function MateriPage() {
                 ) : (
                   <>
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{m.description}</p>
-                    {m.durationMin && (
-                      <p className="mt-2 text-xs text-muted-foreground">± {m.durationMin} menit</p>
-                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {m.durationMin && <span>± {m.durationMin} menit</span>}
+                      {m.classLevel && <span>Kelas {m.classLevel}</span>}
+                    </div>
                     <div className="mt-3">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>Progress</span>
@@ -80,6 +95,7 @@ export default async function MateriPage() {
                     </Link>
                   </>
                 )}
+                </div>
               </CardContent>
             </Card>
           );

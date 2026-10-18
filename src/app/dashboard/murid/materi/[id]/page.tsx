@@ -52,21 +52,36 @@ export default async function ModuleDetailPage({
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary">
-          {mod.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[mod.educationLevel]}
+          {LEVEL_LABEL[mod.educationLevel]}
         </Badge>
         {mod.schoolId == null && <Badge>Global</Badge>}
         {mod.status === "ACTIVE" && <Badge variant="success">Aktif</Badge>}
       </div>
 
-      <h1 className="mt-3 text-3xl font-extrabold">{mod.title}</h1>
-      <p className="mt-2 text-muted-foreground">{mod.description}</p>
+      <div className="mt-4 grid gap-6 sm:grid-cols-[240px_1fr]">
+        {mod.thumbnailFile ? (
+          <div className="overflow-hidden rounded-xl border border-border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={fileUrl(mod.thumbnailFile.storedName)}
+              alt={mod.title}
+              className="aspect-3/4 w-full object-cover"
+            />
+          </div>
+        ) : null}
+        <div>
+          <h1 className="text-3xl font-extrabold">{mod.title}</h1>
+          <p className="mt-2 text-muted-foreground">{mod.description}</p>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> ± {mod.durationMin ?? "-"} menit</span>
-        <span className="flex items-center gap-1">
-          {mod.moduleType === "VIDEO" ? <Video className="h-4 w-4" /> : mod.moduleType === "LINK" ? <LinkIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-          Tipe: {mod.moduleType}
-        </span>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> ± {mod.durationMin ?? "-"} menit</span>
+            <span className="flex items-center gap-1">
+              {mod.moduleType === "VIDEO" ? <Video className="h-4 w-4" /> : mod.moduleType === "LINK" ? <LinkIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+              Tipe: {mod.moduleType}
+            </span>
+            {mod.classLevel && <span>Kelas {mod.classLevel}</span>}
+          </div>
+        </div>
       </div>
 
       {/* Materi */}

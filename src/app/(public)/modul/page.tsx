@@ -13,7 +13,7 @@ export const instant = false;
 const CATEGORIES = [
   { value: "SD", label: "Modul SD", emoji: "🧒" },
   { value: "SMP", label: "Modul SMP", emoji: "🧑" },
-  { value: "SMA", label: "Modul SMA/SMK", emoji: "🧑‍🎓" },
+  { value: "SMA", label: "Modul SMA", emoji: "🧑‍🎓" },
   { value: "SMK", label: "Modul SMK", emoji: "👷" },
 ];
 
@@ -114,13 +114,6 @@ export default async function ModulPage({
                 </p>
               </a>
             ))}
-          </div>
-
-          {/* Keterangan SIM */}
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-            🪪 <strong>Modul SIM</strong> tergabung dalam kategori <strong>SMA/SMK</strong> dan
-            tersedia untuk murid SMA/SMK berusia minimal 17 tahun. Murid di bawah usia tersebut
-            tidak dapat membuka materi SIM, baik pada tampilan maupun validasi server.
           </div>
 
           {/* Pencarian + daftar */}

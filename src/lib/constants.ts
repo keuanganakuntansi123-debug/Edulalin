@@ -3,14 +3,14 @@ import type { Role, EducationLevel } from "@/generated/prisma/client";
 export const ROLES: Role[] = ["ADMIN", "GURU", "POLISI", "MURID"];
 export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SMK", "SIM"];
 
-/** Kategori yang ditampilkan di UI. Modul/kuis SIM digabung ke SMA/SMK. */
+/** Kategori yang ditampilkan di UI. SMA dan SMK dipisah; SIM tampil sebagai kategori sendiri. */
 export const DISPLAY_CATEGORIES = ["SD", "SMP", "SMA", "SMK"] as const;
 export type DisplayCategory = (typeof DISPLAY_CATEGORIES)[number];
 
 export const DISPLAY_CATEGORY_LABEL: Record<DisplayCategory, string> = {
   SD: "SD",
   SMP: "SMP",
-  SMA: "SMA/SMK",
+  SMA: "SMA",
   SMK: "SMK",
 };
 
@@ -21,9 +21,9 @@ export function categoryOf(level: EducationLevel | string | null | undefined): D
   return "SMA";
 }
 
-/** Label jenjang untuk ditampilkan. Modul/kuis SIM tampil sebagai "SMA/SMK". */
+/** Label jenjang untuk ditampilkan. SIM ditampilkan sebagai "SIM". */
 export function levelDisplayLabel(level: EducationLevel | string | null | undefined): string {
-  if (level === "SIM") return "SMA/SMK";
+  if (level === "SIM") return "SIM";
   if (level === "SD" || level === "SMP" || level === "SMA" || level === "SMK") return LEVEL_LABEL[level];
   return level ? String(level) : "-";
 }

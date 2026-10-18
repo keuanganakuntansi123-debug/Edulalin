@@ -823,13 +823,17 @@ export async function updateSchool(id: string, formData: FormData) {
 export async function setSchoolLogo(
   formData: FormData
 ): Promise<{ ok?: boolean; error?: string }> {
-  const actor = await requireRole("ADMIN");
+  const actor = await requireRole("ADMIN", "GURU");
   const schoolId = String(formData.get("schoolId") ?? "");
   const logoFileId = String(formData.get("logoFileId") ?? "") || null;
   const removeLogo = formData.get("removeLogo") === "1";
 
   const school = await prisma.school.findUnique({ where: { id: schoolId } });
   if (!school) return { error: "Sekolah tidak ditemukan" };
+  // Guru hanya dapat mengelola logo sekolah tempatnya mengajar.
+  if (actor.role === "GURU" && schoolId !== actor.schoolId) {
+    return { error: "Anda hanya dapat mengelola logo sekolah tempat Anda mengajar" };
+  }
 
   if (removeLogo) {
     // Hapus referensi; file fisik dihapus setelah relasi dilepas.
@@ -851,6 +855,9 @@ export async function setSchoolLogo(
       metadata: { name: school.name },
     });
     revalidatePath("/dashboard/admin/schools");
+    revalidatePath("/dashboard/guru");
+    revalidatePath("/dashboard/murid", "layout");
+    revalidatePath("/dashboard/polisi", "layout");
     return { ok: true };
   }
 
@@ -884,6 +891,9 @@ export async function setSchoolLogo(
     metadata: { name: school.name, fileId: file.id },
   });
   revalidatePath("/dashboard/admin/schools");
+  revalidatePath("/dashboard/guru");
+  revalidatePath("/dashboard/murid", "layout");
+  revalidatePath("/dashboard/polisi", "layout");
   return { ok: true };
 }
 

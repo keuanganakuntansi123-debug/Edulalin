@@ -68,7 +68,7 @@ export function SchoolLogoManager({
               label="Unggah / Ganti Logo"
               onUploaded={(f) => setLogo(f)}
               onError={(m) => toast({ title: "Gagal unggah", description: m, variant: "error" })}
-              className="max-w-xs !py-3"
+              className="max-w-xs py-3!"
             />
           )}
           {logo && (

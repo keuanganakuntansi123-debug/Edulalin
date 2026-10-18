@@ -74,6 +74,7 @@ export default async function GuruDashboardPage() {
         schoolName={user.school?.name}
         schoolLevel={user.school?.educationLevel}
         subject={user.subject}
+        logoUrl={user.school?.logoUrl}
         description={
           user.school
             ? `Anda mengajar di ${user.school.name}. Pantau murid dan nilai pembelajaran lalu lintas dari sekolah Anda.`

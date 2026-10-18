@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/form";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SchoolLogo } from "@/components/school/school-logo";
 
 export const instant = false;
 
@@ -15,7 +16,11 @@ export default async function PolisiMuridPage() {
   const schools = await prisma.school.findMany({
     where: { status: "ACTIVE" },
     orderBy: { name: "asc" },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      logoUrl: true,
+      educationLevel: true,
       _count: { select: { users: { where: { role: "MURID", deletedAt: null } } } },
     },
   });
@@ -34,9 +39,12 @@ export default async function PolisiMuridPage() {
             <Card key={s.id}>
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{levelDisplayLabel(s.educationLevel)}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <SchoolLogo logoUrl={s.logoUrl} name={s.name} size="md" />
+                    <div className="min-w-0">
+                      <p className="font-medium line-clamp-1">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{levelDisplayLabel(s.educationLevel)}</p>
+                    </div>
                   </div>
                   <span className="font-semibold">{s._count.users} murid ({pct}%)</span>
                 </div>

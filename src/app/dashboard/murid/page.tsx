@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, ClipboardList, GraduationCap, Trophy } from "lucide-react";
 import { DashboardWelcome } from "@/components/dashboard/dashboard-welcome";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { SchoolLogo } from "@/components/school/school-logo";
 
 export const instant = false;
 
@@ -71,10 +72,25 @@ export default async function MuridDashboardPage() {
       <DashboardWelcome
         role="MURID"
         name={user.name}
+        logoUrl={user.school?.logoUrl}
         description={`${user.school?.name ?? "Sekolah"} • ${user.educationLevel ? levelDisplayLabel(user.educationLevel) : "-"}${
           user.classLevel ? ` • Kelas ${user.classLevel}` : ""
-        }${age != null ? ` • Usia ${age} tahun` : ""}`}
+        }${user.major ? ` • ${user.major}` : ""}${age != null ? ` • Usia ${age} tahun` : ""}`}
       />
+
+      {user.school && (
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+          <SchoolLogo logoUrl={user.school.logoUrl} name={user.school.name} size="md" />
+          <div>
+            <p className="font-semibold">{user.school.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {user.educationLevel ? levelDisplayLabel(user.educationLevel) : "-"}
+              {user.classLevel ? ` • Kelas ${user.classLevel}` : ""}
+              {user.major ? ` • Jurusan ${user.major}` : ""}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Statistik */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -136,7 +152,7 @@ export default async function MuridDashboardPage() {
           )
           ) : (
             <p className="text-sm text-muted-foreground">
-              Materi Modul SIM tergabung dalam kategori SMA/SMK dan hanya tersedia untuk murid SMA/SMK berusia minimal 17 tahun.
+              Modul SIM tersedia untuk murid SMA dan SMK yang telah berusia minimal 17 tahun.
             </p>
           )}
         </CardContent>
@@ -157,7 +173,7 @@ export default async function MuridDashboardPage() {
                 <CardContent className="pt-5">
                   <div className="flex items-center justify-between">
                     <Badge variant={simLocked ? "warning" : "secondary"}>
-                      {m.educationLevel === "SIM" ? "SMA/SMK" : LEVEL_LABEL[m.educationLevel]}
+                      {LEVEL_LABEL[m.educationLevel]}
                     </Badge>
                     {prog?.completed && <Badge variant="success">Selesai</Badge>}
                   </div>

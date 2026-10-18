@@ -85,7 +85,7 @@ export function ModuleCatalog({
                 : "border-border bg-white hover:border-primary/50"
             )}
           >
-            {c === "SMA" ? "SMA/SMK" : c}
+            {c}
           </button>
         ))}
       </div>

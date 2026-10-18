@@ -27,7 +27,7 @@ const TYPE_ICON: Record<string, typeof FileText> = {
 const CATEGORY_LABEL: Record<string, string> = {
   SD: "SD",
   SMP: "SMP",
-  SMA: "SMA/SMK",
+  SMA: "SMA",
   SMK: "SMK",
 };
 

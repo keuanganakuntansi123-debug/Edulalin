@@ -21,6 +21,7 @@ export function ProfileForm({
   schoolName,
   educationLevel,
   classLevel,
+  major,
   policeLevel,
   policeUnit,
   policeDivision,
@@ -33,6 +34,7 @@ export function ProfileForm({
   schoolName: string | null;
   educationLevel: string | null;
   classLevel: string | null;
+  major?: string | null;
   policeLevel?: string | null;
   policeUnit?: string | null;
   policeDivision?: string | null;
@@ -146,12 +148,18 @@ export function ProfileForm({
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{classLevel}</p>
             </div>
           )}
+          {major && (
+            <div>
+              <Label>Jurusan</Label>
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{major}</p>
+            </div>
+          )}
         </div>
       )}
 
       {showSchoolInfo && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          Sekolah, jenjang, kelas, dan role dikelola oleh Admin. Anda hanya dapat mengubah data pribadi di atas.
+          Sekolah, jenjang, kelas, jurusan, dan role dikelola oleh Admin. Anda hanya dapat mengubah data pribadi di atas.
         </div>
       )}
 

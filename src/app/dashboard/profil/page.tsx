@@ -33,6 +33,7 @@ export default async function DashboardProfilPage() {
             schoolName={user.school?.name ?? null}
             educationLevel={levelLabel}
             classLevel={user.classLevel}
+            major={user.major}
             policeLevel={user.policeLevel}
             policeUnit={user.policeUnit}
             policeDivision={user.policeDivision}
