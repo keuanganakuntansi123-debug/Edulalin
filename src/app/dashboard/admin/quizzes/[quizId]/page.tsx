@@ -8,6 +8,7 @@ import { addQuestion, publishQuiz, deleteQuestion, editQuestion } from "@/app/ac
 import { QuestionForm } from "./question-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DraftPdfTools, type ReviewQuestion } from "../draft-pdf-tools";
 
 export const instant = false;
 
@@ -28,12 +29,25 @@ export default async function AdminQuizDetailPage({
       questions: { orderBy: { order: "asc" } },
       quizToSchools: { include: { school: { select: { name: true } } } },
       module: { select: { title: true } },
+      sourceFile: { select: { storedName: true, originalName: true } },
     },
   });
   if (!quiz) notFound();
 
   const missingKeys = quiz.questions.filter((q) => !q.correctOption).length;
   const editingQuestion = edit ? quiz.questions.find((q) => q.id === edit) : undefined;
+  const reviewQuestions: ReviewQuestion[] = quiz.questions.map((q) => ({
+    text: q.text,
+    optionA: q.optionA,
+    optionB: q.optionB,
+    optionC: q.optionC,
+    optionD: q.optionD,
+    answer: q.correctOption,
+    explanation: q.explanation,
+  }));
+  const sourceUrl = quiz.sourceFile
+    ? `/api/files/${encodeURIComponent(quiz.sourceFile.storedName)}`
+    : null;
 
   return (
     <div>
@@ -68,6 +82,20 @@ export default async function AdminQuizDetailPage({
               <Send className="h-4 w-4" /> Terbitkan Kuis
             </Button>
           </form>
+        </div>
+      )}
+
+      {quiz.status === "DRAFT" && quiz.sourceType === "PDF" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+          <span className="flex-1 text-muted-foreground">
+            File sumber: {quiz.sourceFile?.originalName ?? "PDF"}. Upload ulang untuk mengganti file, atau periksa hasil ekstraksi sebelum menerbitkan.
+          </span>
+          <DraftPdfTools
+            quizId={quiz.id}
+            sourceUrl={sourceUrl}
+            sourceName={quiz.sourceFile?.originalName ?? null}
+            questions={reviewQuestions}
+          />
         </div>
       )}
 

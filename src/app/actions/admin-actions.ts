@@ -711,6 +711,65 @@ export async function deleteQuestion(id: string, quizId: string) {
   return { ok: true };
 }
 
+export async function savePdfReview(
+  quizId: string,
+  questions: {
+    text: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    answer: string | null;
+    explanation: string | null;
+  }[]
+) {
+  const user = await requireRole("ADMIN");
+  const quiz = await prisma.quiz.findFirst({ where: { id: quizId, deletedAt: null } });
+  if (!quiz) return { error: "Kuis tidak ditemukan" };
+  if (quiz.status !== "DRAFT") return { error: "Hanya kuis draf yang dapat diedit" };
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return { error: "Hasil ekstraksi kosong" };
+  }
+  const existing = await prisma.quizQuestion.findMany({
+    where: { quizId },
+    orderBy: { order: "asc" },
+    select: { id: true },
+  });
+  if (existing.length !== questions.length) {
+    return { error: "Jumlah soal tidak cocok dengan draf. Gunakan Upload Ulang PDF untuk soal baru." };
+  }
+
+  if (existing.length > 0) {
+    await prisma.$transaction(
+      questions.map((q, idx) =>
+        prisma.quizQuestion.update({
+          where: { id: existing[idx].id },
+          data: {
+            text: q.text,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctOption: q.answer || null,
+            explanation: q.explanation || null,
+            order: idx + 1,
+          },
+        })
+      )
+    );
+  }
+
+  fireActivity({
+    actorId: user.id,
+    action: "QUIZ_PDF_REVIEW_SAVE",
+    entity: "QUIZ",
+    entityId: quiz.id,
+    metadata: { title: quiz.title, questions: questions.length },
+  });
+  revalidatePath(`/dashboard/admin/quizzes/${quizId}`);
+  return { ok: true };
+}
+
 export async function archiveQuizHard(id: string) {
   const user = await requireRole("ADMIN");
   const quiz = await prisma.quiz.findUnique({ where: { id } });

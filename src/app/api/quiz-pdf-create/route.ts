@@ -15,6 +15,22 @@ const schema = z.object({
   schoolIds: z.array(z.string()).default([]),
   sourceFileId: z.string().min(1),
   educationLevel: z.string().optional().nullable(),
+  shuffle: z.boolean().default(false),
+  showDiscussion: z.boolean().default(true),
+  showResult: z.boolean().default(true),
+  questions: z
+    .array(
+      z.object({
+        text: z.string().min(3),
+        optionA: z.string().min(1),
+        optionB: z.string().min(1),
+        optionC: z.string().min(1),
+        optionD: z.string().min(1),
+        answer: z.enum(["A", "B", "C", "D"]).optional().nullable(),
+        explanation: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -56,9 +72,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File PDF soal tidak ditemukan" }, { status: 404 });
   }
 
-  const { extractQuestionsFromPdf } = await import("@/lib/pdf-parser");
-  const result = await extractQuestionsFromPdf(file.storedName);
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
+  // Jika admin sudah mengedit hasil ekstraksi di pratinjau, gunakan hasil itu
+  // langsung. Jika tidak, ekstrak lagi dari file sumber.
+  let extractedQuestions: {
+    text: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    answer: string | null;
+    explanation: string | null;
+  }[];
+  if (data.questions) {
+    extractedQuestions = data.questions.map((q) => ({
+      text: q.text,
+      optionA: q.optionA,
+      optionB: q.optionB,
+      optionC: q.optionC,
+      optionD: q.optionD,
+      answer: q.answer ?? null,
+      explanation: q.explanation ?? null,
+    }));
+  } else {
+    const { extractQuestionsFromPdf } = await import("@/lib/pdf-parser");
+    const result = await extractQuestionsFromPdf(file.storedName);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
+    extractedQuestions = result.questions.map((q) => ({
+      text: q.text,
+      optionA: q.optionA,
+      optionB: q.optionB,
+      optionC: q.optionC,
+      optionD: q.optionD,
+      answer: q.answer ?? null,
+      explanation: q.explanation ?? null,
+    }));
+  }
 
   // Simpan draft — admin WAJIB memeriksa sebelum menerbitkan
   const quiz = await prisma.$transaction(async (tx) => {
@@ -68,10 +116,13 @@ export async function POST(req: NextRequest) {
         description: data.description,
         sourceType: "PDF",
         sourceFileId: file.id,
-        moduleId: data.moduleId ?? null,
+        moduleId: data.moduleId || null,
         educationLevel,
         classLevel: null,
         minScore: data.minScore,
+        shuffle: data.shuffle,
+        showDiscussion: data.showDiscussion,
+        showResult: data.showResult,
         status: "DRAFT",
         quizToSchools: data.schoolIds.length
           ? { create: data.schoolIds.map((schoolId) => ({ schoolId })) }
@@ -79,15 +130,15 @@ export async function POST(req: NextRequest) {
       },
     });
     await tx.quizQuestion.createMany({
-      data: result.questions.map((q, idx) => ({
+      data: extractedQuestions.map((q, idx) => ({
         quizId: created.id,
         text: q.text,
         optionA: q.optionA,
         optionB: q.optionB,
         optionC: q.optionC,
         optionD: q.optionD,
-        correctOption: q.answer ?? null,
-        explanation: q.explanation ?? null,
+        correctOption: q.answer,
+        explanation: q.explanation,
         order: idx + 1,
       })),
     });
@@ -100,8 +151,8 @@ export async function POST(req: NextRequest) {
     action: "QUIZ_PDF_CREATE",
     entity: "QUIZ",
     entityId: quiz.id,
-    metadata: { title: quiz.title, extracted: result.extracted },
+    metadata: { title: quiz.title, extracted: extractedQuestions.length },
   }).catch(() => undefined);
 
-  return NextResponse.json({ ok: true, id: quiz.id, extracted: result.extracted });
+  return NextResponse.json({ ok: true, id: quiz.id, extracted: extractedQuestions.length });
 }

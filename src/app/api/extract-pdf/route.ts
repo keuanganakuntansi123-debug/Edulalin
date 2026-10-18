@@ -22,7 +22,23 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await extractQuestionsFromPdf(storedName);
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
+  if (!result.ok) {
+    // PDF valid tetapi tidak ada soal terstruktur yang terbaca (hasil scan,
+    // format tak standar, dsb). Admin tetap dapat buat draf dan tambahkan soal
+    // secara manual. Return hasil kosong (ok) agar form tidak blokir.
+    if (result.error.includes("soal pilihan ganda")) {
+      return NextResponse.json({
+        ok: true,
+        fileId: file.id,
+        originalName: file.originalName,
+        extracted: 0,
+        questions: [],
+        empty: true,
+        warning: result.error,
+      });
+    }
+    return NextResponse.json({ error: result.error }, { status: 422 });
+  }
 
   logActivity({
     actorId: user.id,
