@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 
@@ -8,27 +8,50 @@ export function MultiSchoolSelect({
   schools,
   helper,
   defaultValue = [],
+  filterLevel,
+  filterLevels,
 }: {
-  schools: { id: string; name: string }[];
+  schools: { id: string; name: string; educationLevel?: string }[];
   helper?: string;
   defaultValue?: string[];
+  /** Jika diisi, hanya sekolah dengan jenjang ini yang tampil & dipilih. */
+  filterLevel?: string;
+  /** Alternatif: beberapa jenjang sekaligus (mis. SIM → SMA+SMK). */
+  filterLevels?: string[];
 }) {
   const [selected, setSelected] = useState<string[]>(defaultValue);
   const [query, setQuery] = useState("");
+
+  const activeLevels = useMemo(() => {
+    if (filterLevels && filterLevels.length > 0) return filterLevels;
+    if (filterLevel) return [filterLevel];
+    return null;
+  }, [filterLevel, filterLevels]);
 
   const toggle = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const visible = schools.filter(
-    (s) => !query || s.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const visible = schools.filter((s) => {
+    const levelOk = !activeLevels || (s.educationLevel != null && activeLevels.includes(s.educationLevel));
+    const qOk = !query || s.name.toLowerCase().includes(query.toLowerCase());
+    return levelOk && qOk;
+  });
+  // Hanya sekolah yang cocok dengan filter yang dianggap terpilih
+  // (yang tidak cocok tidak dirender -> tidak ikut ter-submit).
+  const validSelected = activeLevels
+    ? selected.filter((id) => schools.some((s) => s.id === id && s.educationLevel != null && activeLevels.includes(s.educationLevel)))
+    : selected;
+  const selectedSchools = schools.filter((s) => validSelected.includes(s.id));
+  const filteredTitle = activeLevels
+    ? `Sekolah Tujuan (jenjang ${activeLevels.join(" + ")})`
+    : "Sekolah Tujuan";
 
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="text-sm font-medium">Sekolah Tujuan</label>
-        <span className="text-xs text-muted-foreground">{selected.length} dipilih</span>
+        <label className="text-sm font-medium">{filteredTitle}</label>
+        <span className="text-xs text-muted-foreground">{validSelected.length} dipilih</span>
       </div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -72,11 +95,9 @@ export function MultiSchoolSelect({
           );
         })}
       </div>
-      {selected.length > 0 && (
+      {selectedSchools.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {schools
-            .filter((s) => selected.includes(s.id))
-            .map((s) => (
+          {selectedSchools.map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -89,12 +110,9 @@ export function MultiSchoolSelect({
             ))}
         </div>
       )}
-      {selected.length > 0 &&
-        schools
-          .filter((s) => selected.includes(s.id))
-          .map((s) => (
-            <input key={s.id} type="hidden" name="schoolIds" value={s.id} />
-          ))}
+      {selectedSchools.map((s) => (
+        <input key={s.id} type="hidden" name="schoolIds" value={s.id} />
+      ))}
       {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
     </div>
   );

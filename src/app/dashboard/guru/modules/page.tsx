@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/guards";
-import { prisma } from "@/lib/prisma";
 import { LEVEL_LABEL } from "@/lib/constants";
+import { listModulesForGuru } from "@/lib/module-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SchoolLogoManager } from "@/components/school/school-logo-manager";
@@ -14,38 +14,18 @@ export const instant = false;
 export default async function GuruModulesPage() {
   const user = await requireRole("GURU");
 
-  const modules = await prisma.module.findMany({
-    where: {
-      deletedAt: null,
-      status: "ACTIVE",
-      AND: [
-        {
-          OR: [
-            { schoolId: null },
-            ...(user.schoolId
-              ? [
-                  { schoolId: user.schoolId },
-                  { moduleToSchools: { some: { schoolId: user.schoolId } } },
-                ]
-              : []),
-          ],
-        },
-      ],
-    },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    include: {
-      thumbnailFile: { select: { storedName: true } },
-      _count: { select: { progresses: true, quizzes: true } },
-    },
+  const modules = await listModulesForGuru({
+    schoolId: user.schoolId,
+    educationLevel: user.school?.educationLevel ?? null,
   });
 
   const TYPE_ICON = { PDF: FileText, VIDEO: Video, LINK: LinkIcon, DOCUMENT: BookOpen };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Modul</h1>
+      <h1 className="text-2xl font-bold">Kelola Modul</h1>
       <p className="mt-1 text-muted-foreground">
-        Materi yang tersedia untuk sekolah Anda ({user.school?.name ?? "semua sekolah"}).
+        Modul yang tersedia untuk sekolah Anda ({user.school?.name ?? "semua sekolah"}).
       </p>
 
       {user.school && (

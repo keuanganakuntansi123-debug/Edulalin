@@ -30,9 +30,9 @@ export default async function MateriPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Materi Pembelajaran</h1>
+      <h1 className="text-2xl font-bold">Kelola Modul</h1>
       <p className="mt-1 text-muted-foreground">
-        Modul tersedia untuk jenjang dan kelas Anda.
+        Kelola dan akses modul pembelajaran sesuai jenjang dan kelas Anda.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

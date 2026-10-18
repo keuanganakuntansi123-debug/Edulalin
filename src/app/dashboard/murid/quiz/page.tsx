@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { LEVEL_LABEL } from "@/lib/constants";
+import { LEVEL_LABEL, contentLevelsForMurid } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,28 +18,31 @@ async function startQuizLocal(quizId: string) {
 export default async function QuizPage() {
   const user = await requireRole("MURID");
   const simAllowed = canAccessSim(user.birthDate);
+  const levels = contentLevelsForMurid(user.educationLevel);
 
   const quizzes = await prisma.quiz.findMany({
     where: {
       status: "ACTIVE",
       deletedAt: null,
-      OR: [
-        // Kuis global: hanya untuk jenjang murid (termasuk SIM utk SMA/SMK)
+      AND: [
+        // Kunci utama: jenjang konten harus cocok dengan jenjang murid
+        // (SIM hanya untuk SMA/SMK). Kategori tidak bisa tercampur.
+        { educationLevel: { in: levels } },
         {
-          schoolId: null,
-          quizToSchools: { none: {} },
-          ...(user.educationLevel === "SMA"
-            ? { educationLevel: { in: ["SMA", "SIM"] } }
-            : user.educationLevel === "SMK"
-              ? { educationLevel: { in: ["SMK", "SIM"] } }
-              : { educationLevel: user.educationLevel ?? undefined }),
+          OR: [
+            // Kuis global: tanpa sekolah tujuan
+            {
+              schoolId: null,
+              quizToSchools: { none: {} },
+            },
+            // Kuis milik sekolah murid: tampil via ID sekolah
+            ...(user.schoolId ? [{ schoolId: user.schoolId }] : []),
+            // Kuis yang ditargetkan admin ke sekolah murid
+            ...(user.schoolId
+              ? [{ quizToSchools: { some: { schoolId: user.schoolId } } }]
+              : []),
+          ],
         },
-        // Kuis milik sekolah murid: tampil apa adanya (data disinkron via ID sekolah)
-        ...(user.schoolId ? [{ schoolId: user.schoolId }] : []),
-        // Kuis yang ditargetkan admin ke sekolah murid: tampil tanpa batasan jenjang
-        ...(user.schoolId
-          ? [{ quizToSchools: { some: { schoolId: user.schoolId } } }]
-          : []),
       ],
     },
     include: {
@@ -62,8 +65,8 @@ export default async function QuizPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Quiz Interaktif</h1>
-      <p className="mt-1 text-muted-foreground">Uji pemahamanmu setelah mempelajari materi.</p>
+      <h1 className="text-2xl font-bold">Kelola Kuis</h1>
+      <p className="mt-1 text-muted-foreground">Kerjakan kuis dan pantau hasil belajarmu.</p>
 
       {hasSimQuizLocked && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

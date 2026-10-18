@@ -36,7 +36,11 @@ export default async function AdminModulesPage() {
         contentFile: { select: { originalName: true, mimeType: true, size: true, storedName: true } },
       },
     }),
-    prisma.school.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    prisma.school.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, educationLevel: true },
+    }),
   ]);
   const byCategory = DISPLAY_CATEGORIES.map((c) => ({
     category: c,

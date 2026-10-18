@@ -4,6 +4,7 @@ import { logActivity } from "@/lib/audit";
 import { notifyQuizResult } from "@/lib/notification-service";
 import type { Role } from "@/generated/prisma/client";
 import { canAccessSim } from "@/lib/module-service";
+import { contentLevelsForMurid } from "@/lib/constants";
 
 export type QuizResult =
   | { success: true; result: { score: number; passed: boolean; total: number; correct: number } }
@@ -55,12 +56,12 @@ export async function submitQuiz(
   ) {
     return { success: false, message: "Akses ditolak" };
   }
-  // Kuis global: jenjang konten harus cocok untuk murid (SMA/SMK boleh SIM).
-  if (actor.role === "MURID" && globalQuiz && actor.educationLevel) {
-    const levelOk =
-      quiz.educationLevel === actor.educationLevel ||
-      (quiz.educationLevel === "SIM" &&
-        (actor.educationLevel === "SMA" || actor.educationLevel === "SMK"));
+  // Kunci kategori: jenjang konten harus cocok untuk murid di SEMUA scope
+  // (global, milik sekolah, maupun target sekolah) — kategori tak bisa tercampur.
+  if (actor.role === "MURID" && actor.educationLevel) {
+    const levelOk = contentLevelsForMurid(actor.educationLevel).includes(
+      quiz.educationLevel
+    );
     if (!levelOk) return { success: false, message: "Akses ditolak" };
   }
 

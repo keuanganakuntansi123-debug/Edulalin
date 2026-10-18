@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { getAge, LEVEL_LABEL, levelDisplayLabel } from "@/lib/constants";
+import { getAge, LEVEL_LABEL, levelDisplayLabel, contentLevelsForMurid } from "@/lib/constants";
 import { canAccessSim, listModulesForMurid } from "@/lib/module-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,11 +41,7 @@ export default async function MuridDashboardPage() {
                 : []),
             ],
           },
-          user.educationLevel === "SMA"
-            ? { educationLevel: { in: ["SMA", "SIM"] } }
-            : user.educationLevel === "SMK"
-              ? { educationLevel: { in: ["SMK", "SIM"] } }
-            : { educationLevel: user.educationLevel ?? undefined },
+          { educationLevel: { in: contentLevelsForMurid(user.educationLevel) } },
         ],
       },
     }),

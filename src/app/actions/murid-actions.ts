@@ -8,6 +8,7 @@ import { submitQuiz } from "@/lib/quiz-service";
 import { logActivity } from "@/lib/audit";
 import { redirect } from "next/navigation";
 import { canAccessSim } from "@/lib/module-service";
+import { contentLevelsForMurid } from "@/lib/constants";
 
 export async function policeSaveQuizAnswers(input: {
   attemptId: string;
@@ -64,24 +65,24 @@ export async function startQuizAction(quizId: string) {
       id: quizId,
       status: "ACTIVE",
       deletedAt: null,
-      OR: [
-        // Kuis global: hanya untuk jenjang murid
+      AND: [
         {
-          schoolId: null,
-          quizToSchools: { none: {} },
-          ...(user.educationLevel === "SMA"
-            ? { educationLevel: { in: ["SMA", "SIM"] } }
-            : user.educationLevel === "SMK"
-              ? { educationLevel: { in: ["SMK", "SIM"] } }
-              : { educationLevel: user.educationLevel ?? undefined }),
+          educationLevel: { in: contentLevelsForMurid(user.educationLevel) },
         },
-        // Kuis milik/target sekolah murid: tampil via ID sekolah
-        ...(user.schoolId
-          ? [
-              { schoolId: user.schoolId },
-              { quizToSchools: { some: { schoolId: user.schoolId } } },
-            ]
-          : []),
+        {
+          OR: [
+            {
+              schoolId: null,
+              quizToSchools: { none: {} },
+            },
+            ...(user.schoolId
+              ? [
+                  { schoolId: user.schoolId },
+                  { quizToSchools: { some: { schoolId: user.schoolId } } },
+                ]
+              : []),
+          ],
+        },
       ],
     },
     include: { questions: true, quizToSchools: { select: { schoolId: true } } },

@@ -26,7 +26,11 @@ export default async function AdminModuleDetailPage({
         thumbnailFile: { select: { originalName: true, mimeType: true, size: true } },
       },
     }),
-    prisma.school.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    prisma.school.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, educationLevel: true },
+    }),
   ]);
   if (!mod) notFound();
 
@@ -51,7 +55,11 @@ export default async function AdminModuleDetailPage({
           </CardHeader>
           <CardContent>
             <ModuleForm
-              schools={schools.map((s) => ({ id: s.id, name: s.name }))}
+              schools={schools.map((s) => ({
+                id: s.id,
+                name: s.name,
+                educationLevel: s.educationLevel,
+              }))}
               action={updateModule.bind(null, mod.id)}
               defaultValues={{
                 title: mod.title,

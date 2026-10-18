@@ -39,7 +39,6 @@ export function ModuleCatalog({
         !q ||
         m.title.toLowerCase().includes(q) ||
         m.description.toLowerCase().includes(q) ||
-        (categoryOf(m.educationLevel) === "SMA" && m.educationLevel === "SIM" && "smk".includes(q) ? true : false) ||
         LEVEL_LABEL[m.educationLevel as keyof typeof LEVEL_LABEL]?.toLowerCase().includes(q);
       return matchCategory && matchQuery;
     });

@@ -47,7 +47,7 @@ export default async function ModuleDetailPage({
         href="/dashboard/murid/materi"
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
       >
-        <ArrowLeft className="h-4 w-4" /> Kembali ke materi
+        <ArrowLeft className="h-4 w-4" /> Kembali ke modul
       </Link>
 
       <div className="flex flex-wrap items-center gap-2">

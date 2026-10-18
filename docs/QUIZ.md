@@ -2,9 +2,13 @@
 
 ## Model
 
-- `Quiz`: judul, deskripsi, moduleId?, jenjang, kelas?, sekolah?,
+- `Quiz`: judul, deskripsi, moduleId?, jenjang (SD|SMP|SMA|SMK|SIM), kelas?, sekolah?,
   `minScore` (default 60), `maxAttempts?`, `shuffle`, `showResult`,
   `showDiscussion`, status, soft delete.
+
+SIM adalah subtype dalam kategori SMA/SMK (bukan kategori sendiri):
+dipilih via toggle pada form, hanya dapat ditargetkan ke sekolah
+SMA/SMK, dan murid < 17 tahun diblokir memulai kuis SIM (`canAccessSim`).
 - `Question`: quizId, teks, opsi A–D, `correctOption` (A|B|C|D), `weight`,
   `explanation`, `order`.
 - `QuizAttempt`: user, quiz, status (`IN_PROGRESS`|`COMPLETED`), score?,

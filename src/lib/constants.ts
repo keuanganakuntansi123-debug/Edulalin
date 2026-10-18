@@ -3,7 +3,11 @@ import type { Role, EducationLevel } from "@/generated/prisma/client";
 export const ROLES: Role[] = ["ADMIN", "GURU", "POLISI", "MURID"];
 export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SMK", "SIM"];
 
-/** Kategori yang ditampilkan di UI. SMA dan SMK dipisah; SIM tampil sebagai kategori sendiri. */
+/**
+ * Kategori jenjang yang berdiri sendiri di UI: SD, SMP, SMA, SMK.
+ * SIM BUKAN kategori — SIM adalah jenis materi/kuis khusus yang berada
+ * dalam kategori SMA dan SMK (tetap terpisah via educationLevel = "SIM").
+ */
 export const DISPLAY_CATEGORIES = ["SD", "SMP", "SMA", "SMK"] as const;
 export type DisplayCategory = (typeof DISPLAY_CATEGORIES)[number];
 
@@ -14,7 +18,7 @@ export const DISPLAY_CATEGORY_LABEL: Record<DisplayCategory, string> = {
   SMK: "SMK",
 };
 
-/** Petakan jenjang data (termasuk SIM) ke kategori tampilan. */
+/** Petakan jenjang data (termasuk SIM) ke kategori tampilan (SIM -> SMA/SMK). */
 export function categoryOf(level: EducationLevel | string | null | undefined): DisplayCategory {
   if (level === "SIM") return "SMA";
   if (level === "SD" || level === "SMP" || level === "SMA" || level === "SMK") return level;
@@ -44,6 +48,50 @@ export function educationLevelMatch(
   }
   return userLevel === contentLevel;
 }
+
+/** Jenjang yang diizinkan untuk konten SIM (subtype dalam kategori SMA & SMK). */
+export function simAllowedForLevel(
+  userLevel: EducationLevel | string | null | undefined
+): boolean {
+  return userLevel === "SMA" || userLevel === "SMK" || userLevel === "SIM";
+}
+
+/**
+ * Jenjang konten (modul/kuis) yang sah untuk seorang murid.
+ * SD -> [SD], SMP -> [SMP], SMA -> [SMA, SIM], SMK -> [SMK, SIM].
+ * SIM adalah subtype dalam kategori SMA/SMK, bukan kategori sendiri.
+ */
+export function contentLevelsForMurid(
+  userLevel: EducationLevel | string | null | undefined
+): EducationLevel[] {
+  if (userLevel === "SMA") return ["SMA", "SIM"];
+  if (userLevel === "SMK") return ["SMK", "SIM"];
+  if (userLevel === "SD" || userLevel === "SMP") return [userLevel];
+  return ["SMA"];
+}
+
+/**
+ * Validasi ketat: sekolah tujuan / jenjang konten harus SAMA dengan jenjang
+ * kategori yang dipilih admin. Mengembalikan pesan error bila tidak cocok.
+ */
+export function validateSchoolLevelMatch(
+  rawLevel: string,
+  schoolLevels: (EducationLevel | string | null | undefined)[]
+): string | null {
+  const level = String(rawLevel ?? "").toUpperCase();
+  if (!["SD", "SMP", "SMA", "SMK"].includes(level)) {
+    return "Jenjang kategori harus salah satu dari SD, SMP, SMA, atau SMK";
+  }
+  for (const l of schoolLevels) {
+    if (l == null) continue;
+    if (l !== level) {
+      return `Sekolah tujuan memiliki jenjang ${levelDisplayLabel(l)} — tidak cocok dengan kategori ${level}. Pilih hanya sekolah ${level}.`;
+    }
+  }
+  return null;
+}
+
+export type CategoryLevel = "SD" | "SMP" | "SMA" | "SMK" | "SIM";
 
 /**
  * Tentukan educationLevel dari daftar jenjang sekolah tujuan.

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
 import { removeStoredFile } from "@/lib/storage";
-import { resolveCategory } from "@/lib/constants";
+import { validateCategorySchoolMatch } from "@/lib/module-service";
 
 async function actorContext() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
@@ -58,14 +58,9 @@ export async function createModule(formData: FormData) {
     const count = await prisma.school.count({ where: { id: { in: schoolIds } } });
     if (count !== schoolIds.length) return { error: "Sekolah tujuan tidak valid" };
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: schoolIds } },
-    select: { educationLevel: true },
-  });
-  const educationLevel =
-    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
-      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
-      : resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, schoolIds);
+  if (levelMatch.error) return { error: levelMatch.error };
+  const educationLevel = levelMatch.level;
 
   // Gantikan URL dengan file jika diunggah
   const finalContentUrl = contentFileId ? undefined : contentUrl;
@@ -130,14 +125,9 @@ export async function updateModule(id: string, formData: FormData) {
     const count = await prisma.school.count({ where: { id: { in: schoolIds } } });
     if (count !== schoolIds.length) return { error: "Sekolah tujuan tidak valid" };
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: schoolIds } },
-    select: { educationLevel: true },
-  });
-  const educationLevel =
-    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
-      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
-      : resolveCategory(schoolLevels.map((s) => s.educationLevel), isSim);
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, schoolIds);
+  if (levelMatch.error) return { error: levelMatch.error };
+  const educationLevel = levelMatch.level;
 
   const finalContentUrl = contentFileId ? undefined : contentUrl;
   const finalThumbnailUrl = thumbnailFileId ? undefined : thumbnailUrl;
@@ -214,14 +204,9 @@ export async function createQuiz(formData: FormData) {
     const count = await prisma.school.count({ where: { id: { in: schoolIds } } });
     if (count !== schoolIds.length) return { error: "Sekolah tujuan tidak valid" };
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: schoolIds } },
-    select: { educationLevel: true },
-  });
-  const educationLevel =
-    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
-      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
-      : resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, schoolIds);
+  if (levelMatch.error) return { error: levelMatch.error };
+  const educationLevel = levelMatch.level;
   const quiz = await prisma.quiz.create({
     data: {
       ...parsed.data,
@@ -524,6 +509,7 @@ export async function createQuizFromPdf(formData: FormData) {
   const user = await requireRole("ADMIN");
   const sourceFileId = String(formData.get("sourceFileId") ?? "");
   const schoolIds = formData.getAll("schoolIds").map(String).filter(Boolean);
+  const rawLevel = String(formData.get("educationLevel") ?? "").toUpperCase();
   const title = String(formData.get("title") ?? "");
   const description = String(formData.get("description") ?? "") || undefined;
   const minScore = Number(formData.get("minScore") ?? 60);
@@ -535,11 +521,9 @@ export async function createQuizFromPdf(formData: FormData) {
     const count = await prisma.school.count({ where: { id: { in: schoolIds } } });
     if (count !== schoolIds.length) return { error: "Sekolah tujuan tidak valid" };
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: schoolIds } },
-    select: { educationLevel: true },
-  });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, schoolIds);
+  if (levelMatch.error) return { error: levelMatch.error };
+  const educationLevel = levelMatch.level;
 
   const { extractQuestionsFromPdf } = await import("@/lib/pdf-parser");
   const result = await extractQuestionsFromPdf(file.storedName);
@@ -593,6 +577,9 @@ export async function createQuizFromPdf(formData: FormData) {
 export async function updateQuiz(id: string, formData: FormData) {
   const user = await requireRole("ADMIN");
   const schoolIds = formData.getAll("schoolIds").map(String).filter(Boolean);
+  const rawLevel = formData.get("educationLevel")
+    ? String(formData.get("educationLevel")).toUpperCase()
+    : "";
   const parsed = quizSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
@@ -610,11 +597,9 @@ export async function updateQuiz(id: string, formData: FormData) {
     const count = await prisma.school.count({ where: { id: { in: schoolIds } } });
     if (count !== schoolIds.length) return { error: "Sekolah tujuan tidak valid" };
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: schoolIds } },
-    select: { educationLevel: true },
-  });
-  const educationLevel = resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, schoolIds);
+  if (levelMatch.error) return { error: levelMatch.error };
+  const educationLevel = levelMatch.level;
 
   const quiz = await prisma.$transaction(async (tx) => {
     await tx.quizToSchool.deleteMany({ where: { quizId: id } });

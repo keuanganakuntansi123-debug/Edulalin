@@ -35,7 +35,7 @@ export default async function GuruQuizPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Kuis Murid</h1>
+      <h1 className="text-2xl font-bold">Kelola Kuis</h1>
       <p className="mt-1 text-muted-foreground">
         Hasil pengerjaan kuis murid di {user.school?.name ?? "sekolah Anda"}. Notifikasi muncul otomatis saat murid menyelesaikan kuis.
       </p>

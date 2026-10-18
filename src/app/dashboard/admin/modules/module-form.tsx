@@ -22,7 +22,7 @@ export function ModuleForm({
   action,
   defaultValues,
 }: {
-  schools: { id: string; name: string }[];
+  schools: { id: string; name: string; educationLevel?: string }[];
   action: (formData: FormData) => Promise<{ ok?: boolean; error?: string; id?: string } | void>;
   defaultValues?: {
     title?: string;
@@ -39,14 +39,31 @@ export function ModuleForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [moduleType, setModuleType] = useState(defaultValues?.moduleType ?? "PDF");
-  const [educationLevel, setEducationLevel] = useState(defaultValues?.educationLevel ?? "SMA");
+  const initialSim = defaultValues?.isSim ?? (defaultValues?.educationLevel === "SIM");
+  const [educationLevel, setEducationLevel] = useState(
+    initialSim ? "SMA" : (defaultValues?.educationLevel ?? "SMA")
+  );
+  const [isSim, setIsSim] = useState(
+    initialSim
+  );
   const [content, setContent] = useState<UploadedMeta | null>(null);
   const [thumbnail, setThumbnail] = useState<UploadedMeta | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const isSimSelected = educationLevel === "SIM";
+  // SIM dipilih sebagai toggle — kategori tetap SMA/SMK, data disimpan SIM.
+  const effectiveLevel = isSim ? "SIM" : educationLevel;
+  const isSimSelected = isSim;
+  const canSim = educationLevel === "SMA" || educationLevel === "SMK";
 
+  // Saat mengganti jenjang dari SMA/SMK ke lain, matikan toggle SIM.
+  const changeLevel = (v: string) => {
+    setEducationLevel(v);
+    if (v !== "SMA" && v !== "SMK") setIsSim(false);
+  };
+
+  // Hidden field: kategori yang benar-benar disimpan (SIM jadi nilai khusus).
   const submit = (formData: FormData) => {
+    formData.set("educationLevel", effectiveLevel);
     startTransition(async () => {
       const res = await action(formData);
       if (res && "error" in res && res.error) {
@@ -57,6 +74,7 @@ export function ModuleForm({
           formRef.current?.reset();
           setContent(null);
           setThumbnail(null);
+          setIsSim(false);
         }
       }
     });
@@ -80,25 +98,39 @@ export function ModuleForm({
           id="educationLevel"
           name="educationLevel"
           value={educationLevel}
-          onChange={(e) => setEducationLevel(e.target.value)}
+          onChange={(e) => changeLevel(e.target.value)}
         >
           <option value="SD">SD</option>
           <option value="SMP">SMP</option>
           <option value="SMA">SMA</option>
           <option value="SMK">SMK</option>
-          <option value="SIM">SIM</option>
         </Select>
         <p className="text-xs text-muted-foreground">
           Materi hanya tampil untuk murid pada jenjang yang dipilih. SMA dan SMK dikelola terpisah.
         </p>
       </div>
 
+      {canSim && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isSim}
+            onChange={(e) => setIsSim(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-primary"
+          />
+          <span>
+            <span className="font-medium">SIM</span> — materi khusus dalam kategori {educationLevel}{" "}
+            (SIM/Selamat Indonesia Mengemudi)
+          </span>
+        </label>
+      )}
+
       {isSimSelected && (
         <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
           <IdCard className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            Modul SIM tergabung dalam kategori SMA/SMK dan hanya dapat dibuka murid SMA/SMK
-            berusia minimal 17 tahun. Guru & Kepolisian tetap dapat mengakses tanpa batasan usia.
+            Modul SIM adalah materi khusus dalam kategori SMA/SMK dan hanya dapat dibuka murid
+            SMA/SMK berusia minimal 17 tahun. Guru & Kepolisian tetap dapat mengakses tanpa batasan usia.
           </span>
         </div>
       )}
@@ -204,7 +236,12 @@ export function ModuleForm({
       <MultiSchoolSelect
         schools={schools}
         defaultValue={defaultValues?.schoolIds ?? []}
-        helper="Pilih satu atau beberapa sekolah penerima modul. Modul tidak dibagikan ke sekolah lain."
+        filterLevels={isSimSelected ? ["SMA", "SMK"] : [educationLevel]}
+        helper={
+          isSimSelected
+            ? "Modul SIM hanya dapat ditujukan ke sekolah SMA/SMK. Sekolah lain otomatis tidak tersedia."
+            : "Pilih satu atau beberapa sekolah penerima modul. Hanya sekolah dengan jenjang sesuai yang tampil."
+        }
       />
 
       <Button type="submit" className="w-full" disabled={pending}>

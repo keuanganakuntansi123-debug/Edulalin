@@ -12,7 +12,7 @@ model School {
   id             String   @id @default(cuid())
   code           String   @unique          // kode unik sekolah
   name           String
-  educationLevel EducationLevel            // SD | SMP | SMA | SIM
+  educationLevel EducationLevel            // SD | SMP | SMA | SMK | SIM
   address        String?
   city           String?
   province       String?
@@ -58,7 +58,7 @@ model Module {
   id            String   @id @default(cuid())
   title         String
   description   String?
-  educationLevel EducationLevel
+  educationLevel EducationLevel  // SD | SMP | SMA | SMK | SIM (SIM = subtype SMA/SMK)
   classLevel    String?            // null = semua kelas di jenjang itu
   schoolId      String?            // null = global
   school        School? @relation(...)

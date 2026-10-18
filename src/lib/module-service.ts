@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { educationLevelMatch, getAge } from "@/lib/constants";
+import {
+  educationLevelMatch,
+  getAge,
+  simAllowedForLevel,
+  validateSchoolLevelMatch,
+} from "@/lib/constants";
 import type { Role, EducationLevel } from "@/generated/prisma/client";
 
 export type ModuleScope = {
@@ -8,6 +13,56 @@ export type ModuleScope = {
   classLevel?: string | null;
   birthDate?: Date | null;
 };
+
+const MODULE_INCLUDE = {
+  moduleToSchools: { select: { schoolId: true } },
+  thumbnailFile: { select: { storedName: true } },
+} as const;
+
+export type CategoryLevel = "SD" | "SMP" | "SMA" | "SMK" | "SIM";
+
+/**
+ * Validasi kategori vs sekolah tujuan (server-only).
+ * - SIM adalah subtype: hanya boleh ditujukan ke sekolah SMA/SMK.
+ * - Jenjang lain: setiap sekolah tujuan wajib jenjang sama dengan kategori.
+ * Melakukan lookup sekolah sendiri dari daftar schoolIds.
+ */
+export async function validateCategorySchoolMatch(
+  categoryLevel: string | null | undefined,
+  schoolIds: string[]
+): Promise<{ level: CategoryLevel; error: string | null }> {
+  let level = String(categoryLevel ?? "").toUpperCase();
+  if (!["SD", "SMP", "SMA", "SMK", "SIM"].includes(level)) level = "";
+
+  if (schoolIds.length) {
+    const schools = await prisma.school.findMany({
+      where: { id: { in: schoolIds } },
+      select: { educationLevel: true },
+    });
+    if (schools.length !== schoolIds.length) {
+      return { level: (level || "SMA") as CategoryLevel, error: "Sekolah tujuan tidak valid" };
+    }
+    const schoolLevels = schools
+      .map((s) => s.educationLevel)
+      .filter((l): l is EducationLevel => l != null);
+
+    if (level === "SIM") {
+      const bad = schoolLevels.filter((l) => l !== "SMA" && l !== "SMK");
+      if (bad.length) {
+        return {
+          level,
+          error:
+            "Materi SIM hanya dapat ditujukan ke sekolah SMA/SMK. Hapus sekolah jenjang lain dari tujuan.",
+        };
+      }
+    } else if (["SD", "SMP", "SMA", "SMK"].includes(level)) {
+      const err = validateSchoolLevelMatch(level, schoolLevels);
+      if (err) return { level: level as CategoryLevel, error: err };
+    }
+  }
+
+  return { level: (level || "SMA") as CategoryLevel, error: null };
+}
 
 /** Penanda modul SIM yang dibuka oleh murid. */
 export type ModuleAccessFlag = {
@@ -19,24 +74,21 @@ export type ModuleAccessFlag = {
 export async function listModulesForMurid(scope: ModuleScope & { userId: string }) {
   const { schoolId, educationLevel, userId, birthDate } = scope;
   const simAllowed = canAccessSim(birthDate);
+  const simVisible = simAllowedForLevel(educationLevel);
   const modules = await prisma.module.findMany({
     where: {
       deletedAt: null,
       status: "ACTIVE",
-      // Murid SMA/SMK melihat modul jenjangnya + SIM; SD/SMP hanya jenjangnya.
-      ...(educationLevel === "SMA"
-        ? { educationLevel: { in: ["SMA", "SIM"] } }
-        : educationLevel === "SMK"
-          ? { educationLevel: { in: ["SMK", "SIM"] } }
-          : { educationLevel: educationLevel ?? undefined }),
+      OR: [
+        // Kategori sendiri (SD/SMP/SMA/SMK) - ketat per jenjang
+        ...(educationLevel ? [{ educationLevel }] : []),
+        // SIM hanya untuk murid SMA/SMK (usia diperiksa terpisah)
+        ...(simVisible ? [{ educationLevel: "SIM" as const }] : []),
+      ],
     },
-    include: {
-      moduleToSchools: { select: { schoolId: true } },
-      thumbnailFile: { select: { storedName: true } },
-    },
+    include: MODULE_INCLUDE,
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   });
-
 
   const visible = modules.filter((m) => {
     const targets = m.moduleToSchools.map((s) => s.schoolId);
@@ -44,12 +96,18 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
     const isTargeted = !isSchoolOwned && targets.length > 0;
     const isGlobal = !isSchoolOwned && targets.length === 0;
 
+    // Kunci utama: jenjang konten harus cocok dengan jenjang murid
+    // (SIM hanya untuk SMA/SMK). Ini mencegah kategori tercampur.
+    const levelOk =
+      m.educationLevel === educationLevel ||
+      (m.educationLevel === "SIM" && simVisible);
+    if (!levelOk) return false;
+
     // Modul milik sekolah tertentu: hanya murid sekolah itu.
     if (isSchoolOwned) return m.schoolId === schoolId;
 
-    // Modul yang ditargetkan admin ke sekolah murid: tampil (ID sekolah),
-    // tanpa menuntut jenjang konten = jenjang murid. Admin bertanggung jawab
-    // memilih sekolah tujuan yang benar.
+    // Modul yang ditargetkan admin ke sekolah murid: hanya SEKOLAH dengan
+    // jenjang yang cocok (levelOk sudah membatasi). ID sekolah tetap diverifikasi.
     if (isTargeted) return schoolId != null && targets.includes(schoolId);
 
     // Modul global: kecocokan jenjang (termasuk aturan SIM).
@@ -80,6 +138,63 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
     simLocked: m.educationLevel === "SIM" && !simAllowed,
   }));
   return flagged;
+}
+
+/** Daftar modul untuk GURU: modul global + modul sekolah tempat mengajar,
+ * diffilter jenjang sekolah. SIM hanya tampil untuk sekolah SMA/SMK. */
+export async function listModulesForGuru(params: {
+  schoolId: string | null;
+  educationLevel: EducationLevel | null;
+}) {
+  const { schoolId, educationLevel } = params;
+  const allowedLevels: EducationLevel[] =
+    educationLevel === "SMA"
+      ? ["SMA", "SIM"]
+      : educationLevel === "SMK"
+        ? ["SMK", "SIM"]
+      : educationLevel === "SD" || educationLevel === "SMP"
+        ? [educationLevel]
+        : ["SD", "SMP", "SMA", "SMK", "SIM"];
+  const modules = await prisma.module.findMany({
+    where: {
+      deletedAt: null,
+      status: "ACTIVE",
+      AND: [
+        { educationLevel: { in: allowedLevels } },
+        {
+          OR: [
+            { schoolId: null, moduleToSchools: { none: {} } }, // global
+            ...(schoolId
+              ? [
+                  { schoolId },
+                  { moduleToSchools: { some: { schoolId } } },
+                ]
+              : []),
+          ],
+        },
+      ],
+    },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+    include: {
+      thumbnailFile: { select: { storedName: true } },
+      _count: { select: { progresses: true, quizzes: true } },
+    },
+  });
+  return modules;
+}
+
+/** Daftar modul untuk POLISI: seluruh modul aktif semua sekolah (read-only). */
+export async function listModulesForPolisi() {
+  const modules = await prisma.module.findMany({
+    where: { deletedAt: null, status: "ACTIVE" },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+    include: {
+      thumbnailFile: { select: { storedName: true } },
+      school: { select: { name: true, educationLevel: true } },
+      _count: { select: { progresses: true, quizzes: true } },
+    },
+  });
+  return modules;
 }
 
 /** Cek apakah murid dapat mengakses modul SIM (usia >= 17). */
@@ -118,28 +233,23 @@ export async function getModuleForUser(params: {
   const hasTargets = targetSchools.length > 0;
   const isSchoolOwned = mod.schoolId != null;
   const isTargeted = !isSchoolOwned && hasTargets;
-  const isGlobal = !isSchoolOwned && !hasTargets;
 
   if (isSchoolOwned && mod.schoolId !== user.schoolId) return null;
   if (isTargeted && (!user.schoolId || !targetSchools.includes(user.schoolId))) return null;
 
   // Jenjang + aturan SIM untuk murid. Untuk modul yang ditarget sekolah,
-  // keanggotaan sekolah cukup (admin sudah memilih sekolah tujuan).
+  // jenjang tetap harus cocok — admin memilih sekolah tujuan yang sesuai kategori.
   if (user.role === "MURID" && user.educationLevel) {
     const isSimModule = mod.educationLevel === "SIM";
     if (isSimModule) {
       // Modul SIM tergabung dalam kategori SMA/SMK — hanya murid SMA/SMK.
-      if (
-        user.educationLevel !== "SMA" &&
-        user.educationLevel !== "SMK" &&
-        user.educationLevel !== "SIM"
-      ) {
-        return null;
-      }
+      if (!simAllowedForLevel(user.educationLevel)) return null;
       // Murid di bawah 17 tahun tidak dapat membuka Modul SIM (backend).
       if (!canAccessSim(user.birthDate)) return null;
-    } else if (isGlobal && !educationLevelMatch(user.educationLevel, mod.educationLevel)) {
-      return null;
+    } else if (!isSimModule) {
+      // Kategori SD/SMP/SMA/SMK: jenjang harus SAMA untuk semua scope
+      // (global, target sekolah, maupun milik sekolah).
+      if (mod.educationLevel !== user.educationLevel) return null;
     }
   }
 

@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { levelDisplayLabel } from "@/lib/constants";
+import { levelDisplayLabel, contentLevelsForMurid } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
@@ -26,11 +26,7 @@ export default async function MuridProgressPage() {
               : []),
           ],
         },
-        user.educationLevel === "SMA"
-          ? { educationLevel: { in: ["SMA", "SIM"] } }
-          : user.educationLevel === "SMK"
-            ? { educationLevel: { in: ["SMK", "SIM"] } }
-          : { educationLevel: user.educationLevel ?? undefined },
+        { educationLevel: { in: contentLevelsForMurid(user.educationLevel) } },
       ],
     },
     include: {

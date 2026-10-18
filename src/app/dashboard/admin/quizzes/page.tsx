@@ -36,7 +36,11 @@ export default async function AdminQuizzesPage() {
       },
     }),
     prisma.module.findMany({ where: { deletedAt: null, status: "ACTIVE" }, orderBy: { title: "asc" } }),
-    prisma.school.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    prisma.school.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, educationLevel: true },
+    }),
   ]);
   const byCategory = DISPLAY_CATEGORIES.map((c) => ({
     category: c,
@@ -48,7 +52,7 @@ export default async function AdminQuizzesPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Kelola Quiz</h1>
+          <h1 className="text-2xl font-bold">Kelola Kuis</h1>
           <p className="text-muted-foreground">Buat kuis, atur soal, dan kelola status.</p>
         </div>
       </div>
@@ -138,7 +142,11 @@ export default async function AdminQuizzesPage() {
           <CardContent>
             <QuizForm
               modules={modules.map((m) => ({ id: m.id, title: m.title }))}
-              schools={schools.map((s) => ({ id: s.id, name: s.name }))}
+              schools={schools.map((s) => ({
+                id: s.id,
+                name: s.name,
+                educationLevel: s.educationLevel,
+              }))}
               action={createQuiz}
             />
           </CardContent>

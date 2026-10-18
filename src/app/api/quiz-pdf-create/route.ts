@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { logActivity } from "@/lib/audit";
 import { z } from "zod";
-import { resolveCategory } from "@/lib/constants";
+import { validateCategorySchoolMatch } from "@/lib/module-service";
 
 export const instant = false;
 
@@ -57,15 +57,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sekolah tujuan tidak valid" }, { status: 400 });
     }
   }
-  const schoolLevels = await prisma.school.findMany({
-    where: { id: { in: data.schoolIds } },
-    select: { educationLevel: true },
-  });
   const rawLevel = (data.educationLevel ?? "").toUpperCase();
-  const educationLevel =
-    rawLevel === "SD" || rawLevel === "SMP" || rawLevel === "SMA" || rawLevel === "SMK" || rawLevel === "SIM"
-      ? (rawLevel as "SD" | "SMP" | "SMA" | "SMK" | "SIM")
-      : resolveCategory(schoolLevels.map((s) => s.educationLevel));
+  const levelMatch = await validateCategorySchoolMatch(rawLevel, data.schoolIds);
+  if (levelMatch.error) {
+    return NextResponse.json({ error: levelMatch.error }, { status: 400 });
+  }
+  const educationLevel = levelMatch.level;
 
   const file = await prisma.uploadedFile.findUnique({ where: { id: data.sourceFileId } });
   if (!file || file.kind !== "QUIZ_PDF") {

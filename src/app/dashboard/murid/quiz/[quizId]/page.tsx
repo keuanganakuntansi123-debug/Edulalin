@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/audit";
-import { levelDisplayLabel } from "@/lib/constants";
+import { levelDisplayLabel, contentLevelsForMurid } from "@/lib/constants";
 import { canAccessSim } from "@/lib/module-service";
 import { QuizRunner } from "./quiz-runner";
 
@@ -21,24 +21,24 @@ export default async function QuizAttemptPage({
       id: quizId,
       status: "ACTIVE",
       deletedAt: null,
-      OR: [
-        // Kuis global: hanya untuk jenjang murid
+      AND: [
         {
-          schoolId: null,
-          quizToSchools: { none: {} },
-          ...(user.educationLevel === "SMA"
-            ? { educationLevel: { in: ["SMA", "SIM"] } }
-            : user.educationLevel === "SMK"
-              ? { educationLevel: { in: ["SMK", "SIM"] } }
-              : { educationLevel: user.educationLevel ?? undefined }),
+          educationLevel: { in: contentLevelsForMurid(user.educationLevel) },
         },
-        // Kuis milik/target sekolah murid: tampil via ID sekolah
-        ...(user.schoolId
-          ? [
-              { schoolId: user.schoolId },
-              { quizToSchools: { some: { schoolId: user.schoolId } } },
-            ]
-          : []),
+        {
+          OR: [
+            {
+              schoolId: null,
+              quizToSchools: { none: {} },
+            },
+            ...(user.schoolId
+              ? [
+                  { schoolId: user.schoolId },
+                  { quizToSchools: { some: { schoolId: user.schoolId } } },
+                ]
+              : []),
+          ],
+        },
       ],
     },
     include: {

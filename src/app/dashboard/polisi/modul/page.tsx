@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/guards";
-import { prisma } from "@/lib/prisma";
 import { LEVEL_LABEL } from "@/lib/constants";
+import { listModulesForPolisi } from "@/lib/module-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, FileText, Video, Link as LinkIcon, Building2 } from "lucide-react";
@@ -11,23 +11,14 @@ export const instant = false;
 export default async function PolisiModulPage() {
   await requireRole("POLISI");
 
-  const modules = await prisma.module.findMany({
-    where: { deletedAt: null, status: "ACTIVE" },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    take: 50,
-    include: {
-      thumbnailFile: { select: { storedName: true } },
-      school: { select: { name: true } },
-      _count: { select: { progresses: true, quizzes: true } },
-    },
-  });
+  const modules = await listModulesForPolisi();
 
   const totalReads = modules.reduce((a, m) => a + m._count.progresses, 0);
   const TYPE_ICON = { PDF: FileText, VIDEO: Video, LINK: LinkIcon, DOCUMENT: BookOpen };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Modul Murid</h1>
+      <h1 className="text-2xl font-bold">Kelola Modul</h1>
       <p className="mt-1 text-muted-foreground">
         Modul edukasi yang tersedia dan total pembacaan (progress) di seluruh sekolah ({totalReads}).
       </p>

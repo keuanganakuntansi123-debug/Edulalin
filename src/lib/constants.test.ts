@@ -1,6 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { vi } from "vitest";
-import { getAge, dashboardPath, LEVEL_LABEL, ROLE_LABEL, CLASS_OPTIONS, normalizeEducationLevel } from "@/lib/constants";
+import {
+  getAge,
+  dashboardPath,
+  LEVEL_LABEL,
+  ROLE_LABEL,
+  CLASS_OPTIONS,
+  normalizeEducationLevel,
+  contentLevelsForMurid,
+  simAllowedForLevel,
+  validateSchoolLevelMatch,
+  categoryOf,
+} from "@/lib/constants";
 import { canAccessSim } from "@/lib/module-service";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
@@ -109,5 +120,72 @@ describe("normalizeEducationLevel", () => {
   it("default ke SMA jika tidak bisa ditentukan", () => {
     expect(normalizeEducationLevel("", "")).toBe("SMA");
     expect(normalizeEducationLevel("xyz", "abc")).toBe("SMA");
+  });
+});
+
+describe("contentLevelsForMurid", () => {
+  it("SD hanya melihat konten SD", () => {
+    expect(contentLevelsForMurid("SD")).toEqual(["SD"]);
+  });
+
+  it("SMP hanya melihat konten SMP", () => {
+    expect(contentLevelsForMurid("SMP")).toEqual(["SMP"]);
+  });
+
+  it("SMA melihat SMA + SIM (subtype)", () => {
+    expect(contentLevelsForMurid("SMA")).toEqual(["SMA", "SIM"]);
+  });
+
+  it("SMK melihat SMK + SIM (subtype)", () => {
+    expect(contentLevelsForMurid("SMK")).toEqual(["SMK", "SIM"]);
+  });
+
+  it("tidak pernah mencampur SD/SMP dengan SMA/SMK", () => {
+    expect(contentLevelsForMurid("SD")).not.toContain("SMA");
+    expect(contentLevelsForMurid("SMP")).not.toContain("SMK");
+    expect(contentLevelsForMurid("SMA")).not.toContain("SD");
+    expect(contentLevelsForMurid("SMK")).not.toContain("SMP");
+  });
+});
+
+describe("simAllowedForLevel", () => {
+  it("hanya SMA/SMK yang boleh konten SIM", () => {
+    expect(simAllowedForLevel("SMA")).toBe(true);
+    expect(simAllowedForLevel("SMK")).toBe(true);
+    expect(simAllowedForLevel("SIM")).toBe(true);
+    expect(simAllowedForLevel("SD")).toBe(false);
+    expect(simAllowedForLevel("SMP")).toBe(false);
+    expect(simAllowedForLevel(null)).toBe(false);
+  });
+});
+
+describe("validateSchoolLevelMatch", () => {
+  it("lulus bila semua sekolah tujuan sesuai kategori", () => {
+    expect(validateSchoolLevelMatch("SMA", ["SMA", "SMA"])).toBeNull();
+    expect(validateSchoolLevelMatch("SD", ["SD"])).toBeNull();
+    expect(validateSchoolLevelMatch("SMK", ["SMK", "SMK"])).toBeNull();
+  });
+
+  it("menolak sekolah tujuan dengan jenjang berbeda", () => {
+    expect(validateSchoolLevelMatch("SD", ["SMA"])).toContain("tidak cocok");
+    expect(validateSchoolLevelMatch("SMA", ["SMK", "SMA"])).toContain("tidak cocok");
+    expect(validateSchoolLevelMatch("SMP", ["SD"])).toContain("tidak cocok");
+  });
+
+  it("menolak kategori yang bukan SD/SMP/SMA/SMK", () => {
+    expect(validateSchoolLevelMatch("SIM", ["SMA"])).toContain("SD, SMP, SMA");
+  });
+
+  it("mengabaikan nilai null", () => {
+    expect(validateSchoolLevelMatch("SMA", [null, "SMA"])).toBeNull();
+  });
+});
+
+describe("categoryOf", () => {
+  it("SIM dipetakan ke kategori SMA (subtype)", () => {
+    expect(categoryOf("SIM")).toBe("SMA");
+    expect(categoryOf("SD")).toBe("SD");
+    expect(categoryOf("SMK")).toBe("SMK");
+    expect(categoryOf(null)).toBe("SMA");
   });
 });

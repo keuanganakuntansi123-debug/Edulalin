@@ -25,7 +25,7 @@ export function QuizForm({
   action,
 }: {
   modules: { id: string; title: string }[];
-  schools: { id: string; name: string }[];
+  schools: { id: string; name: string; educationLevel?: string }[];
   action: (formData: FormData) => Promise<{ ok?: boolean; error?: string; id?: string } | void>;
 }) {
   const router = useRouter();
@@ -34,9 +34,19 @@ export function QuizForm({
   const [pdfFile, setPdfFile] = useState<UploadedMeta | null>(null);
   const [pdfResult, setPdfResult] = useState<PdfExtractResult | null>(null);
   const [educationLevel, setEducationLevel] = useState("SMA");
+  const [isSim, setIsSim] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewed, setReviewed] = useState<ReviewQuestion[] | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
+
+  const effectiveLevel = isSim ? "SIM" : educationLevel;
+  const isSimSelected = isSim;
+  const canSim = educationLevel === "SMA" || educationLevel === "SMK";
+
+  const changeLevel = (v: string) => {
+    setEducationLevel(v);
+    if (v !== "SMA" && v !== "SMK") setIsSim(false);
+  };
 
   const missingAnswers = pdfResult
     ? pdfResult.questions.filter((q) => !q.answer).length
@@ -45,6 +55,7 @@ export function QuizForm({
 
   const submit = (formData: FormData) => {
     startTransition(async () => {
+      formData.set("educationLevel", effectiveLevel);
       if (mode === "pdf" && pdfResult) {
         // Re-ekstrak pratinjau yang sudah diedit admin (kunci, pembahasan)
         const questions = finalQuestions.map((q) => ({
@@ -66,7 +77,7 @@ export function QuizForm({
             moduleId: String(formData.get("moduleId") ?? ""),
             schoolIds: formData.getAll("schoolIds").map(String),
             sourceFileId: pdfResult.fileId,
-            educationLevel,
+            educationLevel: effectiveLevel,
             shuffle: formData.get("shuffle") === "on",
             showDiscussion: formData.get("showDiscussion") === "on",
             questions,
@@ -186,7 +197,12 @@ export function QuizForm({
 
         <MultiSchoolSelect
           schools={schools}
-          helper="Pilih satu atau beberapa sekolah tujuan. Kuis tidak otomatis terbit ke semua sekolah."
+          helper={
+            isSimSelected
+              ? "Kuis SIM hanya dapat ditujukan ke sekolah SMA/SMK. Sekolah lain otomatis tidak tersedia."
+              : "Pilih satu atau beberapa sekolah tujuan. Hanya sekolah dengan jenjang sesuai yang tampil."
+          }
+          filterLevels={isSimSelected ? ["SMA", "SMK"] : [educationLevel]}
         />
 
         <div className="grid gap-2">
@@ -195,18 +211,32 @@ export function QuizForm({
             id="educationLevel"
             name="educationLevel"
             value={educationLevel}
-            onChange={(e) => setEducationLevel(e.target.value)}
+            onChange={(e) => changeLevel(e.target.value)}
           >
             <option value="SD">SD</option>
             <option value="SMP">SMP</option>
             <option value="SMA">SMA</option>
             <option value="SMK">SMK</option>
-            <option value="SIM">SIM</option>
           </Select>
           <p className="text-xs text-muted-foreground">
             Kuis hanya tampil untuk murid pada jenjang yang dipilih. SMA dan SMK dikelola terpisah.
           </p>
         </div>
+
+        {canSim && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isSim}
+              onChange={(e) => setIsSim(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-primary"
+            />
+            <span>
+              <span className="font-medium">SIM</span> — kuis khusus dalam kategori {educationLevel}{" "}
+              (SIM/Selamat Indonesia Mengemudi, usia 17+)
+            </span>
+          </label>
+        )}
 
         {mode === "pdf" && (
           <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
