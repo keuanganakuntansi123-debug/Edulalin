@@ -152,12 +152,10 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
                   )}
                 </div>
                 <div className="mt-4 flex items-center gap-2 border-t border-border/60 pt-4">
-                  <button type="button" className="flex-1" onClick={() => router.push("/login")}>
-                    <Button size="sm" className="w-full" type="button">
-                      <Lock className="mr-1 h-3.5 w-3.5" />
-                      Masuk untuk Belajar
-                    </Button>
-                  </button>
+                  <Button size="sm" className="w-full flex-1" type="button" onClick={() => router.push("/login")}>
+                    <Lock className="mr-1 h-3.5 w-3.5" />
+                    Masuk untuk Belajar
+                  </Button>
                 </div>
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">
                   Pratinjau • login untuk mengakses materi
