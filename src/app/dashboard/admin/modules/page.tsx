@@ -80,7 +80,9 @@ export default async function AdminModulesPage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="font-semibold">{m.title}</h3>
-                              <Badge variant="secondary">{levelDisplayLabel(m.educationLevel)}</Badge>
+                              {m.educationLevel !== "SIM" && (
+                                <Badge variant="secondary">{levelDisplayLabel(m.educationLevel)}</Badge>
+                              )}
                               {m.educationLevel === "SIM" && (
                                 <Badge className="bg-sky-100 text-sky-700">
                                   <IdCard className="mr-1 h-3 w-3" /> SIM
@@ -161,7 +163,11 @@ export default async function AdminModulesPage() {
             </CardHeader>
             <CardContent>
               <ModuleForm
-                schools={schools.map((s) => ({ id: s.id, name: s.name }))}
+                schools={schools.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  educationLevel: s.educationLevel,
+                }))}
                 action={createModule}
               />
             </CardContent>
