@@ -13,7 +13,8 @@
     "seed": "tsx prisma/seed.ts",
     "test": "vitest run",
     "sync:smk": "tsx scripts/sync-smk-schools.mts",
-    "test:smtp": "tsx scripts/test-smtp.mts"
+    "test:smtp": "tsx scripts/test-smtp.mts",
+    "setup:smtp": "tsx scripts/setup-smtp.mts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
