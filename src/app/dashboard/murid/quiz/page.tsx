@@ -23,29 +23,29 @@ export default async function QuizPage() {
     where: {
       status: "ACTIVE",
       deletedAt: null,
-      AND: [
+      OR: [
+        // Kuis global: hanya untuk jenjang murid (termasuk SIM utk SMA/SMK)
         {
-          OR: [
-            { schoolId: null },
-            ...(user.schoolId
-              ? [
-                  { schoolId: user.schoolId },
-                  { quizToSchools: { some: { schoolId: user.schoolId } } },
-                ]
-              : []),
-          ],
+          schoolId: null,
+          quizToSchools: { none: {} },
+          ...(user.educationLevel === "SMA"
+            ? { educationLevel: { in: ["SMA", "SIM"] } }
+            : user.educationLevel === "SMK"
+              ? { educationLevel: { in: ["SMK", "SIM"] } }
+              : { educationLevel: user.educationLevel ?? undefined }),
         },
-        user.educationLevel === "SMA"
-          ? { educationLevel: { in: ["SMA", "SIM"] } }
-          : user.educationLevel === "SMK"
-            ? { educationLevel: { in: ["SMK", "SIM"] } }
-          : { educationLevel: user.educationLevel ?? undefined },
+        // Kuis milik sekolah murid: tampil apa adanya (data disinkron via ID sekolah)
+        ...(user.schoolId ? [{ schoolId: user.schoolId }] : []),
+        // Kuis yang ditargetkan admin ke sekolah murid: tampil tanpa batasan jenjang
+        ...(user.schoolId
+          ? [{ quizToSchools: { some: { schoolId: user.schoolId } } }]
+          : []),
       ],
     },
     include: {
       _count: { select: { questions: true } },
       attempts: {
-        where: { userId: user.id },
+        where: { userId: user.id, status: "COMPLETED" },
         orderBy: { submittedAt: "desc" },
         take: 1,
       },
@@ -74,8 +74,9 @@ export default async function QuizPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visibleQuizzes.map((q) => {
           const last = q.attempts[0];
+          const totalCompleted = q.attempts.length;
           const remaining = q.maxAttempts != null
-            ? Math.max(0, q.maxAttempts - q.attempts.length)
+            ? Math.max(0, q.maxAttempts - totalCompleted)
             : Infinity;
           const simLocked = q.educationLevel === "SIM" && !simAllowed;
           return (
@@ -122,10 +123,10 @@ export default async function QuizPage() {
                       <Button
                         type="submit"
                         className="w-full"
-                        variant={q.attempts.length > 0 ? "outline" : "default"}
+                        variant={totalCompleted > 0 ? "outline" : "default"}
                         disabled={remaining === 0}
                       >
-                        {q.attempts.length > 0 ? (remaining === 0 ? "Batas tercapai" : "Kerjakan Lagi") : "Mulai Quiz"}
+                        {totalCompleted > 0 ? (remaining === 0 ? "Batas tercapai" : "Kerjakan Lagi") : "Mulai Quiz"}
                       </Button>
                     </form>
                   </>

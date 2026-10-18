@@ -14,7 +14,14 @@ export type QuizResult =
  * Jangan pernah percaya nilai dari frontend — score dihitung dari jawaban tersimpan.
  */
 export async function submitQuiz(
-  actor: { id: string; name: string; role: Role; schoolId: string | null; birthDate?: Date | null },
+  actor: {
+    id: string;
+    name: string;
+    role: Role;
+    schoolId: string | null;
+    educationLevel?: string | null;
+    birthDate?: Date | null;
+  },
   input: { attemptId: string; answers: { questionId: string; selectedOption: "A" | "B" | "C" | "D" }[] }
 ): Promise<QuizResult> {
   const parsed = submitQuizSchema.safeParse(input);
@@ -47,6 +54,14 @@ export async function submitQuiz(
     !(actor.schoolId && targetIds.includes(actor.schoolId))
   ) {
     return { success: false, message: "Akses ditolak" };
+  }
+  // Kuis global: jenjang konten harus cocok untuk murid (SMA/SMK boleh SIM).
+  if (actor.role === "MURID" && globalQuiz && actor.educationLevel) {
+    const levelOk =
+      quiz.educationLevel === actor.educationLevel ||
+      (quiz.educationLevel === "SIM" &&
+        (actor.educationLevel === "SMA" || actor.educationLevel === "SMK"));
+    if (!levelOk) return { success: false, message: "Akses ditolak" };
   }
 
   // SIM gate: usia >= 17 untuk kuis jenjang SIM (kecuali Polisi/Admin — latihan profesional)

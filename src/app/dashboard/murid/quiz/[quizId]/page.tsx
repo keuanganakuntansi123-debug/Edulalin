@@ -21,23 +21,24 @@ export default async function QuizAttemptPage({
       id: quizId,
       status: "ACTIVE",
       deletedAt: null,
-      AND: [
+      OR: [
+        // Kuis global: hanya untuk jenjang murid
         {
-          OR: [
-            { schoolId: null },
-            ...(user.schoolId
-              ? [
-                  { schoolId: user.schoolId },
-                  { quizToSchools: { some: { schoolId: user.schoolId } } },
-                ]
-              : []),
-          ],
+          schoolId: null,
+          quizToSchools: { none: {} },
+          ...(user.educationLevel === "SMA"
+            ? { educationLevel: { in: ["SMA", "SIM"] } }
+            : user.educationLevel === "SMK"
+              ? { educationLevel: { in: ["SMK", "SIM"] } }
+              : { educationLevel: user.educationLevel ?? undefined }),
         },
-        user.educationLevel === "SMA"
-          ? { educationLevel: { in: ["SMA", "SIM"] } }
-          : user.educationLevel === "SMK"
-            ? { educationLevel: { in: ["SMK", "SIM"] } }
-          : { educationLevel: user.educationLevel ?? undefined },
+        // Kuis milik/target sekolah murid: tampil via ID sekolah
+        ...(user.schoolId
+          ? [
+              { schoolId: user.schoolId },
+              { quizToSchools: { some: { schoolId: user.schoolId } } },
+            ]
+          : []),
       ],
     },
     include: {
@@ -50,17 +51,25 @@ export default async function QuizAttemptPage({
   if (quiz.educationLevel === "SIM" && !canAccessSim(user.birthDate)) notFound();
   if (quiz.questions.length === 0) redirect("/dashboard/murid/quiz");
 
-  // Buat attempt baru (pastikan batas attempt)
-  const attempts = await prisma.quizAttempt.count({
-    where: { quizId: quiz.id, userId: user.id },
+  // Reuse attempt IN_PROGRESS yang menggantung (dibuka lalu ditinggalkan)
+  // supaya tidak menghabiskan slot maxAttempts.
+  const existing = await prisma.quizAttempt.findFirst({
+    where: { quizId: quiz.id, userId: user.id, status: "IN_PROGRESS" },
+    orderBy: { startedAt: "desc" },
   });
-  if (quiz.maxAttempts != null && attempts >= quiz.maxAttempts) {
-    redirect("/dashboard/murid/quiz");
-  }
-
-  const attempt = await prisma.quizAttempt.create({
-    data: { quizId: quiz.id, userId: user.id, status: "IN_PROGRESS" },
-  });
+  const attempt =
+    existing ??
+    (await (async () => {
+      const attempts = await prisma.quizAttempt.count({
+        where: { quizId: quiz.id, userId: user.id, status: "COMPLETED" },
+      });
+      if (quiz.maxAttempts != null && attempts >= quiz.maxAttempts) {
+        redirect("/dashboard/murid/quiz");
+      }
+      return prisma.quizAttempt.create({
+        data: { quizId: quiz.id, userId: user.id, status: "IN_PROGRESS" },
+      });
+    })());
   logActivity({
     actorId: user.id,
     schoolId: user.schoolId,

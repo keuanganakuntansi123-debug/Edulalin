@@ -64,11 +64,25 @@ export async function startQuizAction(quizId: string) {
       id: quizId,
       status: "ACTIVE",
       deletedAt: null,
-      ...(user.educationLevel === "SMA"
-        ? { educationLevel: { in: ["SMA", "SIM"] } }
-        : user.educationLevel === "SMK"
-          ? { educationLevel: { in: ["SMK", "SIM"] } }
-        : { educationLevel: user.educationLevel ?? undefined }),
+      OR: [
+        // Kuis global: hanya untuk jenjang murid
+        {
+          schoolId: null,
+          quizToSchools: { none: {} },
+          ...(user.educationLevel === "SMA"
+            ? { educationLevel: { in: ["SMA", "SIM"] } }
+            : user.educationLevel === "SMK"
+              ? { educationLevel: { in: ["SMK", "SIM"] } }
+              : { educationLevel: user.educationLevel ?? undefined }),
+        },
+        // Kuis milik/target sekolah murid: tampil via ID sekolah
+        ...(user.schoolId
+          ? [
+              { schoolId: user.schoolId },
+              { quizToSchools: { some: { schoolId: user.schoolId } } },
+            ]
+          : []),
+      ],
     },
     include: { questions: true, quizToSchools: { select: { schoolId: true } } },
   });
@@ -91,7 +105,7 @@ export async function startQuizAction(quizId: string) {
   }
 
   const attempts = await prisma.quizAttempt.count({
-    where: { quizId: quiz.id, userId: user.id },
+    where: { quizId: quiz.id, userId: user.id, status: "COMPLETED" },
   });
   if (quiz.maxAttempts != null && attempts >= quiz.maxAttempts) {
     return { error: "Batas pengerjaan kuis telah tercapai" };

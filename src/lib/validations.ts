@@ -20,7 +20,23 @@ export const registerSchema = z
   .refine((d) => d.password === d.confirmPassword, {
     message: "Konfirmasi password tidak sama",
     path: ["confirmPassword"],
+  })
+  .superRefine((d, ctx) => {
+    const level = normalizeLevelForValidation(d.educationLevel);
+    if ((level === "SMA" || level === "SMK") && !d.major?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Jurusan wajib diisi untuk jenjang SMA/SMK",
+        path: ["major"],
+      });
+    }
   });
+
+function normalizeLevelForValidation(level?: string): string | null {
+  const v = (level ?? "").trim().toUpperCase();
+  if (["SD", "SMP", "SMA", "SMK", "SIM"].includes(v)) return v;
+  return null;
+}
 
 export const loginSchema = z.object({
   email: z.string().email("Email tidak valid"),

@@ -114,13 +114,14 @@ export function RegisterForm({
           {state?.errors?.classLevel && <p className="text-sm text-red-600">{state.errors.classLevel}</p>}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="major">Jurusan (SMA/SMK, opsional)</Label>
+          <Label htmlFor="major">Jurusan</Label>
           <div className="relative">
             <BookMarked className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="major"
               name="major"
               placeholder="Contoh: MIPA / TKJ"
+              required
               className="pl-9 uppercase"
               onChange={(e) => {
                 e.target.value = e.target.value.toUpperCase();

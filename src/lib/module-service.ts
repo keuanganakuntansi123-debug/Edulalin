@@ -39,13 +39,24 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
 
 
   const visible = modules.filter((m) => {
-    if (m.educationLevel !== "SIM" && !educationLevelMatch(educationLevel, m.educationLevel)) {
-      return false;
-    }
     const targets = m.moduleToSchools.map((s) => s.schoolId);
-    if (m.schoolId != null) return m.schoolId === schoolId;
-    if (targets.length > 0) return schoolId != null && targets.includes(schoolId);
-    return true; // global
+    const isSchoolOwned = m.schoolId != null;
+    const isTargeted = !isSchoolOwned && targets.length > 0;
+    const isGlobal = !isSchoolOwned && targets.length === 0;
+
+    // Modul milik sekolah tertentu: hanya murid sekolah itu.
+    if (isSchoolOwned) return m.schoolId === schoolId;
+
+    // Modul yang ditargetkan admin ke sekolah murid: tampil (ID sekolah),
+    // tanpa menuntut jenjang konten = jenjang murid. Admin bertanggung jawab
+    // memilih sekolah tujuan yang benar.
+    if (isTargeted) return schoolId != null && targets.includes(schoolId);
+
+    // Modul global: kecocokan jenjang (termasuk aturan SIM).
+    if (isGlobal) {
+      return educationLevelMatch(educationLevel, m.educationLevel);
+    }
+    return false;
   });
 
   // Tambahkan hitungan progress
@@ -105,10 +116,15 @@ export async function getModuleForUser(params: {
   // School isolation
   const targetSchools = mod.moduleToSchools.map((s) => s.schoolId);
   const hasTargets = targetSchools.length > 0;
-  if (mod.schoolId != null && mod.schoolId !== user.schoolId) return null;
-  if (hasTargets && (!user.schoolId || !targetSchools.includes(user.schoolId))) return null;
+  const isSchoolOwned = mod.schoolId != null;
+  const isTargeted = !isSchoolOwned && hasTargets;
+  const isGlobal = !isSchoolOwned && !hasTargets;
 
-  // Jenjang + aturan SIM untuk murid
+  if (isSchoolOwned && mod.schoolId !== user.schoolId) return null;
+  if (isTargeted && (!user.schoolId || !targetSchools.includes(user.schoolId))) return null;
+
+  // Jenjang + aturan SIM untuk murid. Untuk modul yang ditarget sekolah,
+  // keanggotaan sekolah cukup (admin sudah memilih sekolah tujuan).
   if (user.role === "MURID" && user.educationLevel) {
     const isSimModule = mod.educationLevel === "SIM";
     if (isSimModule) {
@@ -122,7 +138,7 @@ export async function getModuleForUser(params: {
       }
       // Murid di bawah 17 tahun tidak dapat membuka Modul SIM (backend).
       if (!canAccessSim(user.birthDate)) return null;
-    } else if (!educationLevelMatch(user.educationLevel, mod.educationLevel)) {
+    } else if (isGlobal && !educationLevelMatch(user.educationLevel, mod.educationLevel)) {
       return null;
     }
   }

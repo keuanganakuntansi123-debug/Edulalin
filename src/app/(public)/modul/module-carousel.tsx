@@ -111,6 +111,7 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
               data-carousel-card
               className="group flex w-70 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:w-75"
             >
+              <Link href={`/modul/${m.id}`} className="flex flex-1 flex-col">
               {/* Thumbnail */}
               <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-blue-50 to-sky-100">
                 {m.displayThumbnail ? (
@@ -157,6 +158,7 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
                   Pratinjau • login untuk mengakses materi
                 </p>
               </div>
+              </Link>
             </article>
           );
         })}

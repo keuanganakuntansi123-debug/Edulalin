@@ -44,7 +44,7 @@ export default async function MateriPage() {
           return (
             <Card key={m.id} className={simLocked ? "border-amber-300 bg-amber-50/40" : "hover:shadow-md transition-shadow"}>
               <CardContent className="p-0">
-                <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-slate-100">
+                <div className="relative aspect-3/4 w-full overflow-hidden rounded-t-xl bg-slate-100">
                   {thumbUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumbUrl} alt={m.title} className="h-full w-full object-cover" />
