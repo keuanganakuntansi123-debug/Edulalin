@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, FileText, Video, Link2, File, Lock, GraduationCap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -111,34 +113,37 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
               data-carousel-card
               className="group flex w-70 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:w-75"
             >
-              <Link href={`/modul/${m.id}`} className="flex flex-1 flex-col">
               {/* Thumbnail */}
-              <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-blue-50 to-sky-100">
-                {m.displayThumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={m.displayThumbnail}
-                    alt={m.title}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-                    <Icon className="h-8 w-8" />
+              <Link href={`/modul/${m.id}`} className="block">
+                <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-blue-50 to-sky-100">
+                  {m.displayThumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.displayThumbnail}
+                      alt={m.title}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+                      <Icon className="h-8 w-8" />
+                    </span>
+                  )}
+                  <Badge className="absolute left-3 top-3 bg-white/95 text-primary shadow-sm">
+                    <GraduationCap className="mr-1 h-3 w-3" />
+                    {CATEGORY_LABEL[cat] ?? "Lainnya"}
+                  </Badge>
+                  <span className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/60 text-white backdrop-blur-sm">
+                    <Lock className="h-3.5 w-3.5" />
                   </span>
-                )}
-                <Badge className="absolute left-3 top-3 bg-white/95 text-primary shadow-sm">
-                  <GraduationCap className="mr-1 h-3 w-3" />
-                  {CATEGORY_LABEL[cat] ?? "Lainnya"}
-                </Badge>
-                <span className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/60 text-white backdrop-blur-sm">
-                  <Lock className="h-3.5 w-3.5" />
-                </span>
-              </div>
+                </div>
+              </Link>
 
               {/* Konten */}
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="font-bold leading-snug line-clamp-1">{m.title}</h3>
+                <Link href={`/modul/${m.id}`} className="hover:text-primary">
+                  <h3 className="font-bold leading-snug line-clamp-1">{m.title}</h3>
+                </Link>
                 <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{m.description}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                   <Badge variant="secondary">{CATEGORY_EMOJI[cat]} {CATEGORY_LABEL[cat]}</Badge>
@@ -147,18 +152,17 @@ export function ModuleCarousel({ modules }: { modules: DisplayModule[] }) {
                   )}
                 </div>
                 <div className="mt-4 flex items-center gap-2 border-t border-border/60 pt-4">
-                  <Link href="/login" className="flex-1">
-                    <Button size="sm" className="w-full">
+                  <button type="button" className="flex-1" onClick={() => router.push("/login")}>
+                    <Button size="sm" className="w-full" type="button">
                       <Lock className="mr-1 h-3.5 w-3.5" />
                       Masuk untuk Belajar
                     </Button>
-                  </Link>
+                  </button>
                 </div>
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">
                   Pratinjau • login untuk mengakses materi
                 </p>
               </div>
-              </Link>
             </article>
           );
         })}
