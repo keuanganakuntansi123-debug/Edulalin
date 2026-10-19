@@ -3,6 +3,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { FileKind } from "@/generated/prisma/client";
+import { MAX_SIZES, isAllowedMime } from "@/lib/upload-config";
+import { isBlobPathname } from "@/lib/blob-storage";
+export { MAX_SIZES, maxSizeLabel, isAllowedMime } from "@/lib/upload-config";
 
 const DEFAULT_STORAGE_DIR =
   process.env.VERCEL === "1"
@@ -18,37 +21,6 @@ const STORAGE_DIR = process.env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR;
  */
 const storagePath = (name: string): string =>
   path.join(/* turbopackIgnore: true */ STORAGE_DIR, name);
-
-/** Maksimal ukuran per jenis file (byte). */
-export const MAX_SIZES: Record<FileKind, number> = {
-  MODULE_CONTENT: 200 * 1024 * 1024, // 200 MB (PDF/video/dokumen)
-  QUIZ_PDF: 20 * 1024 * 1024, // 20 MB
-  AVATAR: 5 * 1024 * 1024, // 5 MB
-  SITE_IMAGE: 5 * 1024 * 1024, // 5 MB (gambar konten publik)
-  SCHOOL_LOGO: 2 * 1024 * 1024, // 2 MB
-};
-
-const ALLOWED_MIME: Record<FileKind, string[]> = {
-  MODULE_CONTENT: [
-    "application/pdf",
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "application/zip",
-    "text/plain",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ],
-  QUIZ_PDF: ["application/pdf"],
-  AVATAR: ["image/jpeg", "image/png", "image/webp"],
-  SITE_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
-  SCHOOL_LOGO: ["image/jpeg", "image/png", "image/webp"],
-};
 
 export function ensureStoredDir() {
   return fs.mkdir(STORAGE_DIR, { recursive: true });
@@ -73,12 +45,14 @@ function extFor(mime: string): string {
   return map[mime] ?? ".bin";
 }
 
-export function isAllowedMime(kind: FileKind, mime: string): boolean {
-  return ALLOWED_MIME[kind].includes(mime);
+/** Apakah penyimpanan object storage (Vercel Blob) aktif di sisi server. */
+export function isObjectStorageEnabled(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
 /**
- * Simpan file ke storage lokal + catat metadata di tabel UploadedFile.
+ * Simpan file ke penyimpanan (Vercel Blob bila tersedia, fallback storage
+ * lokal untuk dev) + catat metadata di tabel UploadedFile.
  * Mengembalikan record UploadedFile yang sudah dibuat.
  */
 export async function saveUploadedFile(input: {
@@ -102,10 +76,21 @@ export async function saveUploadedFile(input: {
     throw new Error("Ukuran file melebihi batas maksimal");
   }
 
-  await ensureStoredDir();
-  const storedName = `${crypto.randomUUID()}${extFor(mime)}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(storagePath(storedName), buffer);
+  let storedName: string;
+  let buffer: Buffer | null = null;
+
+  if (isObjectStorageEnabled()) {
+    // Unggah langsung ke Vercel Blob (object storage) — mendukung 50 MB dan
+    // tahan terhadap redeploy (filesystem /tmp Vercel bersifat ephemeral).
+    const { uploadToBlobServer } = await import("@/lib/blob-storage");
+    const uploaded = await uploadToBlobServer({ file, kind });
+    storedName = uploaded.pathname;
+  } else {
+    await ensureStoredDir();
+    storedName = `${crypto.randomUUID()}${extFor(mime)}`;
+    buffer = Buffer.from(await file.arrayBuffer());
+    await fs.writeFile(storagePath(storedName), buffer);
+  }
 
   const record = await prisma.uploadedFile.create({
     data: {
@@ -127,20 +112,25 @@ export async function saveUploadedFile(input: {
     embedded?: string;
   } = {
     id: record.id,
-    url: `/api/files/${storedName}`,
+    url: `/api/files/${encodeURIComponent(storedName)}`,
     originalName: record.originalName,
     mimeType: record.mimeType,
     size: record.size,
   };
   // Avatar: embiada base64 supaya foto tetap tersimpan saat redeploy
   // (storage serverless /tmp dapat berubah). Hanya untuk gambar profil kecil.
-  if (kind === "AVATAR") {
+  // Bila file disimpan di Blob, embeddedAvatar tidak diperlukan — URL blob
+  // sudah persisten di Vercel Blob.
+  if (kind === "AVATAR" && buffer) {
     result.embedded = `data:${mime};base64,${buffer.toString("base64")}`;
   }
   return result;
 }
 
 export async function getStoredFilePath(storedName: string): Promise<string | null> {
+  // File yang tersimpan di Vercel Blob tidak ada di filesystem lokal.
+  // Pemanggil (mis. pdf-parser) harus memakai readBlobBuffer untuk blob.
+  if (isBlobPathname(storedName)) return null;
   const safe = path.basename(storedName);
   const full = storagePath(safe);
   try {
@@ -152,6 +142,11 @@ export async function getStoredFilePath(storedName: string): Promise<string | nu
 }
 
 export async function removeStoredFile(storedName: string): Promise<void> {
+  if (isBlobPathname(storedName)) {
+    const { deleteBlob } = await import("@/lib/blob-storage");
+    await deleteBlob(storedName);
+    return;
+  }
   const safe = path.basename(storedName);
   try {
     await fs.unlink(storagePath(safe));

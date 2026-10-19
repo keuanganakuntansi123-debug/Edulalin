@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import { getStoredFilePath } from "@/lib/storage";
+import { isBlobPathname, streamBlob } from "@/lib/blob-storage";
 import { getCurrentUser } from "@/lib/session";
 
 export const instant = false;
@@ -32,6 +33,27 @@ export async function GET(
     if (!user) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
     const allow = await canAccessFile(user, record);
     if (!allow) return NextResponse.json({ error: "Tidak memiliki akses ke file ini" }, { status: 403 });
+  }
+
+  const isBlob = isBlobPathname(storedName);
+  if (isBlob) {
+    // File tersimpan di Vercel Blob — alirkan dari object storage.
+    const blob = await streamBlob(storedName);
+    if (!blob) {
+      return NextResponse.json({ error: "File tidak ditemukan di penyimpanan" }, { status: 404 });
+    }
+    const headers = new Headers();
+    headers.set("Content-Type", blob.contentType || record.mimeType);
+    headers.set("Content-Length", String(blob.size));
+    headers.set("Cache-Control", "private, max-age=3600");
+    headers.set("X-Content-Type-Options", "nosniff");
+    if (!blob.contentType.startsWith("video/")) {
+      headers.set(
+        "Content-Disposition",
+        `inline; filename="${encodeURIComponent(record.originalName)}"`
+      );
+    }
+    return new NextResponse(blob.stream, { status: 200, headers });
   }
 
   const filePath = await getStoredFilePath(storedName);

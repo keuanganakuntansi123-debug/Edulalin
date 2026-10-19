@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { getStoredFilePath } from "@/lib/storage";
+import { isBlobPathname, readBlobBuffer } from "@/lib/blob-storage";
 import { ensurePdfGlobals } from "@/lib/pdf-setup";
 
 export type ParsedQuestion = {
@@ -24,8 +25,12 @@ export type ParsedQuestion = {
 export async function extractQuestionsFromPdf(
   storedName: string
 ): Promise<{ ok: true; extracted: number; questions: ParsedQuestion[] } | { ok: false; error: string }> {
-  const filePath = await getStoredFilePath(storedName);
-  if (!filePath) return { ok: false, error: "File tidak ditemukan di server" };
+  const isBlob = isBlobPathname(storedName);
+  const filePath = isBlob ? null : await getStoredFilePath(storedName);
+  const blobBuffer = isBlob ? await readBlobBuffer(storedName) : null;
+  if (!filePath && !blobBuffer) {
+    return { ok: false, error: "File tidak ditemukan di server" };
+  }
 
   let raw: string;
   try {
@@ -34,7 +39,8 @@ export async function extractQuestionsFromPdf(
     await ensurePdfGlobals();
     // pdf-parse v2: class PDFParse dengan getText()
     const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: await fs.readFile(filePath) });
+    const data = filePath ? await fs.readFile(filePath) : blobBuffer ?? Buffer.alloc(0);
+    const parser = new PDFParse({ data });
     try {
       const text = await parser.getText();
       raw = String(text.text ?? "");

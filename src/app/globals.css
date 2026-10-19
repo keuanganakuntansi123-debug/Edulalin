@@ -273,12 +273,30 @@
   transform: translateY(0);
 }
 
+/* ============================================================
+   Marquee sekolah (beranda publik)
+   Bergerak horizontal terus-menerus; jeda saat hover.
+   ============================================================ */
+.ed-marquee-track {
+  animation: ed-marquee 40s linear infinite;
+  will-change: transform;
+}
+.group:hover .ed-marquee-track,
+.ed-marquee-track:hover {
+  animation-play-state: paused;
+}
+@keyframes ed-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ed-anim-cloud,
   .ed-anim-zebra rect,
   .ed-light-red,
   .ed-light-yellow,
   .ed-light-green,
+  .ed-marquee-track,
   .ed-anim-rider,
   .ed-anim-wheel,
   .ed-anim-pedal,

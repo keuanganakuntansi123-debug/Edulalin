@@ -7,6 +7,7 @@ import { HeroAnimation } from "@/components/public/animations/hero-animation";
 import { Reveal } from "@/components/public/animations/reveal";
 import { CollaborationSection } from "@/components/public/collaboration-section";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
+import { SchoolMarqueeSection } from "@/components/public/school-marquee";
 
 export const metadata: Metadata = {
   title: "Beranda | EDULALIN | Edukasi Lalu Lintas",
@@ -109,6 +110,9 @@ export default async function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* ===== Sekolah yang Bergabung dengan EDULALIN (data Neon DB) ===== */}
+      <SchoolMarqueeSection />
 
       {/* ===== Apa Itu EDULALIN ===== */}
       {intro && (

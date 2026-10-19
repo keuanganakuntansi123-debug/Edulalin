@@ -10,7 +10,13 @@ import { UploadCloud, X, CheckCircle2, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PdfReviewModal, type ReviewQuestion } from "./pdf-review-modal";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string };
+type UploadedMeta = {
+  id: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  storedName?: string;
+};
 
 type PdfExtractResult = {
   fileId: string;
@@ -116,7 +122,7 @@ export function QuizForm({
     setPdfFile(file);
     setPdfResult(null);
     setReviewed(null);
-    const storedName = file.url.split("/").pop() ?? "";
+    const storedName = file.storedName ?? file.url.split("/").pop() ?? "";
     const res = await fetch(`/api/extract-pdf?storedName=${encodeURIComponent(storedName)}`);
     if (res.ok) {
       const data = (await res.json()) as {

@@ -855,7 +855,7 @@ export async function setSchoolLogo(
   const oldFileId = school.logoFileId;
   await prisma.school.update({
     where: { id: schoolId },
-    data: { logoFileId: file.id, logoUrl: `/api/files/${file.storedName}` },
+    data: { logoFileId: file.id, logoUrl: `/api/files/${encodeURIComponent(file.storedName)}` },
   });
 
   // Hapus file lama bila mengganti logo.

@@ -57,7 +57,7 @@ export async function updateProfile(formData: FormData) {
     ? await (async () => {
         const file = await prisma.uploadedFile.findUnique({ where: { id: avatarFileId } });
         if (!file || file.kind !== "AVATAR" || file.ownerId !== user.id) return undefined;
-        return `/api/files/${file.storedName}`;
+        return `/api/files/${encodeURIComponent(file.storedName)}`;
       })()
     : undefined;
 
@@ -78,11 +78,12 @@ export async function updateProfile(formData: FormData) {
 
   // Hapus avatar lama jika diganti
   if (avatarUrl && user.avatarUrl) {
-    const oldStored = user.avatarUrl.split("/").pop();
-    if (oldStored && oldStored !== avatarUrl.split("/").pop()) {
-      const oldFile = await prisma.uploadedFile.findUnique({ where: { storedName: oldStored } });
+    const oldStored = user.avatarUrl.split("/api/files/").pop();
+    const newStored = avatarUrl.split("/api/files/").pop();
+    if (oldStored && oldStored !== newStored) {
+      const oldFile = await prisma.uploadedFile.findUnique({ where: { storedName: decodeURIComponent(oldStored) } });
       if (oldFile && oldFile.kind === "AVATAR" && oldFile.ownerId === user.id) {
-        await removeStoredFile(oldStored);
+        await removeStoredFile(oldFile.storedName);
         await prisma.uploadedFile.delete({ where: { id: oldFile.id } });
       }
     }
@@ -104,11 +105,11 @@ export async function updateProfile(formData: FormData) {
 export async function removeAvatar() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
   if (user.avatarUrl) {
-    const stored = user.avatarUrl.split("/").pop();
+    const stored = user.avatarUrl.split("/api/files/").pop();
     if (stored) {
-      const file = await prisma.uploadedFile.findUnique({ where: { storedName: stored } });
+      const file = await prisma.uploadedFile.findUnique({ where: { storedName: decodeURIComponent(stored) } });
       if (file && file.kind === "AVATAR" && file.ownerId === user.id) {
-        await removeStoredFile(stored);
+        await removeStoredFile(file.storedName);
         await prisma.uploadedFile.delete({ where: { id: file.id } });
       }
     }

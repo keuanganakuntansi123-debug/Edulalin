@@ -64,9 +64,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const result = await extractQuestionsFromPdf(saved.url.split("/").pop() ?? saved.id);
+  const storedName = saved.url.startsWith("/api/files/")
+    ? decodeURIComponent(saved.url.split("/").pop() ?? saved.id)
+    : saved.id;
+  const result = await extractQuestionsFromPdf(storedName);
   if (!result.ok) {
-    removeStoredFile(saved.url.split("/").pop() ?? saved.id).catch(() => undefined);
+    removeStoredFile(storedName).catch(() => undefined);
     await prisma.uploadedFile.delete({ where: { id: saved.id } }).catch(() => undefined);
     return NextResponse.json({ error: result.error }, { status: 422 });
   }
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     // Jika transaksi gagal, bersihkan file baru agar tidak ada file orfan.
-    removeStoredFile(saved.url.split("/").pop() ?? saved.id).catch(() => undefined);
+    removeStoredFile(storedName).catch(() => undefined);
     await prisma.uploadedFile.delete({ where: { id: saved.id } }).catch(() => undefined);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Gagal memperbarui draf dengan PDF baru" },
@@ -126,7 +129,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     fileId: saved.id,
-    storedName: saved.url.split("/").pop(),
+    storedName,
     originalName: saved.originalName,
     extracted: review.length,
     questions: review,

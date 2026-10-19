@@ -39,12 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
   // Guru boleh unggah materi modul + foto profil sendiri + logo sekolah
-  if (
-    user.role === "GURU" &&
-    fKind !== "MODULE_CONTENT" &&
-    fKind !== "AVATAR" &&
-    fKind !== "SCHOOL_LOGO"
-  ) {
+  if (user.role === "GURU" && fKind !== "MODULE_CONTENT" && fKind !== "AVATAR" && fKind !== "SCHOOL_LOGO") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
   if (!isAllowedMime(fKind, file.type || "")) {
@@ -66,9 +61,6 @@ export async function POST(req: NextRequest) {
     }).catch(() => undefined);
     return NextResponse.json({ file: saved });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Gagal mengunggah file" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Gagal mengunggah file" }, { status: 500 });
   }
 }

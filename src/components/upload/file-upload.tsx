@@ -1,11 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud, Loader2 } from "lucide-react";
+import { UploadCloud, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileKind } from "@/generated/prisma/client";
+import { isBlobUploadEnabled } from "@/lib/upload-client";
+import { maxSizeLabel } from "@/lib/upload-config";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string; size: number };
+type UploadedMeta = {
+  id: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  storedName?: string;
+};
 
 export function FileUpload({
   kind,
@@ -25,20 +34,62 @@ export function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   const upload = async (file: File) => {
     if (!file) return;
     setUploading(true);
+    setError(null);
+    setDone(false);
+    setProgress(0);
     try {
-      const fd = new FormData();
-      fd.append("kind", kind);
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal mengunggah file");
-      onUploaded(data.file);
+      if (isBlobUploadEnabled()) {
+        // Client upload langsung ke Vercel Blob (mendukung file hingga 50 MB
+        // melewati batas body server). Metadata dicatat ke Neon lewat register.
+        const { upload } = await import("@vercel/blob/client");
+        const result = await upload(file.name, file, {
+          access: "private",
+          multipart: file.size > 5 * 1024 * 1024,
+          handleUploadUrl: "/api/upload/blob-token",
+          clientPayload: JSON.stringify({ kind }),
+          onUploadProgress: (p) => setProgress(p.percentage ?? 0),
+        });
+        const registerRes = await fetch("/api/upload/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pathname: result.pathname,
+            originalName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+            kind,
+          }),
+        });
+        const registerData = await registerRes.json();
+        if (!registerRes.ok) {
+          const { del } = await import("@vercel/blob");
+          await del(result.url).catch(() => undefined);
+          throw new Error(registerData.error ?? "Gagal menyimpan metadata file");
+        }
+        setProgress(100);
+        setDone(true);
+        onUploaded(registerData.file);
+      } else {
+        const fd = new FormData();
+        fd.append("kind", kind);
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Gagal mengunggah file");
+        setDone(true);
+        onUploaded(data.file);
+      }
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Gagal mengunggah file");
+      const msg = e instanceof Error ? e.message : "Gagal mengunggah file";
+      setError(msg);
+      onError?.(msg);
     } finally {
       setUploading(false);
     }
@@ -75,12 +126,34 @@ export function FileUpload({
     >
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleChange} />
       {uploading ? (
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <>
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-sm font-medium text-slate-700">
+            Mengunggah… {progress > 0 ? `${Math.round(progress)}%` : ""}
+          </span>
+          <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-200"
+              style={{ width: `${Math.max(progress, 4)}%` }}
+            />
+          </div>
+        </>
+      ) : done && !error ? (
+        <>
+          <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+          <span className="text-sm font-medium text-emerald-700">File berhasil diunggah</span>
+        </>
+      ) : error ? (
+        <>
+          <AlertCircle className="h-6 w-6 text-red-500" />
+          <span className="text-sm font-medium text-red-600">{error}</span>
+        </>
       ) : (
         <UploadCloud className="h-6 w-6 text-primary" />
       )}
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+      {!uploading && !done && !error && <span className="text-sm font-medium text-slate-700">{label}</span>}
       <span className="text-xs text-muted-foreground">Klik untuk memilih file atau tarik ke sini</span>
+      <span className="text-xs text-muted-foreground">Maks. {maxSizeLabel(kind)} per file</span>
     </button>
   );
 }
