@@ -8,6 +8,9 @@ import { Reveal } from "@/components/public/animations/reveal";
 import { CollaborationSection } from "@/components/public/collaboration-section";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
 import { SchoolMarqueeSection } from "@/components/public/school-marquee";
+import { fileUrl } from "@/lib/storage";
+import { ArrowRight, CalendarDays } from "lucide-react";
+import { NEWS_CATEGORY_META } from "./berita/news-constants";
 
 export const metadata: Metadata = {
   title: "Beranda | EDULALIN | Edukasi Lalu Lintas",
@@ -16,11 +19,12 @@ export const metadata: Metadata = {
 export const instant = false;
 
 export default async function LandingPage() {
-  const [content, blocks, stats, features] = await Promise.all([
+  const [content, blocks, stats, features, latestArticles] = await Promise.all([
     getSiteContentMap(),
     getPublishedBlocks(),
     getSiteStats(),
     getFeatures(),
+    getLatestArticles(),
   ]);
 
   const heroTitle = content.get("HERO_TITLE")?.body ?? "Belajar Tertib Berlalu Lintas, Mulai dari Sekarang!";
@@ -191,6 +195,83 @@ export default async function LandingPage() {
       {/* ===== Kolaborasi Edukasi ===== */}
       <CollaborationSection />
 
+      {/* ===== Berita & Edukasi (data Neon DB) ===== */}
+      <section className="bg-slate-50 py-20">
+        <div className="container-page">
+          <Reveal className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700">
+                📰 Berita &amp; Edukasi
+              </span>
+              <h2 className="mt-4 text-3xl font-bold">Artikel Terbaru Edukasi Lalu Lintas</h2>
+              <p className="mt-2 max-w-xl text-muted-foreground">
+                Ragam artikel edukasi keselamatan berkendara untuk SD, SMP, SMA, SMK, dan SIM —
+                diperbarui langsung oleh Admin.
+              </p>
+            </div>
+            <Link
+              href="/berita"
+              className="group inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-primary transition-all hover:border-primary hover:bg-blue-50"
+            >
+              Lihat Semua Artikel
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Reveal>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {latestArticles.map((a, i) => (
+              <Reveal key={a.id} delay={i * 90}>
+                <Link
+                  href={`/berita/${a.slug}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-xl"
+                >
+                  <div className="relative h-44 overflow-hidden">
+                    {a.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={a.image}
+                        alt={a.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50 text-5xl">
+                        <span aria-hidden="true">📰</span>
+                      </div>
+                    )}
+                    <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-0.5 text-xs font-semibold shadow-sm">
+                      {NEWS_CATEGORY_META[a.category]?.emoji} {NEWS_CATEGORY_META[a.category]?.label}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CalendarDays className="h-3 w-3" />
+                      {a.date}
+                    </p>
+                    <h3 className="mt-2 font-bold leading-snug text-slate-900 transition-colors line-clamp-2 group-hover:text-primary">
+                      {a.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-3 text-sm text-slate-600">{a.summary}</p>
+                    <span className="mt-auto flex items-center gap-1.5 pt-4 text-sm font-semibold text-primary">
+                      Baca Artikel
+                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+            {latestArticles.length === 0 && (
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center sm:col-span-2 lg:col-span-3">
+                <p className="text-lg font-bold">Belum ada artikel</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Artikel edukasi yang diterbitkan Admin akan tampil di sini.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* ===== Ajakan Belajar ===== */}
       {cta && (
         <section className="relative overflow-hidden bg-linear-to-r from-blue-800 via-blue-700 to-sky-600 py-16 text-white">
@@ -218,4 +299,30 @@ async function getFeatures() {
     where: { active: true },
     orderBy: { order: "asc" },
   });
+}
+
+async function getLatestArticles() {
+  const { prisma } = await import("@/lib/prisma");
+  const rows = await prisma.article.findMany({
+    where: { deletedAt: null, status: "ACTIVE" },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: 3,
+    include: { imageFile: { select: { storedName: true } } },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    slug: a.slug,
+    summary: a.summary,
+    category: a.category,
+    image:
+      a.imageEmbedded ??
+      (a.imageFile ? fileUrl(a.imageFile.storedName) : a.imageUrl) ??
+      null,
+    date: a.publishedAt
+      ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(
+          new Date(a.publishedAt)
+        )
+      : "",
+  }));
 }

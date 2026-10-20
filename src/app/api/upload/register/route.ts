@@ -10,7 +10,14 @@ import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
 
-const KINDS: FileKind[] = ["MODULE_CONTENT", "QUIZ_PDF", "AVATAR", "SITE_IMAGE", "SCHOOL_LOGO"];
+const KINDS: FileKind[] = [
+  "MODULE_CONTENT",
+  "QUIZ_PDF",
+  "AVATAR",
+  "SITE_IMAGE",
+  "SCHOOL_LOGO",
+  "ARTICLE_IMAGE",
+];
 
 /**
  * Catat metadata file yang sudah diunggah ke Vercel Blob ke Neon.

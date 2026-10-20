@@ -82,6 +82,12 @@ enum FileKind {
   AVATAR
   SITE_IMAGE
   SCHOOL_LOGO
+  ARTICLE_IMAGE
+}
+
+enum ArticleStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum SiteContentKey {
@@ -280,9 +286,41 @@ model UploadedFile {
   moduleThumbnail     Module?    @relation("ModuleThumbnailFile")
   quizSource          Quiz?      @relation("QuizSourceFile")
   schoolLogo          School?    @relation("SchoolLogoFile")
+  articleImage        Article?   @relation("ArticleImageFile")
 
   @@index([ownerId])
   @@index([kind])
+}
+
+/**
+ * Berita & Edukasi (Modul Publik).
+ * Artikel edukasi lalu lintas yang dikelola Admin dan dapat dibaca publik
+ * tanpa login. `category` memakai EducationLevel (SD/SMP/SMA/SMK/SIM) —
+ * setiap kategori memiliki konten sendiri dan tidak tercampur.
+ */
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  summary     String        // ringkasan singkat untuk kartu
+  content     String        // isi artikel lengkap (paragraf dipisah baris baru)
+  category    EducationLevel
+  imageUrl    String?
+  imageFileId String?       @unique
+  imageEmbedded String?     // data URI gambar artikel (persist saat storage /tmp ephemeral)
+  authorName  String?
+  status      ArticleStatus @default(ACTIVE)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  imageFile UploadedFile? @relation("ArticleImageFile", fields: [imageFileId], references: [id])
+
+  @@index([category])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([deletedAt])
 }
 
 // =====================================================================

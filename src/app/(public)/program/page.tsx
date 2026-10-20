@@ -101,9 +101,9 @@ export default async function ProgramPage() {
                     EDULALIN. Akses divalidasi otomatis pada frontend dan backend.
                   </p>
                 </div>
-                <Link href="/modul?kategori=SMA">
+                <Link href="/berita?kategori=SIM">
                   <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100">
-                    Lihat Modul SIM
+                    Baca Edukasi SIM
                   </Button>
                 </Link>
               </div>

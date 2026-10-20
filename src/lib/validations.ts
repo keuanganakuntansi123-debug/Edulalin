@@ -71,6 +71,16 @@ export const quizSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).default("ACTIVE"),
 });
 
+export const articleSchema = z.object({
+  title: z.string().min(3, "Judul minimal 3 karakter"),
+  summary: z.string().min(5, "Ringkasan minimal 5 karakter"),
+  content: z.string().min(10, "Isi artikel minimal 10 karakter"),
+  category: z.enum(["SD", "SMP", "SMA", "SMK", "SIM"], {
+    message: "Kategori harus salah satu dari SD, SMP, SMA, SMK, atau SIM",
+  }),
+  authorName: z.string().optional().nullable(),
+});
+
 export const questionSchema = z.object({
   quizId: z.string().min(1),
   text: z.string().min(3),

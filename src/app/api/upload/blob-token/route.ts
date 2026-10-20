@@ -7,7 +7,14 @@ import type { FileKind } from "@/generated/prisma/client";
 
 export const instant = false;
 
-const KINDS: FileKind[] = ["MODULE_CONTENT", "QUIZ_PDF", "AVATAR", "SITE_IMAGE", "SCHOOL_LOGO"];
+const KINDS: FileKind[] = [
+  "MODULE_CONTENT",
+  "QUIZ_PDF",
+  "AVATAR",
+  "SITE_IMAGE",
+  "SCHOOL_LOGO",
+  "ARTICLE_IMAGE",
+];
 
 /**
  * Route untuk client upload ke Vercel Blob (browser → Blob langsung).
@@ -38,8 +45,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Otorisasi sesuai jenis file (sama seperti /api/upload).
-        if (kind === "SITE_IMAGE" && user.role !== "ADMIN") {
-          throw new Error("Hanya Admin yang dapat mengunggah gambar konten");
+        if ((kind === "SITE_IMAGE" || kind === "ARTICLE_IMAGE") && user.role !== "ADMIN") {
+          throw new Error("Hanya Admin yang dapat mengunggah gambar ini");
         }
         if (kind === "SCHOOL_LOGO" && user.role !== "ADMIN" && user.role !== "GURU") {
           throw new Error("Hanya Admin dan Guru yang dapat mengunggah logo sekolah");

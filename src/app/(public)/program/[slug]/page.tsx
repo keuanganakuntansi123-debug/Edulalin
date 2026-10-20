@@ -156,8 +156,8 @@ export default async function ProgramDetailPage({
                   <p className="mt-1 text-sm text-muted-foreground">
                     Buka modul terkait untuk mulai belajar atau hubungi Admin sekolahmu.
                   </p>
-                  <Link href="/modul" className="mt-4 inline-block">
-                    <Button size="sm">Jelajahi Modul</Button>
+                  <Link href="/berita" className="mt-4 inline-block">
+                    <Button size="sm">Baca Berita &amp; Edukasi</Button>
                   </Link>
                 </CardContent>
               </Card>

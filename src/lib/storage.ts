@@ -121,7 +121,9 @@ export async function saveUploadedFile(input: {
   // (storage serverless /tmp dapat berubah). Hanya untuk gambar profil kecil.
   // Bila file disimpan di Blob, embeddedAvatar tidak diperlukan — URL blob
   // sudah persisten di Vercel Blob.
-  if (kind === "AVATAR" && buffer) {
+  // Gambar berita juga di-embed base64 supaya tetap tampil saat redeploy
+  // (storage /tmp Vercel ephemeral) meski Blob belum dikonfigurasi.
+  if ((kind === "AVATAR" || kind === "ARTICLE_IMAGE") && buffer) {
     result.embedded = `data:${mime};base64,${buffer.toString("base64")}`;
   }
   return result;

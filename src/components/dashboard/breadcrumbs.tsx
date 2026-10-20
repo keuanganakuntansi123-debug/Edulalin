@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
   activity: "Aktivitas Sistem",
   schools: "Sekolah",
   settings: "Pengaturan",
+  berita: "Berita & Edukasi",
   materi: "Kelola Modul",
   quiz: "Kelola Kuis",
   progress: "Progress",

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Beranda" },
   { href: "/program", label: "Program" },
   { href: "/modul", label: "Modul" },
+  { href: "/berita", label: "Berita & Edukasi" },
   { href: "/tentang", label: "Tentang Kami" },
   { href: "/kontak", label: "Kontak" },
   { href: "/faq", label: "FAQ" },

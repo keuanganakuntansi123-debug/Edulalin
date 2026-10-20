@@ -27,13 +27,19 @@ export async function GET(
   const record = await prisma.uploadedFile.findUnique({ where: { storedName } });
   if (!record) return NextResponse.json({ error: "File tidak ditemukan" }, { status: 404 });
 
-  // Thumbnail modul & gambar konten publik boleh diakses siapa saja (pratinjau).
-  // Konten materi (MODULE_CONTENT) & file lain tetap memerlukan autentikasi + otorisasi.
+  // Thumbnail modul & gambar konten publik (SITE_IMAGE / ARTICLE_IMAGE) boleh
+  // diakses siapa saja tanpa login. Konten materi (MODULE_CONTENT) & file lain
+  // tetap memerlukan autentikasi + otorisasi.
   const isPublicThumbnail = await isModuleThumbnail(record.id);
   const isSchoolLogo =
     record.kind === "SCHOOL_LOGO" &&
     Boolean(await prisma.school.findFirst({ where: { logoFileId: record.id }, select: { id: true } }));
-  if (record.kind !== "SITE_IMAGE" && !isPublicThumbnail && !isSchoolLogo) {
+  if (
+    record.kind !== "SITE_IMAGE" &&
+    record.kind !== "ARTICLE_IMAGE" &&
+    !isPublicThumbnail &&
+    !isSchoolLogo
+  ) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
     const allow = await canAccessFile(user, record);
@@ -90,7 +96,7 @@ type UploadedFileRow = {
   storedName: string;
   mimeType: string;
   size: number;
-  kind: "MODULE_CONTENT" | "QUIZ_PDF" | "AVATAR" | "SITE_IMAGE" | "SCHOOL_LOGO";
+  kind: "MODULE_CONTENT" | "QUIZ_PDF" | "AVATAR" | "SITE_IMAGE" | "SCHOOL_LOGO" | "ARTICLE_IMAGE";
   ownerId: string;
   moduleContentId?: string | null;
   moduleThumbnailId?: string | null;

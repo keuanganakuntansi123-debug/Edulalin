@@ -9,6 +9,7 @@ export const MAX_SIZES: Record<FileKind, number> = {
   AVATAR: 50 * MB, // 50 MB (foto profil)
   SITE_IMAGE: 50 * MB, // 50 MB (gambar konten publik)
   SCHOOL_LOGO: 50 * MB, // 50 MB (logo sekolah)
+  ARTICLE_IMAGE: 50 * MB, // 50 MB (gambar berita & edukasi)
 };
 
 /** Label batas ukuran per jenis file untuk ditampilkan di UI. */
@@ -36,6 +37,7 @@ export const ALLOWED_MIME: Record<FileKind, string[]> = {
   AVATAR: ["image/jpeg", "image/png", "image/webp"],
   SITE_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
   SCHOOL_LOGO: ["image/jpeg", "image/png", "image/webp"],
+  ARTICLE_IMAGE: ["image/jpeg", "image/png", "image/webp"],
 };
 
 export function isAllowedMime(kind: FileKind, mime: string): boolean {
@@ -49,6 +51,7 @@ export const BLOB_PREFIX: Record<FileKind, string> = {
   AVATAR: "avatars",
   SITE_IMAGE: "site",
   SCHOOL_LOGO: "logos",
+  ARTICLE_IMAGE: "articles",
 };
 
 /**

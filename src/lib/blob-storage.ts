@@ -50,6 +50,8 @@ export function blobAllowedContentTypes(kind: FileKind): string[] {
       return ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
     case "SCHOOL_LOGO":
       return ["image/jpeg", "image/png", "image/webp"];
+    case "ARTICLE_IMAGE":
+      return ["image/jpeg", "image/png", "image/webp"];
   }
 }
 
