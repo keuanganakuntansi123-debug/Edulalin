@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { saveUploadedFile, removeStoredFile } from "@/lib/storage";
+import { saveUploadedFile, removeStoredFile, storedNameFromUrl } from "@/lib/storage";
 import { extractQuestionsFromPdf } from "@/lib/pdf-parser";
 import { logActivity } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -64,9 +64,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const storedName = saved.url.startsWith("/api/files/")
-    ? decodeURIComponent(saved.url.split("/").pop() ?? saved.id)
-    : saved.id;
+  const storedName =
+    storedNameFromUrl(saved.url) ?? (saved.url.startsWith("/api/files/") ? saved.id : saved.id);
   const result = await extractQuestionsFromPdf(storedName);
   if (!result.ok) {
     removeStoredFile(storedName).catch(() => undefined);

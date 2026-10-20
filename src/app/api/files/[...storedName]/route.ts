@@ -13,12 +13,17 @@ export const instant = false;
  * - Modul: murid/guru/admin dari sekolah tujuan atau global
  * - PDF kuis: admin saja
  * - Avatar: user itu sendiri, atau admin, atau siapa saja yang terautentikasi sesuai relasi konten
+ * - School logo: publik (pratinjau kartu & beranda)
+ *
+ * Catch-all (`[...storedName]`) karena pathname blob dapat berisi folder
+ * (mis. `logos/xxx.png`), bukan hanya UUID lokal.
  */
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ storedName: string }> }
+  { params }: { params: Promise<{ storedName: string[] }> }
 ) {
-  const { storedName } = await params;
+  const { storedName: segments } = await params;
+  const storedName = segments.join("/");
   const record = await prisma.uploadedFile.findUnique({ where: { storedName } });
   if (!record) return NextResponse.json({ error: "File tidak ditemukan" }, { status: 404 });
 

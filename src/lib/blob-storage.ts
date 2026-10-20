@@ -1,5 +1,5 @@
 import { get, del, put, head } from "@vercel/blob";
-import { MAX_SIZES } from "@/lib/upload-config";
+import { MAX_SIZES, blobPathname, BLOB_PREFIX } from "@/lib/upload-config";
 import type { FileKind } from "@/generated/prisma/client";
 
 /**
@@ -21,21 +21,7 @@ export function isBlobPathname(storedName: string): boolean {
   return storedName.includes("/");
 }
 
-/** Prefix folder per jenis file. */
-const BLOB_PREFIX: Record<FileKind, string> = {
-  MODULE_CONTENT: "modules",
-  QUIZ_PDF: "quiz",
-  AVATAR: "avatars",
-  SITE_IMAGE: "site",
-  SCHOOL_LOGO: "logos",
-};
-
-/** Buat pathname blob yang aman dari nama file asli. */
-export function blobPathname(kind: FileKind, fileName: string): string {
-  const prefix = BLOB_PREFIX[kind];
-  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
-  return `${prefix}/${Date.now().toString(36)}-${safe}`;
-}
+export { blobPathname, BLOB_PREFIX };
 
 /** Jenis file yang diizinkan per kind (untuk token upload client). */
 export function blobAllowedContentTypes(kind: FileKind): string[] {

@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
-import { removeStoredFile } from "@/lib/storage";
+import { removeStoredFile, fileUrl, storedNameFromUrl } from "@/lib/storage";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 export async function updateProfile(formData: FormData) {
@@ -57,7 +57,7 @@ export async function updateProfile(formData: FormData) {
     ? await (async () => {
         const file = await prisma.uploadedFile.findUnique({ where: { id: avatarFileId } });
         if (!file || file.kind !== "AVATAR" || file.ownerId !== user.id) return undefined;
-        return `/api/files/${encodeURIComponent(file.storedName)}`;
+        return fileUrl(file.storedName);
       })()
     : undefined;
 
@@ -78,10 +78,10 @@ export async function updateProfile(formData: FormData) {
 
   // Hapus avatar lama jika diganti
   if (avatarUrl && user.avatarUrl) {
-    const oldStored = user.avatarUrl.split("/api/files/").pop();
-    const newStored = avatarUrl.split("/api/files/").pop();
+    const oldStored = storedNameFromUrl(user.avatarUrl);
+    const newStored = storedNameFromUrl(avatarUrl);
     if (oldStored && oldStored !== newStored) {
-      const oldFile = await prisma.uploadedFile.findUnique({ where: { storedName: decodeURIComponent(oldStored) } });
+      const oldFile = await prisma.uploadedFile.findUnique({ where: { storedName: oldStored } });
       if (oldFile && oldFile.kind === "AVATAR" && oldFile.ownerId === user.id) {
         await removeStoredFile(oldFile.storedName);
         await prisma.uploadedFile.delete({ where: { id: oldFile.id } });
@@ -105,9 +105,9 @@ export async function updateProfile(formData: FormData) {
 export async function removeAvatar() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
   if (user.avatarUrl) {
-    const stored = user.avatarUrl.split("/api/files/").pop();
+    const stored = storedNameFromUrl(user.avatarUrl);
     if (stored) {
-      const file = await prisma.uploadedFile.findUnique({ where: { storedName: decodeURIComponent(stored) } });
+      const file = await prisma.uploadedFile.findUnique({ where: { storedName: stored } });
       if (file && file.kind === "AVATAR" && file.ownerId === user.id) {
         await removeStoredFile(file.storedName);
         await prisma.uploadedFile.delete({ where: { id: file.id } });

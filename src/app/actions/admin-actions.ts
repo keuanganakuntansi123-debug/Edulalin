@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
-import { removeStoredFile } from "@/lib/storage";
+import { removeStoredFile, fileUrl } from "@/lib/storage";
 import { validateCategorySchoolMatch } from "@/lib/module-service";
 
 async function actorContext() {
@@ -843,6 +843,8 @@ export async function setSchoolLogo(
     revalidatePath("/dashboard/guru");
     revalidatePath("/dashboard/murid", "layout");
     revalidatePath("/dashboard/polisi", "layout");
+    revalidatePath("/", "layout");
+    revalidatePath("/tentang");
     return { ok: true };
   }
 
@@ -853,9 +855,10 @@ export async function setSchoolLogo(
   }
 
   const oldFileId = school.logoFileId;
+  const logoUrl = fileUrl(file.storedName);
   await prisma.school.update({
     where: { id: schoolId },
-    data: { logoFileId: file.id, logoUrl: `/api/files/${encodeURIComponent(file.storedName)}` },
+    data: { logoFileId: file.id, logoUrl },
   });
 
   // Hapus file lama bila mengganti logo.
@@ -879,6 +882,8 @@ export async function setSchoolLogo(
   revalidatePath("/dashboard/guru");
   revalidatePath("/dashboard/murid", "layout");
   revalidatePath("/dashboard/polisi", "layout");
+  revalidatePath("/", "layout");
+  revalidatePath("/tentang");
   return { ok: true };
 }
 
@@ -957,6 +962,7 @@ export async function deleteSchool(id: string) {
   revalidatePath("/dashboard/admin/schools");
   revalidatePath("/dashboard/admin/users");
   revalidatePath("/dashboard/admin", "layout");
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -997,6 +1003,7 @@ export async function restoreSchool(id: string) {
   revalidatePath("/dashboard/admin/schools");
   revalidatePath("/dashboard/admin/users");
   revalidatePath("/dashboard/admin", "layout");
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 

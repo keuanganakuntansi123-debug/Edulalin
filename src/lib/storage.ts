@@ -112,7 +112,7 @@ export async function saveUploadedFile(input: {
     embedded?: string;
   } = {
     id: record.id,
-    url: `/api/files/${encodeURIComponent(storedName)}`,
+    url: fileUrl(storedName),
     originalName: record.originalName,
     mimeType: record.mimeType,
     size: record.size,
@@ -156,5 +156,21 @@ export async function removeStoredFile(storedName: string): Promise<void> {
 }
 
 export function fileUrl(storedName: string): string {
-  return `/api/files/${encodeURIComponent(storedName)}`;
+  // Encode per segmen supaya pathname ber-folder (mis. `logos/xxx.png`)
+  // tetap menjadi rute yang valid untuk catch-all /api/files/[...storedName].
+  const segments = storedName.split("/").map((s) => encodeURIComponent(s));
+  return `/api/files/${segments.join("/")}`;
+}
+
+/** Ekstrak storedName dari URL /api/files/... (mendukung path ber-folder). */
+export function storedNameFromUrl(url: string): string | null {
+  const marker = "/api/files/";
+  const idx = url.indexOf(marker);
+  if (idx < 0) return null;
+  const rest = url.slice(idx + marker.length);
+  if (!rest) return null;
+  return rest
+    .split("/")
+    .map((s) => decodeURIComponent(s))
+    .join("/");
 }

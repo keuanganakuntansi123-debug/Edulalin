@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { levelDisplayLabel, categoryOf } from "@/lib/constants";
 import { ModuleCatalog } from "./module-catalog";
 import { PageHero } from "@/components/public/page-hero";
+import { fileUrl } from "@/lib/storage";
 
 export const metadata: Metadata = {
   title: "Modul | EDULALIN | Edukasi Lalu Lintas",
@@ -75,7 +76,7 @@ export default async function ModulPage({
     ...m,
     displayThumbnail:
       m.thumbnailFile?.storedName
-        ? `/api/files/${encodeURIComponent(m.thumbnailFile.storedName)}`
+        ? fileUrl(m.thumbnailFile.storedName)
         : m.thumbnailUrl ?? null,
   }));
 

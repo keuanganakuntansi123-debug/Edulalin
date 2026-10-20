@@ -122,7 +122,8 @@ export function QuizForm({
     setPdfFile(file);
     setPdfResult(null);
     setReviewed(null);
-    const storedName = file.storedName ?? file.url.split("/").pop() ?? "";
+    const storedName =
+      file.storedName ?? decodeURIComponent(file.url.replace("/api/files/", ""));
     const res = await fetch(`/api/extract-pdf?storedName=${encodeURIComponent(storedName)}`);
     if (res.ok) {
       const data = (await res.json()) as {

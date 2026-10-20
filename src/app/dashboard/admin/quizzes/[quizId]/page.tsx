@@ -9,6 +9,7 @@ import { QuestionForm } from "./question-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DraftPdfTools, type ReviewQuestion } from "../draft-pdf-tools";
+import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
 
@@ -45,9 +46,7 @@ export default async function AdminQuizDetailPage({
     answer: q.correctOption,
     explanation: q.explanation,
   }));
-  const sourceUrl = quiz.sourceFile
-    ? `/api/files/${encodeURIComponent(quiz.sourceFile.storedName)}`
-    : null;
+  const sourceUrl = quiz.sourceFile ? fileUrl(quiz.sourceFile.storedName) : null;
 
   return (
     <div>

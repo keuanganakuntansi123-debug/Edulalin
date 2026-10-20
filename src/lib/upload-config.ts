@@ -41,3 +41,24 @@ export const ALLOWED_MIME: Record<FileKind, string[]> = {
 export function isAllowedMime(kind: FileKind, mime: string): boolean {
   return ALLOWED_MIME[kind].includes(mime);
 }
+
+/** Prefix folder per jenis file (client & server — aman diimpor bersama). */
+export const BLOB_PREFIX: Record<FileKind, string> = {
+  MODULE_CONTENT: "modules",
+  QUIZ_PDF: "quiz",
+  AVATAR: "avatars",
+  SITE_IMAGE: "site",
+  SCHOOL_LOGO: "logos",
+};
+
+/**
+ * Buat pathname blob yang aman & unik dari nama file asli.
+ * Dipakai oleh upload client (FileUpload) dan fallback server (storage.ts)
+ * supaya pathname selalu valid (mengandung '/') dan tidak bentrok.
+ */
+export function blobPathname(kind: FileKind, fileName: string): string {
+  const prefix = BLOB_PREFIX[kind];
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
+  const stamp = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}/${stamp}-${safe}`;
+}

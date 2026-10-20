@@ -5,6 +5,8 @@ import { MAX_SIZES, isAllowedMime } from "@/lib/storage";
 import { isBlobPathname } from "@/lib/blob-storage";
 import { logActivity } from "@/lib/audit";
 import type { FileKind } from "@/generated/prisma/client";
+import { BLOB_PREFIX } from "@/lib/upload-config";
+import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
 
@@ -43,6 +45,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ukuran file melebihi batas maksimal 50 MB" }, { status: 400 });
   }
 
+  // Pastikan pathname memakai folder yang sesuai dengan kind (cegah path aneh).
+  const expectedPrefix = BLOB_PREFIX[fKind];
+  if (!pathname.startsWith(`${expectedPrefix}/`)) {
+    return NextResponse.json({ error: "pathname blob tidak valid" }, { status: 400 });
+  }
+
   // Cegah duplikat bila client memanggil register dua kali.
   const existing = await prisma.uploadedFile.findUnique({ where: { storedName: pathname } });
   if (existing) {
@@ -50,7 +58,7 @@ export async function POST(req: NextRequest) {
       file: {
         id: existing.id,
         storedName: existing.storedName,
-        url: `/api/files/${encodeURIComponent(existing.storedName)}`,
+        url: fileUrl(existing.storedName),
         originalName: existing.originalName,
         mimeType: existing.mimeType,
         size: existing.size,
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
       file: {
         id: record.id,
         storedName: record.storedName,
-        url: `/api/files/${encodeURIComponent(record.storedName)}`,
+        url: fileUrl(record.storedName),
         originalName: record.originalName,
         mimeType: record.mimeType,
         size: record.size,

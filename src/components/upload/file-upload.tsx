@@ -5,7 +5,7 @@ import { UploadCloud, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileKind } from "@/generated/prisma/client";
 import { isBlobUploadEnabled } from "@/lib/upload-client";
-import { maxSizeLabel } from "@/lib/upload-config";
+import { maxSizeLabel, blobPathname, MAX_SIZES, ALLOWED_MIME, isAllowedMime } from "@/lib/upload-config";
 
 type UploadedMeta = {
   id: string;
@@ -38,8 +38,25 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const validate = (file: File): string | null => {
+    const mime = file.type || "application/octet-stream";
+    if (!isAllowedMime(kind, mime)) {
+      return `Tipe file tidak diizinkan (${mime}). Gunakan ${ALLOWED_MIME[kind].join(", ")}.`;
+    }
+    if (file.size > MAX_SIZES[kind]) {
+      return `Ukuran file melebihi batas maksimal ${maxSizeLabel(kind)}`;
+    }
+    return null;
+  };
+
   const upload = async (file: File) => {
     if (!file) return;
+    const validateError = validate(file);
+    if (validateError) {
+      setError(validateError);
+      onError?.(validateError);
+      return;
+    }
     setUploading(true);
     setError(null);
     setDone(false);
@@ -49,7 +66,10 @@ export function FileUpload({
         // Client upload langsung ke Vercel Blob (mendukung file hingga 50 MB
         // melewati batas body server). Metadata dicatat ke Neon lewat register.
         const { upload } = await import("@vercel/blob/client");
-        const result = await upload(file.name, file, {
+        // Gunakan pathname ber-prefix folder (mis. `logos/xxx.png`) agar
+        // /api/upload/register dapat memvalidasi & menyimpan path yang benar.
+        const pathname = blobPathname(kind, file.name);
+        const result = await upload(pathname, file, {
           access: "private",
           multipart: file.size > 5 * 1024 * 1024,
           handleUploadUrl: "/api/upload/blob-token",
