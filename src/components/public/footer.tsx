@@ -19,7 +19,6 @@ export async function PublicFooter() {
   const quickLinks = [
     { href: "/", label: "Beranda" },
     { href: "/program", label: "Program" },
-    { href: "/modul", label: "Modul" },
     { href: "/berita", label: "Berita & Edukasi" },
     { href: "/tentang", label: "Tentang Kami" },
     { href: "/kontak", label: "Kontak" },

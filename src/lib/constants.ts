@@ -1,7 +1,13 @@
 import type { Role, EducationLevel } from "@/generated/prisma/client";
 
 export const ROLES: Role[] = ["ADMIN", "GURU", "POLISI", "MURID"];
-export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SMK", "SIM"];
+
+/**
+ * Jenjang yang berdiri sendiri di UI: SD, SMP, SMA, SMK.
+ * SIM BUKAN jenjang — SIM adalah jenis materi/kuis khusus yang berada
+ * dalam kategori SMA dan SMK (tetap terpisah via educationLevel = "SIM").
+ */
+export const EDUCATION_LEVELS: EducationLevel[] = ["SD", "SMP", "SMA", "SMK"];
 
 /**
  * Kategori jenjang yang berdiri sendiri di UI: SD, SMP, SMA, SMK.

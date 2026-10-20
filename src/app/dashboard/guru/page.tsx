@@ -11,6 +11,20 @@ export const instant = false;
 export default async function GuruDashboardPage() {
   const user = await requireRole("GURU");
 
+  // Fetch current date and time in WIB
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Asia/Jakarta",
+  };
+  const formattedDateTime = now.toLocaleString("id-ID", options);
+
   const [murid, modul, quizzes, avgScore] = await Promise.all([
     prisma.user.count({ where: { schoolId: user.schoolId, role: "MURID", deletedAt: null } }),
     prisma.module.count({
@@ -68,6 +82,12 @@ export default async function GuruDashboardPage() {
 
   return (
     <div>
+      <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-6 py-4 sm:flex-row sm:gap-0">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl font-bold text-primary">Selamat Datang, {user.name}!</h1>
+        </div>
+        <p className="text-xl font-bold text-primary">{formattedDateTime}</p>
+      </div>
       <DashboardWelcome
         role="GURU"
         name={user.name}

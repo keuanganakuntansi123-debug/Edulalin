@@ -67,7 +67,7 @@ export default async function LandingPage() {
               <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-5xl">{heroTitle}</h1>
               <p className="mt-4 max-w-xl text-lg text-blue-50">{heroDesc}</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/modul">
+                <Link href="/program">
                   <Button size="lg" className="bg-yellow-400 text-slate-900 shadow-lg shadow-yellow-400/30 hover:bg-yellow-300">
                     Mulai Belajar
                   </Button>

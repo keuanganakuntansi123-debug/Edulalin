@@ -21,6 +21,20 @@ export const instant = false;
 export default async function AdminDashboardPage() {
   const user = await requireRole("ADMIN");
 
+  // Fetch current date and time in WIB
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Asia/Jakarta",
+  };
+  const formattedDateTime = now.toLocaleString("id-ID", options);
+
   const [sekolah, totalGuru, totalMurid] = await Promise.all([
     prisma.school.findMany({
       where: { deletedAt: null },
@@ -72,6 +86,12 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
+      <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-6 py-4 sm:flex-row sm:gap-0">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl font-bold text-primary  ">Selamat Datang, {user.name}!</h1>
+        </div>
+        <p className="text-xl font-bold text-primary">{formattedDateTime}</p>
+      </div>
       <DashboardWelcome
         role="ADMIN"
         name={user.name}
