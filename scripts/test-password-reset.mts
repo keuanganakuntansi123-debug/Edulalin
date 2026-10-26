@@ -1,9 +1,11 @@
 /**
- * Uji end-to-end alur "Lupa Password via Admin" terhadap Neon DB.
+ * Uji end-to-end alur "Lupa Password via Admin" + notifikasi & email terhadap
+ * database Neon asli.
  *
- * Memakai fungsi inti produksi (`@/lib/password-reset-service`) sehingga rantai
- * pengajuan → verifikasi identitas → reset oleh Admin → login pengguna benar-
- * benar diuji, bukan sekadar UI.
+ * Memakai fungsi inti produksi (`@/lib/password-reset-service`) serta layanan
+ * notifikasi (`@/lib/notification-service`) dan email (`@/lib/notification-emails`)
+ * sehingga rantai pengajuan → verifikasi identitas ketat → reset oleh Admin →
+ * notifikasi lonceng + catatan email benar-benar diuji, bukan sekadar UI.
  *
  * Jalankan: npm run test:reset
  * Membuat akun QA sementara, lalu menghapusnya kembali di akhir (idempoten).
@@ -19,6 +21,7 @@ const prisma = new PrismaClient({ adapter: pool });
 const TEST_EMAIL = "qa.reset.admin@edulalin.test";
 const OLD_PASSWORD = "lama123456";
 const NEW_PASSWORD = "baru654321";
+const RUN_STARTED_AT = new Date();
 
 let failures = 0;
 function assert(condition: boolean, label: string) {
@@ -32,10 +35,29 @@ function assert(condition: boolean, label: string) {
 
 async function cleanup() {
   const user = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });
-  if (!user) return;
-  await prisma.passwordResetRequest.deleteMany({ where: { userId: user.id } });
-  await prisma.userSession.deleteMany({ where: { userId: user.id } });
-  await prisma.user.delete({ where: { id: user.id } });
+  if (user) {
+    await prisma.notification.deleteMany({ where: { recipientId: user.id } });
+    await prisma.notificationEmailLog.deleteMany({ where: { userId: user.id } });
+    await prisma.passwordResetRequest.deleteMany({ where: { userId: user.id } });
+    await prisma.userSession.deleteMany({ where: { userId: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  }
+  // Bersihkan notifikasi uji yang sempat terkirim ke pengguna asli (Admin/Polisi/Murid).
+  // Hanya menyasar baris yang memuat identitas QA agar data asli tidak tersentuh.
+  await prisma.notification.deleteMany({
+    where: {
+      type: "PASSWORD_RESET_REQUEST",
+      createdAt: { gte: RUN_STARTED_AT },
+      OR: [{ body: { contains: TEST_EMAIL } }, { title: { contains: "QA RESET MURID" } }],
+    },
+  });
+  await prisma.notification.deleteMany({
+    where: {
+      createdAt: { gte: RUN_STARTED_AT },
+      title: { contains: "QA MODUL NOTIFIKASI" },
+    },
+  });
+  await prisma.module.deleteMany({ where: { title: "QA MODUL NOTIFIKASI" } });
 }
 
 async function main() {
@@ -46,6 +68,10 @@ async function main() {
     rejectPasswordRequest,
     changeUserPassword,
   } = await import("../src/lib/password-reset-service");
+  const { notifyPasswordRequestToAdmins, notifyPasswordChanged, notifyNewModule } = await import(
+    "../src/lib/notification-service"
+  );
+  const { emailPasswordRequestToAdmins } = await import("../src/lib/notification-emails");
 
   await cleanup();
 
@@ -66,6 +92,7 @@ async function main() {
   assert(Boolean(admin), "Admin utama tersedia untuk reset");
   if (!admin) return;
 
+  console.log("\n[1] Identitas salah → ditolak dengan peringatan resmi");
   const wrong = await submitPasswordResetRequest({
     email: TEST_EMAIL,
     name: "NAMA SALAH TOTAL",
@@ -73,38 +100,15 @@ async function main() {
     classLevel: "10",
     major: "TKJ",
   });
-  console.log("\n[1] Pengajuan identitas salah → perlu verifikasi manual");
-  assert(wrong.success === true, "Pengajuan tetap tercatat (tidak hilang)");
-  assert(wrong.verified === false, "Identitas tidak terverifikasi");
+  assert(Boolean(wrong.error), "Pengajuan identitas salah ditolak");
+  assert(
+    wrong.error === "Data yang Anda masukkan tidak sesuai dengan data akun terdaftar.",
+    "Pesan peringatan sesuai ketentuan",
+  );
+  const wrongRows = await prisma.passwordResetRequest.count({ where: { userId: user.id } });
+  assert(wrongRows === 0, "Tidak ada baris pengajuan dibuat saat identitas salah");
 
-  console.log("\n[2] Anti-duplikat: pengajuan dalam 5 menit mengembalikan yang sama");
-  const dup = await submitPasswordResetRequest({
-    email: TEST_EMAIL,
-    name: "QA RESET MURID",
-    educationLevel: "SMA",
-    classLevel: "10",
-    major: "MIPA",
-  });
-  assert(dup.requestId === wrong.requestId, "Pengajuan duplikat tidak membuat baris baru");
-
-  console.log("\n[3] Reset ditolak untuk pengajuan tak terverifikasi");
-  const blocked = await completePasswordReset({
-    requestId: wrong.requestId!,
-    adminId: admin.id,
-    newPassword: NEW_PASSWORD,
-    confirmPassword: NEW_PASSWORD,
-  });
-  assert(Boolean(blocked.error), "Reset ditolak tanpa identitas valid");
-
-  console.log("\n[4] Tolak pengajuan yang menunggu (membersihkan antrean)");
-  const cleared = await rejectPasswordRequest({
-    requestId: wrong.requestId!,
-    adminId: admin.id,
-    reason: "Identitas tidak cocok",
-  });
-  assert(cleared.success === true, "Pengajuan tidak valid ditolak");
-
-  console.log("\n[5] Pengajuan identitas benar → terverifikasi otomatis");
+  console.log("\n[2] Pengajuan identitas benar → terverifikasi otomatis");
   const ok = await submitPasswordResetRequest({
     email: TEST_EMAIL,
     name: "QA RESET MURID",
@@ -117,7 +121,38 @@ async function main() {
   const requestId = ok.requestId!;
   assert(Boolean(requestId), "Pengajuan punya ID");
 
-  console.log("\n[6] Reset password oleh Admin untuk pengajuan valid");
+  console.log("\n[3] Anti-duplikat: pengajuan dalam 5 menit mengembalikan yang sama");
+  const dup = await submitPasswordResetRequest({
+    email: TEST_EMAIL,
+    name: "QA RESET MURID",
+    educationLevel: "SMA",
+    classLevel: "10",
+    major: "MIPA",
+  });
+  assert(dup.requestId === requestId, "Pengajuan duplikat tidak membuat baris baru");
+
+  console.log("\n[4] Guard: pengajuan belum terverifikasi tidak dapat diproses");
+  const manual = await prisma.passwordResetRequest.create({
+    data: {
+      userId: user.id,
+      name: "QA RESET MURID",
+      email: TEST_EMAIL,
+      role: "MURID",
+      status: "PENDING",
+      verified: false,
+      matchScore: 40,
+    },
+  });
+  const blocked = await completePasswordReset({
+    requestId: manual.id,
+    adminId: admin.id,
+    newPassword: NEW_PASSWORD,
+    confirmPassword: NEW_PASSWORD,
+  });
+  assert(Boolean(blocked.error), "Reset ditolak tanpa identitas valid");
+  await prisma.passwordResetRequest.delete({ where: { id: manual.id } });
+
+  console.log("\n[5] Reset password oleh Admin untuk pengajuan valid");
   const strong = await completePasswordReset({
     requestId,
     adminId: admin.id,
@@ -141,22 +176,24 @@ async function main() {
     confirmPassword: NEW_PASSWORD,
   });
   assert(reset.success === true, "Password berhasil diatur ulang oleh Admin");
+  assert(Boolean(reset.audit?.name), "Hasil reset memuat nama pengguna untuk notifikasi");
+  assert(Boolean(reset.audit?.changedAt), "Hasil reset memuat waktu perubahan");
 
-  console.log("\n[7] Efek reset tersinkron ke DB");
+  console.log("\n[6] Efek reset tersinkron ke DB");
   const after = await prisma.user.findUnique({ where: { id: user.id } });
   assert(
     Boolean(after && (await verifyPassword(NEW_PASSWORD, after.passwordHash))),
-    "Password baru valid di database"
+    "Password baru valid di database",
   );
   assert(
     Boolean(after && !(await verifyPassword(OLD_PASSWORD, after.passwordHash))),
-    "Password lama tidak berlaku lagi"
+    "Password lama tidak berlaku lagi",
   );
   const done = await prisma.passwordResetRequest.findUnique({ where: { id: requestId } });
   assert(done?.status === "COMPLETED", "Pengajuan ditandai COMPLETED (hilang dari daftar aktif)");
   assert(done?.handledById === admin.id, "Pengajuan mencatat Admin pemroses");
 
-  console.log("\n[8] Pengajuan selesai tidak dapat diproses ulang");
+  console.log("\n[7] Pengajuan selesai tidak dapat diproses ulang");
   const again = await completePasswordReset({
     requestId,
     adminId: admin.id,
@@ -164,6 +201,61 @@ async function main() {
     confirmPassword: "lagi678901",
   });
   assert(Boolean(again.error), "Reset kedua ditolak (pengajuan sudah selesai)");
+
+  console.log("\n[8] Notifikasi lonceng & catatan email");
+  const adminNotified = await notifyPasswordRequestToAdmins({
+    requestId,
+    name: "QA RESET MURID",
+    email: TEST_EMAIL,
+    roleLabel: "Murid",
+    submittedAt: new Date(),
+    summary: "Sekolah: SMAN UJI · Kelas: 10",
+  });
+  assert(adminNotified > 0, "Admin menerima notifikasi lonceng pengajuan");
+  const adminNotifRow = await prisma.notification.findFirst({
+    where: { recipientId: admin.id, type: "PASSWORD_RESET_REQUEST" },
+    orderBy: { createdAt: "desc" },
+  });
+  assert(Boolean(adminNotifRow), "Notifikasi pengajuan tersimpan di DB");
+
+  await notifyPasswordChanged({
+    userId: user.id,
+    name: "QA RESET MURID",
+    changedAt: new Date(),
+    changedByLabel: "Admin Uji",
+    method: "Reset melalui pengajuan Lupa Password",
+  });
+  const userNotif = await prisma.notification.findFirst({
+    where: { recipientId: user.id, type: "PASSWORD_CHANGED" },
+  });
+  assert(Boolean(userNotif), "Pengguna menerima notifikasi lonceng perubahan password");
+  assert(
+    Boolean(userNotif && !/baru654321|lama123456/.test(userNotif.body)),
+    "Notifikasi tidak memuat password",
+  );
+
+  const emailResult = await emailPasswordRequestToAdmins({
+    requestId,
+    name: "QA RESET MURID",
+    email: TEST_EMAIL,
+    roleLabel: "Murid",
+    submittedAt: new Date(),
+    rows: [{ label: "Kelas", value: "10" }],
+    verified: true,
+    matchScore: 100,
+    userId: user.id,
+  });
+  const logCount = await prisma.notificationEmailLog.count({ where: { requestId } });
+  assert(logCount > 0, "Pengiriman email dicatat pada NotificationEmailLog");
+  assert(
+    emailResult.sent + emailResult.failed === logCount,
+    "Jumlah hasil kirim cocok dengan jumlah log",
+  );
+  const failedLogs = await prisma.notificationEmailLog.findMany({ where: { requestId } });
+  assert(
+    failedLogs.every((l) => l.status === "SENT" || l.status === "FAILED"),
+    "Setiap log punya status akhir (SENT/FAILED), tidak menggantung",
+  );
 
   console.log("\n[9] Ubah password mandiri (verifikasi password lama)");
   const badOld = await changeUserPassword({
@@ -184,11 +276,11 @@ async function main() {
   const selfUser = await prisma.user.findUnique({ where: { id: user.id } });
   assert(
     Boolean(selfUser && (await verifyPassword("mandiri12345", selfUser.passwordHash))),
-    "Password mandiri tersimpan di DB"
+    "Password mandiri tersimpan di DB",
   );
   assert(
     Boolean(selfUser && !(await verifyPassword(NEW_PASSWORD, selfUser.passwordHash))),
-    "Password Admin sebelumnya tidak berlaku lagi"
+    "Password Admin sebelumnya tidak berlaku lagi",
   );
 
   console.log("\n[10] Tolak pengajuan baru");
@@ -217,11 +309,51 @@ async function main() {
   });
   assert(unknown.error === "Email tidak terdaftar di EDULALIN.", "Email asing ditolak");
 
+  console.log("\n[12] Notifikasi modul baru tersinkron (murid/guru/polisi)");
+  const mod = await prisma.module.create({
+    data: {
+      title: "QA MODUL NOTIFIKASI",
+      description: "Modul uji notifikasi otomatis",
+      educationLevel: "SMA",
+      status: "ACTIVE",
+      moduleType: "PDF",
+    },
+  });
+  const modNotif = await notifyNewModule({
+    actorId: admin.id,
+    actorName: admin.name,
+    moduleId: mod.id,
+    title: mod.title,
+    educationLevel: "SMA",
+    schoolId: null,
+    schoolIds: [],
+    publishedAt: new Date(),
+  });
+  assert(modNotif.recipients > 0, "Notifikasi modul baru terkirim ke penerima");
+  const modNotifRow = await prisma.notification.findFirst({
+    where: { recipientId: user.id, type: "MODULE_NEW" },
+    orderBy: { createdAt: "desc" },
+  });
+  assert(Boolean(modNotifRow), "Murid menerima notifikasi modul baru");
+  assert(
+    Boolean(modNotifRow && modNotifRow.title.includes("QA MODUL NOTIFIKASI")),
+    "Notifikasi modul memuat judul modul",
+  );
+  assert(
+    Boolean(modNotifRow && modNotifRow.link?.includes(mod.id)),
+    "Notifikasi modul memuat tautan membuka modul",
+  );
+  const policeNotif = await prisma.notification.findFirst({
+    where: { type: "MODULE_NEW", recipient: { role: "POLISI" } },
+    orderBy: { createdAt: "desc" },
+  });
+  assert(Boolean(policeNotif), "Polisi menerima notifikasi modul baru sesuai hak akses");
+
   await cleanup();
   console.log(
     failures === 0
-      ? "\n✅ SEMUA UJI LULUS — alur lupa password via Admin berfungsi & tersinkron dengan Neon."
-      : `\n❌ ${failures} uji GAGAL.`
+      ? "\n✅ SEMUA UJI LULUS — alur lupa password, notifikasi & email tersinkron dengan Neon."
+      : `\n❌ ${failures} uji GAGAL.`,
   );
   await prisma.$disconnect();
   process.exit(failures === 0 ? 0 : 1);

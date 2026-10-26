@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/audit";
 import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
 import { removeStoredFile, fileUrl, readStoredBuffer } from "@/lib/storage";
 import { validateCategorySchoolMatch } from "@/lib/module-service";
+import { notifyNewModule } from "@/lib/notification-service";
 
 async function actorContext() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
@@ -88,6 +89,18 @@ export async function createModule(formData: FormData) {
     entityId: mod.id,
     metadata: { title: mod.title, schoolIds },
   });
+  if (mod.status === "ACTIVE") {
+    await notifyNewModule({
+      actorId: user.id,
+      actorName: user.name,
+      moduleId: mod.id,
+      title: mod.title,
+      educationLevel,
+      schoolId: mod.schoolId,
+      schoolIds,
+      publishedAt: new Date(),
+    });
+  }
   revalidatePath("/dashboard/admin/modules");
   revalidatePath("/modul");
   return { ok: true, id: mod.id };
@@ -176,6 +189,19 @@ export async function updateModule(id: string, formData: FormData) {
     entityId: mod.id,
     metadata: { title: mod.title, schoolIds },
   });
+  // Kirim notifikasi modul baru saat status berubah menjadi ACTIVE (dibagikan).
+  if (mod.status === "ACTIVE" && existing.status !== "ACTIVE") {
+    await notifyNewModule({
+      actorId: user.id,
+      actorName: user.name,
+      moduleId: mod.id,
+      title: mod.title,
+      educationLevel,
+      schoolId: mod.schoolId,
+      schoolIds,
+      publishedAt: new Date(),
+    });
+  }
   revalidatePath("/dashboard/admin/modules");
   revalidatePath("/modul");
   return { ok: true };

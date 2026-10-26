@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { validatePasswordStrength, verifyResetIdentity } from "@/lib/password-request";
+import {
+  validatePasswordStrength,
+  verifyResetIdentity,
+  IDENTITY_MISMATCH_MESSAGE,
+} from "@/lib/password-request";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -27,12 +31,19 @@ export type PasswordRequestResult = {
   requestId?: string;
   status?: string;
   verified?: boolean;
+  /** Hasil pengiriman notifikasi (diisi oleh lapisan server action). */
+  notifications?: { admins: number; emailsSent: number; emailsFailed: number };
+  /** Hasil pengiriman email konfirmasi (diisi oleh lapisan server action). */
+  email?: { logId: string | null; ok: boolean; error?: string };
   /** Hanya diisi oleh fungsi inti untuk kebutuhan audit. */
   audit?: {
     userId?: string;
     schoolId?: string | null;
     role?: string;
     email?: string;
+    name?: string;
+    schoolName?: string | null;
+    changedAt?: string;
     matchScore?: number;
     matchedFields?: string[];
     mismatchFields?: string[];
@@ -109,6 +120,23 @@ export async function submitPasswordResetRequest(
     policeDivision: input.policeDivision,
   });
 
+  // Identitas wajib cocok dengan data akun asli. Bila tidak, pengajuan ditolak
+  // dengan peringatan resmi dan data pengguna tidak diubah sama sekali.
+  if (!check.verified) {
+    return {
+      error: IDENTITY_MISMATCH_MESSAGE,
+      audit: {
+        userId: user.id,
+        schoolId: user.schoolId,
+        role: user.role,
+        email,
+        matchScore: check.score,
+        matchedFields: check.matchedFields,
+        mismatchFields: check.mismatchFields,
+      },
+    };
+  }
+
   const note = (input.note ?? "").trim().slice(0, 500) || null;
 
   const created = await prisma.$transaction(async (tx) => {
@@ -175,7 +203,7 @@ export async function completePasswordReset(params: {
 }): Promise<PasswordRequestResult> {
   const request = await prisma.passwordResetRequest.findUnique({
     where: { id: params.requestId },
-    include: { user: true },
+    include: { user: { include: { school: { select: { name: true } } } } },
   });
   if (!request) return { error: "Pengajuan tidak ditemukan." };
   if (request.status !== "PENDING") return { error: "Pengajuan ini sudah diproses." };
@@ -196,6 +224,7 @@ export async function completePasswordReset(params: {
   );
   if (strengthError) return { error: strengthError };
 
+  const changedAt = new Date();
   const newHash = await hashPassword(params.newPassword);
   await prisma.$transaction([
     prisma.user.update({
@@ -203,12 +232,12 @@ export async function completePasswordReset(params: {
       data: {
         passwordHash: newHash,
         status: request.user.status === "PENDING" ? "ACTIVE" : request.user.status,
-        verifiedAt: request.user.verifiedAt ?? new Date(),
+        verifiedAt: request.user.verifiedAt ?? changedAt,
       },
     }),
     prisma.passwordResetRequest.update({
       where: { id: request.id },
-      data: { status: "COMPLETED", handledById: params.adminId, handledAt: new Date() },
+      data: { status: "COMPLETED", handledById: params.adminId, handledAt: changedAt },
     }),
     // Cabut sesi aktif agar perangkat lama harus login ulang.
     prisma.userSession.deleteMany({ where: { userId: request.userId } }),
@@ -222,6 +251,9 @@ export async function completePasswordReset(params: {
       schoolId: request.user.schoolId,
       role: request.user.role,
       email: request.user.email,
+      name: request.user.name,
+      schoolName: request.user.school?.name ?? request.schoolName,
+      changedAt: changedAt.toISOString(),
     },
   };
 }
@@ -299,12 +331,19 @@ export async function changeUserPassword(params: {
   );
   if (strengthError) return { error: strengthError };
 
+  const changedAt = new Date();
   const newHash = await hashPassword(params.newPassword);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
 
   return {
     success: true,
     message: "Password berhasil diperbarui.",
-    audit: { userId: user.id, schoolId: user.schoolId, email: user.email },
+    audit: {
+      userId: user.id,
+      schoolId: user.schoolId,
+      email: user.email,
+      name: user.name,
+      changedAt: changedAt.toISOString(),
+    },
   };
 }

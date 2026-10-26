@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Bell, ChevronDown, LogOut, User } from "lucide-react";
+import { Menu, ChevronDown, LogOut, User } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth-actions";
 import { getRoleLabel } from "@/lib/constants";
 import type { Role } from "@/generated/prisma/client";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
+import { NotificationCenter } from "@/components/dashboard/notification-center";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
-import { PasswordRequestBell } from "@/components/dashboard/password-request-bell";
-import { QuizNotificationBell } from "@/components/dashboard/quiz-notification-bell";
 import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export function Topbar({
@@ -24,7 +23,12 @@ export function Topbar({
   onMenuClick: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const notifTitle =
+    role === "ADMIN"
+      ? "Notifikasi Admin"
+      : role === "MURID"
+        ? "Notifikasi Saya"
+        : "Notifikasi";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-800 bg-slate-900/95 px-4 backdrop-blur lg:px-6">
@@ -45,42 +49,15 @@ export function Topbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
-        {/* Notifikasi — Admin: pesan kontak; Guru/Polisi: hasil kuis murid */}
-        {role === "ADMIN" ? (
-          <>
-            <PasswordRequestBell />
-            <NotificationBell />
-          </>
-        ) : role === "GURU" || role === "POLISI" ? (
-          <QuizNotificationBell />
-        ) : (
-          <div className="relative">
-            <button
-              onClick={() => {
-                setNotifOpen((v) => !v);
-                setOpen(false);
-              }}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-300 transition-colors hover:bg-slate-800"
-              aria-label="Notifikasi"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-            {notifOpen && (
-              <div className="absolute right-0 top-12 w-72 rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-xl">
-                <p className="text-sm font-semibold text-white">Notifikasi</p>
-                <p className="mt-2 text-sm text-slate-400">Belum ada notifikasi baru.</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Lonceng notifikasi terpadu — modul baru, pengajuan & perubahan password, hasil kuis */}
+        <NotificationCenter title={notifTitle} limit={15} />
+        {/* Lonceng pesan kontak (khusus Admin) */}
+        {role === "ADMIN" && <NotificationBell />}
 
         {/* Profil */}
         <div className="relative">
           <button
-            onClick={() => {
-              setOpen((v) => !v);
-              setNotifOpen(false);
-            }}
+            onClick={() => setOpen((v) => !v)}
             className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-800"
           >
             <UserAvatar src={avatarUrl} name={name} className="h-8 w-8" />

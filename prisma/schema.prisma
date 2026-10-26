@@ -235,6 +235,39 @@ model Notification {
 }
 
 /**
+ * Log email notifikasi keluar (pengajuan lupa password & perubahan password).
+ * Menyimpan status kirim sehingga Admin dapat melihat kegagalan dan mengirim
+ * ulang. Tidak menyimpan password baru dan tidak menyimpan kredensial SMTP.
+ */
+enum NotificationEmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model NotificationEmailLog {
+  id          String                  @id @default(cuid())
+  kind        String // PASSWORD_REQUEST | PASSWORD_CHANGED
+  toEmail     String
+  subject     String
+  status      NotificationEmailStatus @default(PENDING)
+  error       String?
+  attempts    Int                     @default(0)
+  recipientId String?
+  userId      String?
+  requestId   String?
+  metadata    Json?
+  sentAt      DateTime?
+  updatedBy   String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([status])
+  @@index([kind])
+  @@index([createdAt])
+}
+
+/**
  * Pengajuan reset password via Admin.
  *
  * Menggantikan alur OTP email: pengguna mengirim identitas, sistem

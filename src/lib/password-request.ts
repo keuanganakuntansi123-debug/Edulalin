@@ -30,6 +30,10 @@ export type IdentityCheckResult = {
   applicableFields: string[];
 };
 
+/** Peringatan resmi saat identitas pengajuan tidak cocok dengan akun terdaftar. */
+export const IDENTITY_MISMATCH_MESSAGE =
+  "Data yang Anda masukkan tidak sesuai dengan data akun terdaftar.";
+
 const FIELD_LABEL: Record<string, string> = {
   name: "Nama Lengkap",
   school: "Sekolah",

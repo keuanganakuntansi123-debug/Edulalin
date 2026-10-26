@@ -66,13 +66,18 @@ revalidasi.
 1. **Pengajuan** — pengguna mengisi Email, Nama Lengkap, Sekolah, dan Kelas
   (kolom identitas menyesuaikan aktor: Murid → sekolah/jenjang/kelas/jurusan,
   Guru → sekolah/jenjang/mapel, Polisi → tingkat/nama kesatuan/divisi,
-  Admin → nama+email). `submitPasswordResetRequest()` mencari akun by email,
-  lalu `verifyResetIdentity()` mencocokkan nama + field identitas lain
-  (skor kecocokan ≥60% & nama cocok = **terverifikasi otomatis**).
-2. **Sinkronisasi** — pengajuan tersimpan di tabel `PasswordResetRequest`
-  (`status = PENDING`, `verified`, `matchScore`, `matchedFields`,
-  `mismatchFields`) dan notifikasi otomatis dikirim ke semua Admin aktif
-  (lonceng in-app → `/dashboard/admin/password-requests`).
+  Admin → nama+email). Data identitas wajib **sesuai akun asli**; format huruf
+  kapital diterapkan pada identitas yang memerlukannya. Bila tidak cocok,
+  pengajuan **ditolak** dengan pesan
+  **"Data yang Anda masukkan tidak sesuai dengan data akun terdaftar."** dan
+  data pengguna tidak pernah diubah.
+2. **Sinkronisasi** — pengajuan yang identitasnya cocok tersimpan di tabel
+  `PasswordResetRequest` (`status = PENDING`, `verified`, `matchScore`,
+  `matchedFields`, `mismatchFields`). Notifikasi otomatis dikirim ke semua
+  Admin aktif melalui:
+  **lonceng in-app** (`/dashboard/notifikasi`) dan **email ke Gmail Admin
+  terdaftar** (nama, email, peran, tanggal & jam WIB, detail identitas, ID
+  pengajuan). Email juga dicatat di tabel `NotificationEmailLog`.
 3. **Kelola oleh Admin** — menu **Kelola Lupa Password** menampilkan daftar
   pengajuan (nama, email, identitas, tanggal, status, skor kecocokan).
 4. **Reset** — Admin mengisi **Password Baru** + **Konfirmasi Password Baru**
@@ -80,8 +85,40 @@ revalidasi.
   pengajuan `PENDING` **dan** identitas terverifikasi; password akun asli
   diperbarui di Neon, semua sesi lama dicabut, dan pengajuan ditandai
   `COMPLETED` sehingga hilang dari daftar aktif.
-5. **Login kembali** — pengguna masuk memakai email + password baru tanpa
+5. **Notifikasi hasil** — pengguna menerima **notifikasi lonceng** dan **email**
+  berisi nama, tanggal, jam (WIB), serta info bahwa password berhasil
+  diperbarui. Password baru **tidak pernah** dikirim melalui email.
+6. **Login kembali** — pengguna masuk memakai email + password baru tanpa
   membuat akun baru atau kehilangan data.
+
+### Notifikasi Modul Baru
+
+Saat Admin menambahkan atau membagikan modul baru berstatus aktif, sistem
+mengirim notifikasi lonceng ke **Murid & Guru** pada sekolah tujuan (atau semua
+sekolah sesuai jenjang bila modul global) dan ke **semua Polisi** aktif sesuai
+hak akses pemantauan. Isi notifikasi: judul modul, kategori, tanggal & jam WIB,
+dan tautan untuk membuka modul. Modul SIM hanya untuk murid SMA/SMK berusia
+≥17 tahun.
+
+### Pusat Notifikasi
+
+Seluruh aktor (ADMIN, GURU, POLISI, MURID) memakai satu lonceng terpadu
+(`NotificationCenter`) pada topbar, dengan jumlah belum dibaca, status
+sudah/belum dibaca, dan halaman riwayat `/dashboard/notifikasi` (filter semua/
+belum dibaca/sudah dibaca, tandai-baca, hapus). Data diambil dari
+`GET /api/notifications` sehingga tersinkronisasi real-time antar peran.
+
+### Email Notifikasi
+
+- Kredensial email (Gmail SMTP) hanya dibaca dari environment variable server
+  (`SMTP_*`), tidak pernah dari frontend.
+- Setiap email dicatat di `NotificationEmailLog` beserta status
+  `SENT`/`FAILED` dan alasan kegagalan.
+- Admin memantau dan **mengirim ulang** email yang gagal dari
+  **Dashboard Admin → Notifikasi Email** (`/dashboard/admin/email-log`), serta
+  dapat mengirim **email uji** untuk memverifikasi konfigurasi.
+- Bila `SMTP_PASS` kosong, email dicatat sebagai `FAILED` (aplikasi tetap
+  berjalan) dan dapat dikirim ulang setelah SMTP dikonfigurasi.
 
 ### Pengaman
 
