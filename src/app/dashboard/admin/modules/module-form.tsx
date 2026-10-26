@@ -209,7 +209,7 @@ export function ModuleForm({
           </div>
         ) : (
           <FileUpload
-            kind="MODULE_CONTENT"
+            kind="MODULE_THUMBNAIL"
             accept="image/jpeg,image/png,image/webp"
             label="Unggah thumbnail"
             onUploaded={(f) => setThumbnail(f)}

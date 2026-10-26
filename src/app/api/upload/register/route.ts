@@ -28,6 +28,7 @@ async function buildEmbedded(
 
 const KINDS: FileKind[] = [
   "MODULE_CONTENT",
+  "MODULE_THUMBNAIL",
   "QUIZ_PDF",
   "AVATAR",
   "SITE_IMAGE",

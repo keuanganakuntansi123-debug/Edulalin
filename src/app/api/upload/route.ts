@@ -9,6 +9,7 @@ export const instant = false;
 
 const KINDS: FileKind[] = [
   "MODULE_CONTENT",
+  "MODULE_THUMBNAIL",
   "QUIZ_PDF",
   "AVATAR",
   "SITE_IMAGE",
@@ -45,8 +46,14 @@ export async function POST(req: NextRequest) {
   if ((user.role === "MURID" || user.role === "POLISI") && fKind !== "AVATAR") {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
-  // Guru boleh unggah materi modul + foto profil sendiri + logo sekolah
-  if (user.role === "GURU" && fKind !== "MODULE_CONTENT" && fKind !== "AVATAR" && fKind !== "SCHOOL_LOGO") {
+  // Guru boleh unggah materi modul + thumbnail + foto profil sendiri + logo sekolah
+  if (
+    user.role === "GURU" &&
+    fKind !== "MODULE_CONTENT" &&
+    fKind !== "MODULE_THUMBNAIL" &&
+    fKind !== "AVATAR" &&
+    fKind !== "SCHOOL_LOGO"
+  ) {
     return NextResponse.json({ error: "Tidak memiliki izin mengunggah tipe file ini" }, { status: 403 });
   }
   if (!isAllowedMime(fKind, file.type || "")) {

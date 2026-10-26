@@ -7,11 +7,6 @@ import {
   notifyPasswordRequestToAdmins,
   notifyPasswordChanged,
 } from "@/lib/notification-service";
-import {
-  emailPasswordRequestToAdmins,
-  emailPasswordChangedToUser,
-} from "@/lib/notification-emails";
-import type { MailRow } from "@/lib/mail";
 import { ROLE_LABEL, levelDisplayLabel, policeLevelLabel } from "@/lib/constants";
 import {
   submitPasswordResetRequest,
@@ -27,10 +22,10 @@ import type { Role } from "@/generated/prisma/client";
  * Alur Lupa Password EDULALIN — pengajuan reset melalui Admin.
  *
  * Pengguna mengirim identitas dari `/lupa-password`. Sistem memverifikasi
- * kecocokan dengan akun asli, membuat pengajuan yang muncul di dashboard
- * Admin (lonceng + email), lalu Admin menyetel password baru. Setelah password
- * berubah, pengguna menerima notifikasi lonceng dan email pemberitahuan —
- * tanpa password baru di dalam email.
+ * kecocokan dengan akun asli, membuat pengajuan yang muncul di lonceng
+ * dashboard Admin, lalu Admin menyetel password baru. Setelah password
+ * berubah, pengguna menerima notifikasi lonceng — tanpa password baru di
+ * dalamnya. Seluruh notifikasi disalurkan lewat lonceng (tanpa email).
  *
  * Logika inti ada di `@/lib/password-reset-service` agar dapat diuji langsung
  * terhadap database; lapisan ini menambahkan otorisasi, audit, revalidasi,
@@ -47,7 +42,7 @@ function roleLabel(role: string): string {
   return ROLE_LABEL[role as Role] ?? role;
 }
 
-/** Bangun baris identitas untuk notifikasi & email Admin. */
+/** Bangun baris ringkasan identitas untuk notifikasi lonceng Admin. */
 function identityRows(input: {
   schoolName?: string;
   educationLevel?: string;
@@ -57,8 +52,8 @@ function identityRows(input: {
   policeLevel?: string;
   policeUnit?: string;
   policeDivision?: string;
-}): MailRow[] {
-  const rows: MailRow[] = [];
+}): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
   if (input.schoolName) rows.push({ label: "Sekolah", value: input.schoolName });
   if (input.educationLevel)
     rows.push({ label: "Jenjang", value: levelDisplayLabel(input.educationLevel) });
@@ -127,27 +122,11 @@ export async function requestPasswordReset(
       summary,
     });
 
-    // Email ke seluruh Admin aktif.
-    const emailResult = await emailPasswordRequestToAdmins({
-      requestId: result.requestId,
-      name: submitted.name,
-      email: result.audit?.email ?? submitted.email,
-      roleLabel: roleLabel(result.audit?.role ?? "-"),
-      submittedAt,
-      rows,
-      verified: Boolean(result.verified),
-      matchScore: result.audit?.matchScore ?? 0,
-      note: submitted.note || null,
-      userId: result.audit?.userId ?? null,
-    }).catch(() => ({ sent: 0, failed: 0 }));
-
     safeRevalidatePath("/dashboard/admin/password-requests");
     return {
       ...result,
       notifications: {
         admins: notified,
-        emailsSent: emailResult.sent,
-        emailsFailed: emailResult.failed,
       },
     };
   }
@@ -189,7 +168,7 @@ export async function resetPasswordByRequest(
       userAgent: meta.userAgent,
     }).catch(() => undefined);
 
-    // Notifikasi lonceng ke pengguna + email konfirmasi (tanpa password baru).
+    // Notifikasi lonceng ke pengguna (tanpa password baru).
     await notifyPasswordChanged({
       userId: targetUserId,
       name: result.audit.name ?? "Pengguna",
@@ -198,36 +177,8 @@ export async function resetPasswordByRequest(
       method: "Reset melalui pengajuan Lupa Password",
     });
 
-    const emailResult = await emailPasswordChangedToUser({
-      userId: targetUserId,
-      toEmail: targetEmail,
-      name: result.audit.name ?? "Pengguna",
-      changedAt,
-      changedByLabel: `Admin ${admin.name}`,
-      method: "Reset melalui pengajuan Lupa Password",
-      requestId,
-      targetUserId,
-      roleLabel: roleLabel(result.audit.role ?? "-"),
-      schoolName: result.audit.schoolName ?? null,
-    }).catch(() => null);
-
-    logActivity({
-      actorId: admin.id,
-      action: emailResult?.ok ? "PASSWORD_CHANGED_EMAIL_SENT" : "PASSWORD_CHANGED_EMAIL_FAILED",
-      entity: "USER",
-      entityId: targetUserId,
-      metadata: { to: targetEmail, error: emailResult?.error ?? null },
-    }).catch(() => undefined);
-
     safeRevalidatePath("/dashboard/admin/password-requests");
-    return {
-      ...result,
-      email: {
-        logId: emailResult?.logId ?? null,
-        ok: Boolean(emailResult?.ok),
-        error: emailResult?.error,
-      },
-    };
+    return result;
   }
 
   return result;
@@ -310,16 +261,6 @@ export async function changeOwnPassword(
       changedByLabel: "Anda sendiri",
       method: "Ubah password mandiri",
     });
-
-    await emailPasswordChangedToUser({
-      userId: user.id,
-      toEmail: user.email,
-      name: user.name,
-      changedAt,
-      changedByLabel: "Anda sendiri (Profil & Pengaturan)",
-      method: "Ubah password mandiri",
-      roleLabel: roleLabel(user.role),
-    }).catch(() => null);
 
     safeRevalidatePath("/dashboard", "layout");
   }

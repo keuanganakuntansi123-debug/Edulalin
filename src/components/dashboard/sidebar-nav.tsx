@@ -21,7 +21,6 @@ import {
   KeyRound,
   ChevronRight,
   Bell,
-  Mail,
 } from "lucide-react";
 import type { Role } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
@@ -39,7 +38,6 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
         { href: "/dashboard/admin/berita", label: "Berita & Edukasi", icon: Newspaper },
         { href: "/dashboard/admin/users", label: "Kelola Pengguna", icon: Users },
         { href: "/dashboard/admin/password-requests", label: "Kelola Lupa Password", icon: KeyRound },
-        { href: "/dashboard/admin/email-log", label: "Notifikasi Email", icon: Mail },
         { href: "/dashboard/admin/archived", label: "Pengguna Terhapus", icon: Archive },
         { href: "/dashboard/admin/reports", label: "Laporan & Statistik", icon: BarChart3 },
         { href: "/dashboard/admin/activity", label: "Aktivitas Sistem", icon: Activity },

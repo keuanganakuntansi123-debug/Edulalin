@@ -4,9 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/dashboard/profile-form";
 import { logoutAction } from "@/app/actions/auth-actions";
 import { Button } from "@/components/ui/button";
-import { LogOut, KeyRound, ShieldCheck, Mail } from "lucide-react";
+import { LogOut, KeyRound, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { getMailStatus } from "@/lib/mail";
 
 export const instant = false;
 
@@ -15,7 +14,6 @@ export default async function AdminSettingsPage() {
   const pendingRequests = await prisma.passwordResetRequest.count({
     where: { status: "PENDING" },
   });
-  const mail = getMailStatus();
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -72,52 +70,6 @@ export default async function AdminSettingsPage() {
             <Link href="/dashboard/admin/password-requests">
               <Button variant="outline">
                 <KeyRound className="h-4 w-4" /> Kelola Lupa Password
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Notifikasi Email</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
-            <div className="flex items-start gap-2">
-              <Mail
-                className={`mt-0.5 h-4 w-4 shrink-0 ${mail.configured ? "text-emerald-600" : "text-amber-600"}`}
-              />
-              <div>
-                <p className="font-medium">
-                  {mail.configured ? "Pengiriman email aktif" : "Pengiriman email belum siap"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Server: {mail.host}:{mail.port} · Pengirim: {mail.user || "—"}
-                </p>
-                {!mail.configured && (
-                  <p className="mt-1 text-xs text-amber-600">
-                    Variabel belum diisi: {mail.missing.join(", ")}. Simpan di environment variable
-                    server, bukan di kode frontend.
-                  </p>
-                )}
-              </div>
-            </div>
-            <span className={mail.configured ? "text-emerald-600" : "text-amber-600"}>
-              {mail.configured ? "✓ Aktif" : "!"}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-            <div>
-              <p className="font-medium">Pantau & kirim ulang email</p>
-              <p className="text-xs text-muted-foreground">
-                Lihat status pengiriman email pengajuan & perubahan password, lalu kirim ulang bila
-                gagal.
-              </p>
-            </div>
-            <Link href="/dashboard/admin/email-log">
-              <Button variant="outline">
-                <Mail className="h-4 w-4" /> Notifikasi Email
               </Button>
             </Link>
           </div>

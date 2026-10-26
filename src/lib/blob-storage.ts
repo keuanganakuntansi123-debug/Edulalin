@@ -42,6 +42,8 @@ export function blobAllowedContentTypes(kind: FileKind): string[] {
         "image/png",
         "image/webp",
       ];
+    case "MODULE_THUMBNAIL":
+      return ["image/jpeg", "image/png", "image/webp"];
     case "QUIZ_PDF":
       return ["application/pdf"];
     case "AVATAR":

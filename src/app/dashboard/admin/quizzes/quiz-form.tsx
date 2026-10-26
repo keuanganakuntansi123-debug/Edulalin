@@ -25,6 +25,21 @@ type PdfExtractResult = {
   questions: ReviewQuestion[];
 };
 
+/**
+ * Baca JSON dengan aman. Server dapat membalas teks biasa (mis. halaman error
+ * platform atau "Request Entity Too Large") sehingga `res.json()` langsung
+ * akan melempar error parse yang tidak informatif.
+ */
+async function readJsonSafe<T>(res: Response): Promise<T | null> {
+  const text = await res.text().catch(() => "");
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function QuizForm({
   modules,
   schools,
@@ -89,9 +104,13 @@ export function QuizForm({
             questions,
           }),
         });
-        const data = await res.json();
-        if (!res.ok) {
-          toast({ title: "Gagal", description: data.error ?? "Gagal membuat kuis", variant: "error" });
+        const data = await readJsonSafe<{ id?: string; extracted?: number; error?: string }>(res);
+        if (!res.ok || !data) {
+          toast({
+            title: "Gagal",
+            description: data?.error ?? "Gagal membuat kuis",
+            variant: "error",
+          });
           return;
         }
         toast({
@@ -126,13 +145,22 @@ export function QuizForm({
       file.storedName ?? decodeURIComponent(file.url.replace("/api/files/", ""));
     const res = await fetch(`/api/extract-pdf?storedName=${encodeURIComponent(storedName)}`);
     if (res.ok) {
-      const data = (await res.json()) as {
+      const data = await readJsonSafe<{
         fileId: string;
         originalName: string;
         extracted: number;
         questions?: ReviewQuestion[];
         warning?: string;
-      };
+      }>(res);
+      if (!data) {
+        toast({
+          title: "Ekstraksi gagal",
+          description: "Server tidak mengembalikan hasil yang valid. Coba unggah ulang PDF.",
+          variant: "error",
+        });
+        setPdfFile(null);
+        return;
+      }
       const questions: ReviewQuestion[] = (data.questions ?? []).map((q) => ({
         text: q.text,
         optionA: q.optionA,
@@ -153,8 +181,12 @@ export function QuizForm({
         toast({ title: "Soal diekstrak", description: `${data.extracted} soal ditemukan`, variant: "success" });
       }
     } else {
-      const err = await res.json().catch(() => ({}));
-      toast({ title: "Ekstraksi gagal", description: err.error ?? "Gagal membaca PDF", variant: "error" });
+      const err = await readJsonSafe<{ error?: string }>(res);
+      toast({
+        title: "Ekstraksi gagal",
+        description: err?.error ?? "Gagal membaca PDF",
+        variant: "error",
+      });
       setPdfFile(null);
     }
   };

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
-import { getStoredFilePath } from "@/lib/storage";
+import { getStoredFilePath, readStoredBuffer } from "@/lib/storage";
 import { isBlobPathname, streamBlob } from "@/lib/blob-storage";
 import { getCurrentUser } from "@/lib/session";
 
@@ -19,7 +19,7 @@ export const instant = false;
  * (mis. `logos/xxx.png`), bukan hanya UUID lokal.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ storedName: string[] }> }
 ) {
   const { storedName: segments } = await params;
@@ -30,7 +30,11 @@ export async function GET(
   // Thumbnail modul & gambar konten publik (SITE_IMAGE / ARTICLE_IMAGE) boleh
   // diakses siapa saja tanpa login. Konten materi (MODULE_CONTENT) & file lain
   // tetap memerlukan autentikasi + otorisasi.
-  const isPublicThumbnail = await isModuleThumbnail(record.id);
+  // Thumbnail modul (kind khusus MODULE_THUMBNAIL, atau file yang direferensikan
+  // sebagai thumbnail modul) dapat dibaca tanpa login agar pratinjau kartu
+  // materi tetap tampil di katalog publik.
+  const isPublicThumbnail =
+    record.kind === "MODULE_THUMBNAIL" || (await isModuleThumbnail(record.id));
   const isSchoolLogo =
     record.kind === "SCHOOL_LOGO" &&
     Boolean(await prisma.school.findFirst({ where: { logoFileId: record.id }, select: { id: true } }));
@@ -45,6 +49,11 @@ export async function GET(
     const allow = await canAccessFile(user, record);
     if (!allow) return NextResponse.json({ error: "Tidak memiliki akses ke file ini" }, { status: 403 });
   }
+
+  const isVideo =
+    record.mimeType.startsWith("video/") ||
+    ["mp4", "webm", "mov"].includes(path.extname(storedName).toLowerCase().replace(".", ""));
+  const rangeHeader = isVideo ? req.headers.get("range") : null;
 
   const isBlob = isBlobPathname(storedName);
   if (isBlob) {
@@ -63,6 +72,23 @@ export async function GET(
         "Content-Disposition",
         `inline; filename="${encodeURIComponent(record.originalName)}"`
       );
+    }
+    // Video (privasi + ukuran besar): server memakainya sebagai proxy streaming.
+    // Untuk permintaan rentang (seek), muat byte yang diminta dan balas 206
+    // agar pemutar video dapat melompat tanpa mengunduh seluruh berkas.
+    if (isVideo && rangeHeader) {
+      const buffer = await readStoredBuffer(storedName);
+      if (!buffer) {
+        return NextResponse.json({ error: "File tidak ditemukan di penyimpanan" }, { status: 404 });
+      }
+      return rangeResponse(buffer, record.mimeType, record.originalName, rangeHeader, headers);
+    }
+    // Video tanpa Range juga diproksikan sebagai 206 sebagian agar pemutar
+    // dapat melakukan seek walau server tidak mendukung byte range penuh.
+    if (isVideo) {
+      headers.set("Accept-Ranges", "bytes");
+      headers.set("Content-Length", String(blob.size));
+      return new NextResponse(blob.stream, { status: 206, headers });
     }
     return new NextResponse(blob.stream, { status: 200, headers });
   }
@@ -87,7 +113,53 @@ export async function GET(
     );
   }
 
+  if (isVideo && rangeHeader) {
+    return rangeResponse(data, record.mimeType, record.originalName, rangeHeader, headers);
+  }
+
   return new NextResponse(new Uint8Array(data), { status: 200, headers });
+}
+
+/** Balas sebagian byte untuk permintaan Range (206) atau 416 bila tidak valid. */
+function rangeResponse(
+  data: Uint8Array,
+  contentType: string,
+  originalName: string,
+  rangeHeader: string,
+  baseHeaders: Headers
+): NextResponse {
+  const size = data.byteLength;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match || size === 0) {
+    const headers = new Headers(baseHeaders);
+    headers.set("Content-Range", `bytes */${size}`);
+    return new NextResponse(null, { status: 416, headers });
+  }
+  const [, startRaw, endRaw] = match;
+  let start = startRaw ? Number(startRaw) : 0;
+  let end = endRaw ? Number(endRaw) : size - 1;
+  if (!startRaw && endRaw) {
+    // Suffix range: bytes=-500 → 500 byte terakhir.
+    start = Math.max(0, size - Number(endRaw));
+    end = size - 1;
+  }
+  if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= size) {
+    const headers = new Headers(baseHeaders);
+    headers.set("Content-Range", `bytes */${size}`);
+    return new NextResponse(null, { status: 416, headers });
+  }
+  end = Math.min(end, size - 1);
+  const chunk = data.subarray(start, end + 1);
+  const headers = new Headers(baseHeaders);
+  headers.set("Content-Type", contentType);
+  headers.set("Content-Length", String(chunk.byteLength));
+  headers.set("Content-Range", `bytes ${start}-${end}/${size}`);
+  headers.set("Accept-Ranges", "bytes");
+  headers.set(
+    "Content-Disposition",
+    `inline; filename="${encodeURIComponent(originalName)}"`
+  );
+  return new NextResponse(new Uint8Array(chunk), { status: 206, headers });
 }
 
 type UploadedFileRow = {
@@ -96,7 +168,14 @@ type UploadedFileRow = {
   storedName: string;
   mimeType: string;
   size: number;
-  kind: "MODULE_CONTENT" | "QUIZ_PDF" | "AVATAR" | "SITE_IMAGE" | "SCHOOL_LOGO" | "ARTICLE_IMAGE";
+  kind:
+    | "MODULE_CONTENT"
+    | "MODULE_THUMBNAIL"
+    | "QUIZ_PDF"
+    | "AVATAR"
+    | "SITE_IMAGE"
+    | "SCHOOL_LOGO"
+    | "ARTICLE_IMAGE";
   ownerId: string;
   moduleContentId?: string | null;
   moduleThumbnailId?: string | null;
@@ -106,11 +185,7 @@ type UploadedFileRow = {
 /** Cek apakah file dipakai sebagai thumbnail modul (pratinjau publik). */
 async function isModuleThumbnail(fileId: string): Promise<boolean> {
   const mod = await prisma.module.findFirst({
-    where: {
-      thumbnailFileId: fileId,
-      deletedAt: null,
-      status: "ACTIVE",
-    },
+    where: { thumbnailFileId: fileId, deletedAt: null },
     select: { id: true },
   });
   return Boolean(mod);

@@ -31,10 +31,8 @@ export type PasswordRequestResult = {
   requestId?: string;
   status?: string;
   verified?: boolean;
-  /** Hasil pengiriman notifikasi (diisi oleh lapisan server action). */
-  notifications?: { admins: number; emailsSent: number; emailsFailed: number };
-  /** Hasil pengiriman email konfirmasi (diisi oleh lapisan server action). */
-  email?: { logId: string | null; ok: boolean; error?: string };
+  /** Hasil pengiriman notifikasi lonceng (diisi oleh lapisan server action). */
+  notifications?: { admins: number };
   /** Hanya diisi oleh fungsi inti untuk kebutuhan audit. */
   audit?: {
     userId?: string;

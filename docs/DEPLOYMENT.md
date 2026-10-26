@@ -51,31 +51,33 @@ npm run start                    # production server
 | `AUTH_SECRET`          | 32+ karakter acak                             | ✅  |
 | `NEXT_PUBLIC_APP_URL`  | `https://edulalin.example.com`                |  —   |
 | `STORAGE_DIR`          | `/tmp/storage` (Vercel)                       |  —   |
-| `BLOB_READ_WRITE_TOKEN`| token Vercel Blob (opsional)                  |  —   |
-| `SMTP_HOST`            | `smtp.gmail.com`                              |  —   |
-| `SMTP_PORT`            | `465`                                          |  —   |
-| `SMTP_SECURE`          | `true`                                         |  —   |
-| `SMTP_USER`            | `alamat.admin@gmail.com`                       |  —   |
-| `SMTP_PASS`            | App Password Gmail 16 karakter                 |  —   |
-| `SMTP_FROM`            | `EDULALIN <alamat.admin@gmail.com>`            |  —   |
-| `SMTP_REPLY_TO`        | `alamat.admin@gmail.com`                       |  —   |
+| `BLOB_READ_WRITE_TOKEN`| token Vercel Blob (wajib di produksi)         |  ⚠️  |
 
-Fitur **Lupa Password** melalui pengajuan Admin dan **mengirim email
-notifikasi** ke Admin (saat ada pengajuan) serta ke pengguna (setelah password
-diubah). Lihat [AUTHENTICATION.md](AUTHENTICATION.md#email-notifikasi).
+### Penyimpanan File (Vercel Blob)
 
-Kredensial SMTP **opsional untuk menjalankan aplikasi** — bila
-`SMTP_PASS` kosong, email dicatat sebagai `FAILED` namun aplikasi tetap
-berjalan dan email dapat dikirim ulang dari Dashboard Admin. Untuk
-menyiapkannya dalam satu perintah:
+Vercel Function punya batas body request ±4,5 MB. Agar Admin dapat mengunggah
+berkas **hingga 50 MB** (PDF, Word, video, gambar) di Vercel, unggahan dialirkan
+**browser → Vercel Blob langsung** (client upload) dan hanya metadata-nya yang
+masuk ke Neon. `BLOB_READ_WRITE_TOKEN` wajib ada agar jalur ini aktif; tanpa
+token, unggahan besar akan gagal dengan 413.
+
+Sambungkan Blob store ke proyek sekali saja:
 
 ```powershell
-npm run setup:smtp
+npx vercel storage connect edulalin-files --project edulalin --auth token --add-rw-token --yes --environment production --environment preview --environment development
 ```
 
-Skrip menguji koneksi, mengirim email uji, menyimpan ke `.env`, dan
-menawarkan sinkronisasi ke env Vercel (production & preview). Setelah itu
-redeploy produksi. Uji alur lengkap dengan `npm run test:reset`.
+Untuk pengembangan lokal, tarik token ke `.env.local`:
+
+```powershell
+npx vercel env pull .env.local --environment development --project edulalin
+```
+
+Uji tulis/baca/hapus Blob dengan `npx tsx scripts/test-storage.mts`.
+
+Seluruh notifikasi (lupa password, modul baru, hasil kuis) memakai **lonceng
+in-app** — tidak ada email/SMTP. Lihat
+[AUTHENTICATION.md](AUTHENTICATION.md#notifikasi-lonceng-tanpa-email).
 
 ## Proxy / Security Checklist
 

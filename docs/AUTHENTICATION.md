@@ -74,10 +74,9 @@ revalidasi.
 2. **Sinkronisasi** — pengajuan yang identitasnya cocok tersimpan di tabel
   `PasswordResetRequest` (`status = PENDING`, `verified`, `matchScore`,
   `matchedFields`, `mismatchFields`). Notifikasi otomatis dikirim ke semua
-  Admin aktif melalui:
-  **lonceng in-app** (`/dashboard/notifikasi`) dan **email ke Gmail Admin
-  terdaftar** (nama, email, peran, tanggal & jam WIB, detail identitas, ID
-  pengajuan). Email juga dicatat di tabel `NotificationEmailLog`.
+  Admin aktif melalui **lonceng in-app** (`/dashboard/notifikasi`) berisi nama,
+  email, peran, tanggal & jam WIB, detail identitas, dan ID pengajuan. Tidak ada
+  email yang dikirim — seluruh notifikasi disalurkan lewat lonceng.
 3. **Kelola oleh Admin** — menu **Kelola Lupa Password** menampilkan daftar
   pengajuan (nama, email, identitas, tanggal, status, skor kecocokan).
 4. **Reset** — Admin mengisi **Password Baru** + **Konfirmasi Password Baru**
@@ -85,9 +84,9 @@ revalidasi.
   pengajuan `PENDING` **dan** identitas terverifikasi; password akun asli
   diperbarui di Neon, semua sesi lama dicabut, dan pengajuan ditandai
   `COMPLETED` sehingga hilang dari daftar aktif.
-5. **Notifikasi hasil** — pengguna menerima **notifikasi lonceng** dan **email**
-  berisi nama, tanggal, jam (WIB), serta info bahwa password berhasil
-  diperbarui. Password baru **tidak pernah** dikirim melalui email.
+5. **Notifikasi hasil** — pengguna menerima **notifikasi lonceng** berisi nama,
+  tanggal, jam (WIB), serta info bahwa password berhasil diperbarui. Password
+  baru **tidak pernah** dikirim melalui notifikasi.
 6. **Login kembali** — pengguna masuk memakai email + password baru tanpa
   membuat akun baru atau kehilangan data.
 
@@ -108,31 +107,13 @@ sudah/belum dibaca, dan halaman riwayat `/dashboard/notifikasi` (filter semua/
 belum dibaca/sudah dibaca, tandai-baca, hapus). Data diambil dari
 `GET /api/notifications` sehingga tersinkronisasi real-time antar peran.
 
-### Email Notifikasi
+### Notifikasi Lonceng (tanpa email)
 
-- Kredensial email (Gmail SMTP) hanya dibaca dari environment variable server
-  (`SMTP_*`), tidak pernah dari frontend.
-- Setiap email dicatat di `NotificationEmailLog` beserta status
-  `SENT`/`FAILED` dan alasan kegagalan.
-- Admin memantau dan **mengirim ulang** email yang gagal dari
-  **Dashboard Admin → Notifikasi Email** (`/dashboard/admin/email-log`), serta
-  dapat mengirim **email uji** untuk memverifikasi konfigurasi.
-- Bila `SMTP_PASS` kosong, email dicatat sebagai `FAILED` (aplikasi tetap
-  berjalan) dan dapat dikirim ulang setelah SMTP dikonfigurasi.
-
-**Menyiapkan Gmail SMTP (satu perintah interaktif):**
-
-```powershell
-npm run setup:smtp
-```
-
-Skrip meminta alamat Gmail pengirim + App Password 16 karakter
-(https://myaccount.google.com/apppasswords), **menguji koneksi** dan mengirim
-email uji, lalu menyimpan `SMTP_*` ke `.env` dan menawarkan sinkronisasi ke
-environment Vercel (production & preview). Jalankan `npm run setup:smtp -- --dry-run`
-untuk memvalidasi alur tanpa jaringan atau menulis apa pun, dan
-`-- --no-sync` untuk melewati sinkronisasi Vercel. Setelah sinkronisasi,
-redeploy produksi: `npx vercel --prod --project edulalin --yes`.
+EDULALIN **tidak** memakai email/SMTP untuk notifikasi. Seluruh pemberitahuan
+(pengajuan lupa password ke Admin, perubahan password ke pengguna, modul baru,
+hasil kuis) dikirim melalui **lonceng in-app** dan tersimpan di tabel
+`Notification`, sehingga real-time dan tersinkronisasi antar peran tanpa
+kredensial email tambahan.
 
 ### Pengaman
 

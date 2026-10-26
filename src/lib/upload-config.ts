@@ -5,6 +5,7 @@ export const MB = 1024 * 1024;
 /** Batas upload maksimal per file (byte). Seluruh jenis file kini 50 MB. */
 export const MAX_SIZES: Record<FileKind, number> = {
   MODULE_CONTENT: 50 * MB, // 50 MB (PDF/video/dokumen)
+  MODULE_THUMBNAIL: 50 * MB, // 50 MB (gambar sampul modul)
   QUIZ_PDF: 50 * MB, // 50 MB
   AVATAR: 50 * MB, // 50 MB (foto profil)
   SITE_IMAGE: 50 * MB, // 50 MB (gambar konten publik)
@@ -40,6 +41,7 @@ export const ALLOWED_MIME: Record<FileKind, string[]> = {
     "image/png",
     "image/webp",
   ],
+  MODULE_THUMBNAIL: ["image/jpeg", "image/png", "image/webp"],
   QUIZ_PDF: ["application/pdf"],
   AVATAR: ["image/jpeg", "image/png", "image/webp"],
   SITE_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
@@ -54,6 +56,7 @@ export function isAllowedMime(kind: FileKind, mime: string): boolean {
 /** Prefix folder per jenis file (client & server — aman diimpor bersama). */
 export const BLOB_PREFIX: Record<FileKind, string> = {
   MODULE_CONTENT: "modules",
+  MODULE_THUMBNAIL: "thumbnails",
   QUIZ_PDF: "quiz",
   AVATAR: "avatars",
   SITE_IMAGE: "site",

@@ -41,6 +41,7 @@ function extFor(mime: string): string {
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/webp": ".webp",
+    "image/svg+xml": ".svg",
   };
   return map[mime] ?? ".bin";
 }
@@ -61,6 +62,7 @@ export async function saveUploadedFile(input: {
   ownerId: string;
 }): Promise<{
   id: string;
+  storedName: string;
   url: string;
   originalName: string;
   mimeType: string;
@@ -114,6 +116,7 @@ export async function saveUploadedFile(input: {
 
   const result: {
     id: string;
+    storedName: string;
     url: string;
     originalName: string;
     mimeType: string;
@@ -121,6 +124,7 @@ export async function saveUploadedFile(input: {
     embedded?: string;
   } = {
     id: record.id,
+    storedName,
     url: fileUrl(storedName),
     originalName: record.originalName,
     mimeType: record.mimeType,

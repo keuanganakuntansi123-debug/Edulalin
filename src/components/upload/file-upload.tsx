@@ -17,6 +17,36 @@ type UploadedMeta = {
   embedded?: string | null;
 };
 
+/**
+ * Ambil pesan error dari respons server dengan aman.
+ *
+ * Server Vercel dapat membalas teks biasa (mis. "Request Entity Too Large"
+ * saat body melebihi batas platform) dan bukan JSON. Memanggil `res.json()`
+ * langsung pada respons seperti itu melempar error JSON.parse yang
+ * membingungkan — fungsi ini mengubahnya menjadi pesan yang jelas.
+ */
+async function readUploadError(res: Response, fallback: string): Promise<string> {
+  const text = await res.text().catch(() => "");
+  if (text) {
+    try {
+      const parsed = JSON.parse(text) as { error?: unknown };
+      if (parsed && typeof parsed.error === "string" && parsed.error.trim()) {
+        return parsed.error;
+      }
+    } catch {
+      const compact = text.replace(/\s+/g, " ").trim();
+      if (res.status === 413 || /request entity too large|payload too large/i.test(compact)) {
+        return "File terlalu besar untuk dikirim langsung ke server. Penyimpanan Vercel Blob perlu diaktifkan agar file besar dapat diunggah.";
+      }
+      if (compact.length > 0 && compact.length <= 200) return compact;
+    }
+  }
+  if (res.status === 413) {
+    return "File terlalu besar untuk diunggah. Batas respons server saat ini lebih kecil dari ukuran file.";
+  }
+  return fallback;
+}
+
 export function FileUpload({
   kind,
   accept,
@@ -88,12 +118,13 @@ export function FileUpload({
             kind,
           }),
         });
-        const registerData = await registerRes.json();
         if (!registerRes.ok) {
+          const message = await readUploadError(registerRes, "Gagal menyimpan metadata file");
           const { del } = await import("@vercel/blob");
-          await del(result.url).catch(() => undefined);
-          throw new Error(registerData.error ?? "Gagal menyimpan metadata file");
+          await del(result.pathname).catch(() => undefined);
+          throw new Error(message);
         }
+        const registerData = (await registerRes.json()) as { file: UploadedMeta };
         setProgress(100);
         setDone(true);
         onUploaded(registerData.file);
@@ -102,8 +133,10 @@ export function FileUpload({
         fd.append("kind", kind);
         fd.append("file", file);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Gagal mengunggah file");
+        if (!res.ok) {
+          throw new Error(await readUploadError(res, "Gagal mengunggah file"));
+        }
+        const data = (await res.json()) as { file: UploadedMeta };
         setDone(true);
         onUploaded(data.file);
       }

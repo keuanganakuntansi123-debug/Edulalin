@@ -13,8 +13,7 @@
     "seed": "tsx prisma/seed.ts",
     "test": "vitest run",
     "sync:smk": "tsx scripts/sync-smk-schools.mts",
-    "test:reset": "tsx scripts/test-password-reset.mts",
-    "setup:smtp": "tsx scripts/setup-smtp.mts"
+    "test:reset": "tsx scripts/test-password-reset.mts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

@@ -9,6 +9,7 @@ export const instant = false;
 
 const KINDS: FileKind[] = [
   "MODULE_CONTENT",
+  "MODULE_THUMBNAIL",
   "QUIZ_PDF",
   "AVATAR",
   "SITE_IMAGE",
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
         if (
           user.role === "GURU" &&
           kind !== "MODULE_CONTENT" &&
+          kind !== "MODULE_THUMBNAIL" &&
           kind !== "AVATAR" &&
           kind !== "SCHOOL_LOGO"
         ) {

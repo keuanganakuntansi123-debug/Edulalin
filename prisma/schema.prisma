@@ -78,6 +78,7 @@ enum SchoolStatus {
 
 enum FileKind {
   MODULE_CONTENT
+  MODULE_THUMBNAIL
   QUIZ_PDF
   AVATAR
   SITE_IMAGE
@@ -235,9 +236,9 @@ model Notification {
 }
 
 /**
- * Log email notifikasi keluar (pengajuan lupa password & perubahan password).
- * Menyimpan status kirim sehingga Admin dapat melihat kegagalan dan mengirim
- * ulang. Tidak menyimpan password baru dan tidak menyimpan kredensial SMTP.
+ * LEGACY: log email notifikasi. Fitur notifikasi email sudah dihapus — seluruh
+ * notifikasi kini memakai lonceng in-app (tabel `Notification`). Model ini
+ * dipertahankan hanya sebagai riwayat dan tidak lagi dipakai oleh aplikasi.
  */
 enum NotificationEmailStatus {
   PENDING

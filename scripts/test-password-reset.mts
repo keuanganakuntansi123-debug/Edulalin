@@ -1,11 +1,11 @@
 /**
- * Uji end-to-end alur "Lupa Password via Admin" + notifikasi & email terhadap
+ * Uji end-to-end alur "Lupa Password via Admin" + notifikasi lonceng terhadap
  * database Neon asli.
  *
  * Memakai fungsi inti produksi (`@/lib/password-reset-service`) serta layanan
- * notifikasi (`@/lib/notification-service`) dan email (`@/lib/notification-emails`)
- * sehingga rantai pengajuan → verifikasi identitas ketat → reset oleh Admin →
- * notifikasi lonceng + catatan email benar-benar diuji, bukan sekadar UI.
+ * notifikasi (`@/lib/notification-service`) sehingga rantai pengajuan →
+ * verifikasi identitas ketat → reset oleh Admin → notifikasi lonceng
+ * benar-benar diuji, bukan sekadar UI.
  *
  * Jalankan: npm run test:reset
  * Membuat akun QA sementara, lalu menghapusnya kembali di akhir (idempoten).
@@ -37,7 +37,6 @@ async function cleanup() {
   const user = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });
   if (user) {
     await prisma.notification.deleteMany({ where: { recipientId: user.id } });
-    await prisma.notificationEmailLog.deleteMany({ where: { userId: user.id } });
     await prisma.passwordResetRequest.deleteMany({ where: { userId: user.id } });
     await prisma.userSession.deleteMany({ where: { userId: user.id } });
     await prisma.user.delete({ where: { id: user.id } });
@@ -71,7 +70,6 @@ async function main() {
   const { notifyPasswordRequestToAdmins, notifyPasswordChanged, notifyNewModule } = await import(
     "../src/lib/notification-service"
   );
-  const { emailPasswordRequestToAdmins } = await import("../src/lib/notification-emails");
 
   await cleanup();
 
@@ -202,7 +200,7 @@ async function main() {
   });
   assert(Boolean(again.error), "Reset kedua ditolak (pengajuan sudah selesai)");
 
-  console.log("\n[8] Notifikasi lonceng & catatan email");
+  console.log("\n[8] Notifikasi lonceng");
   const adminNotified = await notifyPasswordRequestToAdmins({
     requestId,
     name: "QA RESET MURID",
@@ -232,29 +230,6 @@ async function main() {
   assert(
     Boolean(userNotif && !/baru654321|lama123456/.test(userNotif.body)),
     "Notifikasi tidak memuat password",
-  );
-
-  const emailResult = await emailPasswordRequestToAdmins({
-    requestId,
-    name: "QA RESET MURID",
-    email: TEST_EMAIL,
-    roleLabel: "Murid",
-    submittedAt: new Date(),
-    rows: [{ label: "Kelas", value: "10" }],
-    verified: true,
-    matchScore: 100,
-    userId: user.id,
-  });
-  const logCount = await prisma.notificationEmailLog.count({ where: { requestId } });
-  assert(logCount > 0, "Pengiriman email dicatat pada NotificationEmailLog");
-  assert(
-    emailResult.sent + emailResult.failed === logCount,
-    "Jumlah hasil kirim cocok dengan jumlah log",
-  );
-  const failedLogs = await prisma.notificationEmailLog.findMany({ where: { requestId } });
-  assert(
-    failedLogs.every((l) => l.status === "SENT" || l.status === "FAILED"),
-    "Setiap log punya status akhir (SENT/FAILED), tidak menggantung",
   );
 
   console.log("\n[9] Ubah password mandiri (verifikasi password lama)");
@@ -352,7 +327,7 @@ async function main() {
   await cleanup();
   console.log(
     failures === 0
-      ? "\n✅ SEMUA UJI LULUS — alur lupa password, notifikasi & email tersinkron dengan Neon."
+      ? "\n✅ SEMUA UJI LULUS — alur lupa password & notifikasi lonceng tersinkron dengan Neon."
       : `\n❌ ${failures} uji GAGAL.`,
   );
   await prisma.$disconnect();

@@ -24,6 +24,17 @@ export type PdfReviewResult = {
   questions: ReviewQuestion[];
 };
 
+/** Baca JSON dengan aman (respons platform dapat berupa teks biasa/HTML). */
+async function readJsonSafe<T>(res: Response): Promise<T | null> {
+  const text = await res.text().catch(() => "");
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Mengganti PDF lama draf dengan file baru: unggah ulang + ekstrak + simpany
  * seluruh soal (pembahasan & kunci bila terbaca), lalu kembalikan hasil pratinjau.
@@ -37,8 +48,8 @@ async function reuploadPdf(
   fd.append("quizId", quizId);
   fd.append("file", file);
   const res = await fetch("/api/quiz-pdf-reupload", { method: "POST", body: fd });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, error: data.error ?? "Gagal mengganti PDF" };
+  const data = await readJsonSafe<{ error?: string; extracted?: number; questions?: PdfReviewResult["questions"] }>(res);
+  if (!res.ok || !data) return { ok: false, error: data?.error ?? "Gagal mengganti PDF" };
   return {
     ok: true,
     result: {
