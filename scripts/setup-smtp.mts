@@ -47,7 +47,51 @@ async function main() {
   }
   writeFileSync(envPath, updated);
 
-  console.log("\n OK SMTP_PASS tersimpan di .env. Menjalankan tes kirim email...\n");
+  console.log("\n OK SMTP_PASS tersimpan di .env.");
+
+  // Tawarkan sinkronisasi ke Vercel agar produksi ikut bisa mengirim OTP.
+  const pushVercel = (await ask(
+    "\nSinkronkan juga ke Vercel (production & preview)? [y/N]: "
+  ))
+    .trim()
+    .toLowerCase();
+
+  if (pushVercel === "y" || pushVercel === "ya") {
+    const projectName = process.env.VERCEL_PROJECT ?? "edulalin";
+    for (const scope of ["production", "preview"]) {
+      console.log(`\nMengirim SMTP_PASS ke Vercel (${scope})...`);
+      const res = spawnSync(
+        process.platform === "win32" ? "npx.cmd" : "npx",
+        [
+          "vercel",
+          "env",
+          "add",
+          "SMTP_PASS",
+          scope,
+          "--value",
+          normalized,
+          "--sensitive",
+          "--force",
+          "--yes",
+          "--project",
+          projectName,
+        ],
+        { stdio: "inherit", shell: process.platform === "win32" }
+      );
+      if (res.status !== 0) {
+        console.warn(
+          `! Gagal mengirim ke Vercel (${scope}). Set manual di Vercel → Settings → Environment Variables.`
+        );
+      }
+    }
+    console.log(
+      "\nJalankan `npx vercel --prod --project " +
+        projectName +
+        "` agar perubahan env dipakai produksi."
+    );
+  }
+
+  console.log("\nMenjalankan tes kirim email...\n");
   rl.close();
 
   const result = spawnSync(

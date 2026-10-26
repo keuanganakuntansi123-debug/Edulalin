@@ -30,7 +30,9 @@ function createTransporter(): Transporter | null {
 
   if (!user || !pass) {
     console.warn(
-      "[mail] SMTP_USER / SMTP_PASS belum di-set — pengiriman email OTP nonaktif."
+      `[mail] SMTP tidak siap — SMTP_USER=${user ? "ada" : "KOSONG"}, SMTP_PASS=${
+        pass ? `ada (${pass.length} karakter)` : "KOSONG"
+      }. Pengiriman email OTP nonaktif.`
     );
     return null;
   }
@@ -60,6 +62,47 @@ export type SendMailInput = {
   html?: string;
 };
 
+export type MailStatus = {
+  configured: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string | null;
+  /** Panjang App Password (bukan nilainya) — untuk memastikan 16 karakter. */
+  passLength: number;
+  from: string;
+  missing: string[];
+};
+
+/**
+ * Ringkasan konfigurasi SMTP tanpa membocorkan App Password.
+ * Dipakai halaman diagnostik admin & pesan error agar akar masalah langsung
+ * terlihat (variabel mana yang kosong, port/secure yang dipakai).
+ */
+export function getMailStatus(): MailStatus {
+  const host = process.env.SMTP_HOST ?? "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT ?? 465);
+  const user = process.env.SMTP_USER?.trim() || null;
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "") || "";
+  const secureEnv = process.env.SMTP_SECURE?.toLowerCase();
+  const secure = secureEnv ? secureEnv === "true" : port === 465;
+
+  const missing: string[] = [];
+  if (!user) missing.push("SMTP_USER");
+  if (!pass) missing.push("SMTP_PASS");
+
+  return {
+    configured: missing.length === 0,
+    host,
+    port,
+    secure,
+    user,
+    passLength: pass.length,
+    from: process.env.SMTP_FROM ?? "EDULALIN",
+    missing,
+  };
+}
+
 /**
  * Kirim email. Mengembalikan { ok: true } bila terkirim, atau
  * { ok: false, error } bila konfigurasi / pengiriman gagal.
@@ -69,7 +112,13 @@ export async function sendMail(
 ): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
   const transporter = createTransporter();
   if (!transporter) {
-    return { ok: false, error: "Konfigurasi email belum diatur (SMTP)" };
+    const status = getMailStatus();
+    return {
+      ok: false,
+      error: `Konfigurasi email belum diatur (variabel ${status.missing.join(
+        " & "
+      )} kosong). Set Gmail App Password 16 karakter pada variabel tersebut.`,
+    };
   }
 
   const fromName = process.env.SMTP_FROM ?? "EDULALIN";
@@ -99,4 +148,31 @@ export function generateOtp(): string {
   const digits = new Uint32Array(1);
   crypto.getRandomValues(digits);
   return String(100000 + (digits[0] % 900000));
+}
+
+/**
+ * Uji koneksi & autentikasi SMTP tanpa mengirim email.
+ * Berguna untuk memastikan App Password benar sebelum pengguna diminta
+ * menunggu email OTP yang tidak akan pernah datang.
+ */
+export async function verifyMailConnection(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    const status = getMailStatus();
+    return {
+      ok: false,
+      error: `Variabel ${status.missing.join(" & ")} belum diisi`,
+    };
+  }
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Gagal terhubung ke server SMTP",
+    };
+  }
 }

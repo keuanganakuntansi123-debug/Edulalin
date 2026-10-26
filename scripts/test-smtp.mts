@@ -15,15 +15,25 @@ config({ path: path.resolve(__dirname, "../.env") });
 
 const host = process.env.SMTP_HOST ?? "smtp.gmail.com";
 const port = Number(process.env.SMTP_PORT ?? 465);
-const user = process.env.SMTP_USER;
-const pass = process.env.SMTP_PASS;
+const user = process.env.SMTP_USER?.trim();
+// App Password Gmail sering tersalin dengan spasi — buang semua whitespace.
+const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
 const fromName = process.env.SMTP_FROM ?? "EDULALIN";
 
 if (!user || !pass) {
-  console.error("❌ SMTP_USER / SMTP_PASS belum di-set di .env");
+  console.error("X SMTP_USER / SMTP_PASS belum di-set di .env");
   console.error(`   SMTP_USER=${user ?? "(kosong)"}`);
-  console.error(`   SMTP_PASS=${pass ? `(terisi ${pass.length} karakter)` : "(kosong)"}`);
+  console.error(
+    `   SMTP_PASS=${pass ? `(terisi ${pass.length} karakter)` : "(kosong)"}`
+  );
+  console.error("\n   Jalankan `npm run setup:smtp` untuk mengisi App Password Gmail 16 karakter.");
   process.exit(1);
+}
+
+if (pass.length !== 16) {
+  console.warn(
+    `! Peringatan: App Password Gmail biasanya 16 karakter, saat ini ${pass.length} karakter.`
+  );
 }
 
 const transporter = createTransport({
@@ -39,6 +49,27 @@ const transporter = createTransport({
 const to = process.argv[2] ?? user;
 const otp = String(100000 + Math.floor(Math.random() * 900000));
 
+// 1) Pastikan kredensial & koneksi valid lebih dulu agar pesan error spesifik.
+try {
+  await transporter.verify();
+  console.log(`OK Koneksi & autentikasi SMTP berhasil (${host}:${port})`);
+} catch (e) {
+  const msg = e instanceof Error ? e.message : String(e);
+  console.error("X Gagal terhubung / autentikasi ke server SMTP:");
+  console.error(`   ${msg}`);
+  if (/535|EAUTH|Invalid login|Username and Password not accepted/i.test(msg)) {
+    console.error(
+      "   Penyebab umum: SMTP_PASS bukan App Password 16 karakter, atau Verifikasi 2 Langkah belum aktif."
+    );
+    console.error("   Buat App Password: https://myaccount.google.com/apppasswords");
+  } else if (/ETIMEDOUT|ESOCKET|ECONNECTION|ENOTFOUND/i.test(msg)) {
+    console.error(
+      `   Jaringan/firewall memblokir ${host}:${port}. Coba SMTP_PORT=587 dengan SMTP_SECURE=false.`
+    );
+  }
+  process.exit(1);
+}
+
 try {
   const info = await transporter.sendMail({
     from: `"${fromName}" <${user}>`,
@@ -50,11 +81,11 @@ try {
       <p style="color:#334155;">Berhasil terkirim via SMTP Gmail. 🎉</p>
     </div>`,
   });
-  console.log(`✅ Email terkirim ke ${to}`);
+  console.log(`OK Email terkirim ke ${to}`);
   console.log(`   messageId: ${info.messageId}`);
   process.exit(0);
 } catch (e) {
-  console.error("❌ Gagal mengirim email:");
+  console.error("X Gagal mengirim email:");
   console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 }

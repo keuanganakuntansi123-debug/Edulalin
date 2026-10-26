@@ -14,9 +14,11 @@
     "test": "vitest run",
     "sync:smk": "tsx scripts/sync-smk-schools.mts",
     "test:smtp": "tsx scripts/test-smtp.mts",
+    "test:otp": "tsx scripts/test-otp-mail.mts",
     "setup:smtp": "tsx scripts/setup-smtp.mts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.80",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@radix-ui/react-slot": "^1.5.0",
