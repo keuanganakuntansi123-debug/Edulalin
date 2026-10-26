@@ -57,7 +57,8 @@ async function main() {
     .toLowerCase();
 
   if (pushVercel === "y" || pushVercel === "ya") {
-    const projectName = process.env.VERCEL_PROJECT ?? "edulalin";
+    // Nama proyek Vercel sebenarnya memakai tanda hubung di akhir: "edulalin-".
+    const projectName = process.env.VERCEL_PROJECT ?? "edulalin-";
     for (const scope of ["production", "preview"]) {
       console.log(`\nMengirim SMTP_PASS ke Vercel (${scope})...`);
       const res = spawnSync(
@@ -85,9 +86,7 @@ async function main() {
       }
     }
     console.log(
-      "\nJalankan `npx vercel --prod --project " +
-        projectName +
-        "` agar perubahan env dipakai produksi."
+      "\nJalankan `npx vercel --prod --yes` agar perubahan env dipakai produksi."
     );
   }
 

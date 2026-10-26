@@ -19,11 +19,20 @@ import type { Transporter } from "nodemailer";
  *  4. SMTP_USER harus alamat Gmail (mis. keuanganakuntansi123@gmail.com).
  *     SMTP_PASS = App Password 16 karakter, bukan password akun.
  *     SMTP_FROM hanya nama tampilan pengirim (default: EDULALIN).
+ *
+ * Bila port gagal (mis. 465 diblokir jaringan/Vercel), pengiriman otomatis
+ * dicoba ulang lewat port alternatif 587 (STARTTLS) lalu 25. Terlihat di log
+ * sebagai "[mail] port X gagal, mencoba port Y".
  */
 
-function createTransporter(): Transporter | null {
+/** Urutan port SMTP ketika SMTP_PORT tidak dieksplisitkan; 587 = fallback utama. */
+const SMTP_PORT_FALLBACKS = [465, 587, 25] as const;
+
+/** Kredensial SMTP yang sudah dinormalisasi (tanpa spasi pada App Password). */
+type SmtpCredentials = { host: string; user: string; pass: string };
+
+function readCredentials(): SmtpCredentials | null {
   const host = process.env.SMTP_HOST ?? "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT ?? 465);
   const user = process.env.SMTP_USER;
   // App Password Gmail sering tersalin dengan spasi — buang semua whitespace.
   const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
@@ -36,18 +45,37 @@ function createTransporter(): Transporter | null {
     );
     return null;
   }
+  return { host, user, pass };
+}
 
+/**
+ * Daftar port yang akan dicoba, berurutan.
+ * - SMTP_PORT dieksplisitkan → hanya port itu (tanpa fallback) agar perilaku
+ *   dapat dikunci operator.
+ * - Jika tidak → 465 (SSL) lalu 587 (STARTTLS) lalu 25, karena sebagian
+ *   jaringan/serverless memblokir salah satu port.
+ */
+function portCandidates(): number[] {
+  const explicit = process.env.SMTP_PORT?.trim();
+  if (explicit) {
+    const port = Number(explicit);
+    return Number.isFinite(port) && port > 0 ? [port] : [465];
+  }
+  return [...SMTP_PORT_FALLBACKS];
+}
+
+function buildTransporter(creds: SmtpCredentials, port: number): Transporter {
   // secure ditentukan oleh port (465 = SSL) atau eksplisit via SMTP_SECURE.
   const secureEnv = process.env.SMTP_SECURE?.toLowerCase();
   const secure = secureEnv ? secureEnv === "true" : port === 465;
 
   return nodemailer.createTransport({
-    host,
+    host: creds.host,
     port,
     secure,
     // Untuk port 587/STARTTLS, paksa upgrade ke TLS.
     requireTLS: !secure && port === 587,
-    auth: { user, pass },
+    auth: { user: creds.user, pass: creds.pass },
     // Timeout agar request tidak menggantung saat email gagal.
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
@@ -110,8 +138,8 @@ export function getMailStatus(): MailStatus {
 export async function sendMail(
   input: SendMailInput
 ): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const creds = readCredentials();
+  if (!creds) {
     const status = getMailStatus();
     return {
       ok: false,
@@ -122,25 +150,34 @@ export async function sendMail(
   }
 
   const fromName = process.env.SMTP_FROM ?? "EDULALIN";
-  const from = process.env.SMTP_USER
-    ? `"${fromName}" <${process.env.SMTP_USER}>`
-    : `"${fromName}" <no-reply@edulalin.id>`;
+  const from = `"${fromName}" <${creds.user}>`;
+  const ports = portCandidates();
+  let lastError = "Gagal mengirim email";
 
-  try {
-    const info = await transporter.sendMail({
-      from,
-      to: input.to,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
-    });
-    return { ok: true, messageId: info.messageId };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Gagal mengirim email",
-    };
+  for (let i = 0; i < ports.length; i++) {
+    const port = ports[i];
+    try {
+      const info = await buildTransporter(creds, port).sendMail({
+        from,
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      });
+      if (i > 0) {
+        console.info(`[mail] berhasil terkirim lewat port fallback ${port}`);
+      }
+      return { ok: true, messageId: info.messageId };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : "Gagal mengirim email";
+      const next = ports[i + 1];
+      if (next) {
+        console.warn(`[mail] port ${port} gagal (${lastError}) — mencoba port ${next}`);
+      }
+    }
   }
+
+  return { ok: false, error: lastError };
 }
 
 /** Buat kode OTP 6 digit acak. */
@@ -158,21 +195,23 @@ export function generateOtp(): string {
 export async function verifyMailConnection(): Promise<
   { ok: true } | { ok: false; error: string }
 > {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const creds = readCredentials();
+  if (!creds) {
     const status = getMailStatus();
     return {
       ok: false,
       error: `Variabel ${status.missing.join(" & ")} belum diisi`,
     };
   }
-  try {
-    await transporter.verify();
-    return { ok: true };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Gagal terhubung ke server SMTP",
-    };
+
+  let lastError = "Gagal terhubung ke server SMTP";
+  for (const port of portCandidates()) {
+    try {
+      await buildTransporter(creds, port).verify();
+      return { ok: true };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : "Gagal terhubung ke server SMTP";
+    }
   }
+  return { ok: false, error: lastError };
 }
