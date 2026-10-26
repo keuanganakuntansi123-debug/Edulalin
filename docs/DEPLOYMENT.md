@@ -52,11 +52,30 @@ npm run start                    # production server
 | `NEXT_PUBLIC_APP_URL`  | `https://edulalin.example.com`                |  —   |
 | `STORAGE_DIR`          | `/tmp/storage` (Vercel)                       |  —   |
 | `BLOB_READ_WRITE_TOKEN`| token Vercel Blob (opsional)                  |  —   |
+| `SMTP_HOST`            | `smtp.gmail.com`                              |  —   |
+| `SMTP_PORT`            | `465`                                          |  —   |
+| `SMTP_SECURE`          | `true`                                         |  —   |
+| `SMTP_USER`            | `alamat.admin@gmail.com`                       |  —   |
+| `SMTP_PASS`            | App Password Gmail 16 karakter                 |  —   |
+| `SMTP_FROM`            | `EDULALIN <alamat.admin@gmail.com>`            |  —   |
+| `SMTP_REPLY_TO`        | `alamat.admin@gmail.com`                       |  —   |
 
-Fitur **Lupa Password** kini melalui pengajuan Admin dan **tidak memerlukan
-SMTP/Gmail**. Lihat [AUTHENTICATION.md](AUTHENTICATION.md#lupa-password-pengajuan-via-admin).
-Hapus variabel `SMTP_*` lama dari Vercel → **Settings → Environment Variables**
-bila sudah tidak dipakai. Uji alur lengkap dengan `npm run test:reset`.
+Fitur **Lupa Password** melalui pengajuan Admin dan **mengirim email
+notifikasi** ke Admin (saat ada pengajuan) serta ke pengguna (setelah password
+diubah). Lihat [AUTHENTICATION.md](AUTHENTICATION.md#email-notifikasi).
+
+Kredensial SMTP **opsional untuk menjalankan aplikasi** — bila
+`SMTP_PASS` kosong, email dicatat sebagai `FAILED` namun aplikasi tetap
+berjalan dan email dapat dikirim ulang dari Dashboard Admin. Untuk
+menyiapkannya dalam satu perintah:
+
+```powershell
+npm run setup:smtp
+```
+
+Skrip menguji koneksi, mengirim email uji, menyimpan ke `.env`, dan
+menawarkan sinkronisasi ke env Vercel (production & preview). Setelah itu
+redeploy produksi. Uji alur lengkap dengan `npm run test:reset`.
 
 ## Proxy / Security Checklist
 

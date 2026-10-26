@@ -120,6 +120,20 @@ belum dibaca/sudah dibaca, tandai-baca, hapus). Data diambil dari
 - Bila `SMTP_PASS` kosong, email dicatat sebagai `FAILED` (aplikasi tetap
   berjalan) dan dapat dikirim ulang setelah SMTP dikonfigurasi.
 
+**Menyiapkan Gmail SMTP (satu perintah interaktif):**
+
+```powershell
+npm run setup:smtp
+```
+
+Skrip meminta alamat Gmail pengirim + App Password 16 karakter
+(https://myaccount.google.com/apppasswords), **menguji koneksi** dan mengirim
+email uji, lalu menyimpan `SMTP_*` ke `.env` dan menawarkan sinkronisasi ke
+environment Vercel (production & preview). Jalankan `npm run setup:smtp -- --dry-run`
+untuk memvalidasi alur tanpa jaringan atau menulis apa pun, dan
+`-- --no-sync` untuk melewati sinkronisasi Vercel. Setelah sinkronisasi,
+redeploy produksi: `npx vercel --prod --project edulalin --yes`.
+
 ### Pengaman
 
 - Admin **tidak dapat** reset tanpa pengajuan valid: `completePasswordReset()`
