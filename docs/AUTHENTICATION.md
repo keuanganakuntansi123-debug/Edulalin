@@ -74,7 +74,7 @@ revalidasi.
 2. **Sinkronisasi** — pengajuan yang identitasnya cocok tersimpan di tabel
   `PasswordResetRequest` (`status = PENDING`, `verified`, `matchScore`,
   `matchedFields`, `mismatchFields`). Notifikasi otomatis dikirim ke semua
-  Admin aktif melalui **lonceng in-app** (`/dashboard/notifikasi`) berisi nama,
+  Admin aktif melalui **lonceng in-app** (riwayat: `/dashboard/notifikasi`) berisi nama,
   email, peran, tanggal & jam WIB, detail identitas, dan ID pengajuan. Tidak ada
   email yang dikirim — seluruh notifikasi disalurkan lewat lonceng.
 3. **Kelola oleh Admin** — menu **Kelola Lupa Password** menampilkan daftar
@@ -103,9 +103,12 @@ dan tautan untuk membuka modul. Modul SIM hanya untuk murid SMA/SMK berusia
 
 Seluruh aktor (ADMIN, GURU, POLISI, MURID) memakai satu lonceng terpadu
 (`NotificationCenter`) pada topbar, dengan jumlah belum dibaca, status
-sudah/belum dibaca, dan halaman riwayat `/dashboard/notifikasi` (filter semua/
-belum dibaca/sudah dibaca, tandai-baca, hapus). Data diambil dari
-`GET /api/notifications` sehingga tersinkronisasi real-time antar peran.
+sudah/belum dibaca, tandai-baca, hapus, dan tautan langsung ke halaman terkait.
+Data diambil dari `GET /api/notifications` sehingga tersinkronisasi real-time
+antar peran. Guru, Polisi, dan Murid **tidak** memiliki menu notifikasi
+tersendiri di sidebar — semua pemberitahuan hanya muncul pada lonceng. Halaman
+riwayat `/dashboard/notifikasi` (filter semua/belum dibaca/sudah dibaca)
+khusus **Admin**.
 
 ### Notifikasi Lonceng (tanpa email)
 

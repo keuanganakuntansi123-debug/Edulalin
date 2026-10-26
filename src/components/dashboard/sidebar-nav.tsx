@@ -67,7 +67,6 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
     {
       section: "Akun",
       items: [
-        { href: "/dashboard/notifikasi", label: "Notifikasi", icon: Bell },
         { href: "/dashboard/profil", label: "Profil & Pengaturan", icon: Settings },
       ],
     },
@@ -87,7 +86,6 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
     {
       section: "Akun",
       items: [
-        { href: "/dashboard/notifikasi", label: "Notifikasi", icon: Bell },
         { href: "/dashboard/profil", label: "Profil & Pengaturan", icon: Settings },
       ],
     },
@@ -106,7 +104,6 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
     {
       section: "Akun",
       items: [
-        { href: "/dashboard/notifikasi", label: "Notifikasi", icon: Bell },
         { href: "/dashboard/profil", label: "Profil & Pengaturan", icon: Settings },
       ],
     },

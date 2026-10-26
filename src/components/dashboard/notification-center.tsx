@@ -99,13 +99,11 @@ export function NotificationCenter({
   title = "Notifikasi",
   types,
   limit = 15,
-  showHistoryLink = true,
 }: {
   className?: string;
   title?: string;
   types?: string[];
   limit?: number;
-  showHistoryLink?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -213,7 +211,7 @@ export function NotificationCenter({
                     )}
                   >
                     <Link
-                      href={n.link ?? "/dashboard/notifikasi"}
+                      href={n.link ?? "/dashboard"}
                       onClick={() => void markRead(n)}
                       className="block px-3 py-3 transition-colors hover:bg-slate-800/60"
                     >
@@ -250,16 +248,6 @@ export function NotificationCenter({
               })
             )}
           </div>
-
-          {showHistoryLink && (
-            <Link
-              href="/dashboard/notifikasi"
-              onClick={() => setOpen(false)}
-              className="border-t border-slate-800 px-3 py-2.5 text-center text-xs font-medium text-sky-400 hover:bg-slate-800/60"
-            >
-              Lihat semua riwayat notifikasi
-            </Link>
-          )}
         </div>
       )}
     </div>

@@ -7,11 +7,11 @@ import { Bell } from "lucide-react";
 export const instant = false;
 
 /**
- * Riwayat notifikasi untuk semua aktor (Admin, Guru, Polisi, Murid).
- * Menampilkan jumlah belum dibaca, status baca, dan riwayat lengkap.
+ * Riwayat notifikasi admin. Aktor lain (Guru, Polisi, Murid) menerima
+ * pemberitahuan hanya melalui lonceng di topbar.
  */
 export default async function NotificationHistoryPage() {
-  const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
+  const user = await requireRole("ADMIN");
 
   const [rows, unread] = await Promise.all([
     prisma.notification.findMany({
