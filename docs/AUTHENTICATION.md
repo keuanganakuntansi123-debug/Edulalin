@@ -54,21 +54,33 @@ user enumeration.
 Alur tiga langkah di `/lupa-password`, seluruhnya dijalankan server-side
 (`src/app/actions/password-reset-actions.ts`):
 
+Berlaku untuk **semua aktor** (ADMIN, GURU, POLISI, MURID) — tidak ada
+pembatasan peran, hanya status akun yang diperiksa.
+
 1. **Kirim kode** — `requestOtp()` membuat kode OTP 6 digit
   (`crypto.getRandomValues`), menyimpannya sebagai hash bcrypt di
   `VerificationToken` (`type = "PASSWORD_RESET_OTP"`), lalu mengirimnya via
   `sendMail()` (`src/lib/mail.ts`).
 2. **Verifikasi** — `verifyOtp()` mencocokkan kode dengan hash. Kode berlaku
-  **5 menit**, sekali pakai, maksimal **5 percobaan** salah.
+  **5 menit**, sekali pakai, maksimal **5 percobaan** salah. Saat kode benar,
+  masa berlaku diperbarui sehingga pengguna mendapat **5 menit penuh** untuk
+  mengisi password baru.
 3. **Simpan password baru** — `resetPassword()` menulis hash baru, mengaktifkan
   akun, membatalkan OTP yang masih aktif, dan **mencabut semua sesi lama**.
 
 Pengaman tambahan:
 
-- **Cooldown 60 detik** antar-permintaan kode.
+- **Cooldown 60 detik** antar-permintaan kode (termasuk tombol "Kirim Ulang OTP").
+- **Notifikasi kirim ulang** yang jelas (berhasil/gagal cooldown) tampil pada
+  langkah verifikasi.
 - Bila email gagal terkirim, OTP dihapus dan dicatat sebagai
   `PASSWORD_RESET_MAIL_FAILED` agar pengguna tidak terkunci cooldown.
-- Email yang belum terdaftar / nonaktif ditolak dengan pesan generik.
+- Email yang **belum terdaftar**, **nonaktif** (`INACTIVE`), atau sudah dihapus
+  ditolak dengan pesan **"Email tidak terdaftar di EDULALIN."**. Akun berstatus
+  `PENDING` tetap boleh mereset; akun otomatis diaktifkan (`ACTIVE`) setelah
+  password baru tersimpan sehingga bisa langsung login.
+- Password baru wajib min. 8 karakter (huruf + angka) dan **tidak boleh sama
+  dengan nomor telepon** terdaftar.
 - Audit: `PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_OTP_VERIFIED`,
   `PASSWORD_RESET_COMPLETED`.
 
@@ -102,7 +114,9 @@ Langkah pengisian:
   dan menawarkan sinkronisasi ke Vercel), atau isi `SMTP_PASS` manual.
 4. Verifikasi: `npm run test:smtp`.
 5. Uji seluruh alur lupa password tanpa mengirim email nyata:
-  `npm run test:forgot`.
+  `npm run test:forgot` (menguji keempat peran ADMIN/GURU/POLISI/MURID,
+  cooldown, kirim ulang, OTP salah/sekali pakai, pencabutan sesi, dan login
+  ulang dengan password baru).
 6. Untuk produksi, set variabel yang sama pada Vercel
   (Settings → Environment Variables) lalu deploy ulang.
 

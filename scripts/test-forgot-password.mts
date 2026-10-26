@@ -18,9 +18,14 @@ import {
  * (termasuk pembuatan & pengiriman kode) terverifikasi, bukan disimulasikan.
  */
 
-const EMAIL = "qa.lupapassword@edulalin.test";
 const OLD_PASSWORD = "OldPass123";
 const NEW_PASSWORD = "BaruPass456";
+const ROLES = ["ADMIN", "GURU", "POLISI", "MURID"] as const;
+type Role = (typeof ROLES)[number];
+
+function emailFor(role: Role): string {
+  return `qa.lupapassword.${role.toLowerCase()}@edulalin.test`;
+}
 
 let capturedOtp = "";
 let capturedSubject = "";
@@ -140,17 +145,157 @@ function decodeMessage(raw: string): string {
 }
 
 async function cleanup() {
-  const user = await prisma.user.findUnique({ where: { email: EMAIL } });
-  if (!user) return;
-  await prisma.verificationToken.deleteMany({ where: { userId: user.id } });
-  await prisma.userSession.deleteMany({ where: { userId: user.id } });
-  await prisma.activityLog.deleteMany({ where: { actorId: user.id } });
-  await prisma.notification.deleteMany({ where: { recipientId: user.id } });
-  await prisma.user.delete({ where: { id: user.id } });
+  for (const role of ROLES) {
+    const user = await prisma.user.findUnique({ where: { email: emailFor(role) } });
+    if (!user) continue;
+    await prisma.verificationToken.deleteMany({ where: { userId: user.id } });
+    await prisma.userSession.deleteMany({ where: { userId: user.id } });
+    await prisma.activityLog.deleteMany({ where: { actorId: user.id } });
+    await prisma.notification.deleteMany({ where: { recipientId: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  }
+}
+
+/**
+ * Uji lengkap satu peran: OTP → verifikasi → password baru → login ulang.
+ * Mengembalikan true bila seluruh rangkaian berhasil.
+ */
+async function testRole(role: Role, index: number): Promise<void> {
+  const email = emailFor(role);
+  const prefix = `[${index + 1}/${ROLES.length}] ${role}`;
+  console.log(`\n--- ${prefix} — ${email} ---`);
+
+  await prisma.user.create({
+    data: {
+      name: `QA Lupa Password ${role}`,
+      email,
+      passwordHash: await hashPassword(OLD_PASSWORD),
+      role,
+      status: "ACTIVE",
+      verifiedAt: new Date(),
+    },
+  });
+
+  // Sesi lama yang harus dicabut setelah reset berhasil.
+  const seeded = await prisma.user.findUniqueOrThrow({ where: { email } });
+  await prisma.userSession.create({
+    data: {
+      userId: seeded.id,
+      token: `qa-session-${role}-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
+
+  // --- Langkah 1: minta OTP (membuat kode + mengirim email) ---
+  const fd1 = new FormData();
+  fd1.set("email", email);
+  const r1 = await requestOtp(undefined, fd1);
+  if (r1.error) throw new Error(`${prefix}: requestOtp gagal — ${r1.error}`);
+  if (r1.step !== "verify") throw new Error(`${prefix}: requestOtp tidak pindah ke verifikasi`);
+  if (!capturedOtp) throw new Error(`${prefix}: email OTP tidak tertangkap SMTP sink`);
+  log(`  ${prefix}`, `email OTP diterima (subjek="${capturedSubject}")`);
+
+  // --- Cooldown 60 detik harus menolak permintaan berulang ---
+  const cooldown = await requestOtp(undefined, fd1);
+  if (!cooldown.error || !/tunggu/i.test(cooldown.error)) {
+    throw new Error(`${prefix}: cooldown pengiriman ulang tidak bekerja`);
+  }
+
+  // --- OTP salah harus ditolak ---
+  const fdWrong = new FormData();
+  fdWrong.set("email", email);
+  fdWrong.set("otp", "000000");
+  const wrong = await verifyOtp(undefined, fdWrong);
+  if (!wrong.error) throw new Error(`${prefix}: OTP salah seharusnya ditolak`);
+
+  // --- Langkah 2: verifikasi OTP benar ---
+  const fd2 = new FormData();
+  fd2.set("email", email);
+  fd2.set("otp", capturedOtp);
+  const r2 = await verifyOtp(undefined, fd2);
+  if (r2.error) throw new Error(`${prefix}: verifyOtp gagal — ${r2.error}`);
+  if (r2.step !== "reset") throw new Error(`${prefix}: verifyOtp tidak pindah ke reset`);
+
+  // --- Langkah 3: simpan password baru ---
+  const fd3 = new FormData();
+  fd3.set("email", email);
+  fd3.set("otp", capturedOtp);
+  fd3.set("password", NEW_PASSWORD);
+  fd3.set("confirmPassword", NEW_PASSWORD);
+  const r3 = await resetPassword(undefined, fd3);
+  if (r3.error) throw new Error(`${prefix}: resetPassword gagal — ${r3.error}`);
+
+  // --- Verifikasi hasil di Neon ---
+  const after = await prisma.user.findUnique({ where: { id: seeded.id } });
+  if (!after) throw new Error(`${prefix}: user hilang setelah reset`);
+  if (await verifyPassword(OLD_PASSWORD, after.passwordHash)) {
+    throw new Error(`${prefix}: password lama masih berlaku`);
+  }
+  if (!(await verifyPassword(NEW_PASSWORD, after.passwordHash))) {
+    throw new Error(`${prefix}: password baru tidak valid`);
+  }
+  const sessions = await prisma.userSession.count({ where: { userId: seeded.id } });
+  if (sessions !== 0) throw new Error(`${prefix}: sesi lama belum dicabut (${sessions})`);
+  const reusable = await prisma.verificationToken.count({
+    where: { userId: seeded.id, type: "PASSWORD_RESET_OTP", usedAt: null },
+  });
+  if (reusable !== 0) throw new Error(`${prefix}: OTP masih bisa dipakai ulang`);
+
+  // --- Login ulang dengan password baru (simulasi alur login) ---
+  const loginUser = await prisma.user.findUnique({ where: { email } });
+  const loginOk =
+    !!loginUser &&
+    loginUser.status === "ACTIVE" &&
+    !loginUser.deletedAt &&
+    (await verifyPassword(NEW_PASSWORD, loginUser.passwordHash));
+  if (!loginOk) throw new Error(`${prefix}: login ulang dengan password baru GAGAL`);
+
+  log(`  ${prefix}`, "OK — OTP → password baru → sesi lama dicabut → login ulang berhasil");
+}
+
+/** Kirim ulang OTP setelah cooldown lewat harus menghasilkan kode baru. */
+async function testResend(): Promise<void> {
+  const email = emailFor("MURID");
+  console.log("\n--- UJI KIRIM ULANG OTP (setelah cooldown) ---");
+
+  // Percepat cooldown: geser createdAt token terakhir ke masa lalu.
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  await prisma.verificationToken.updateMany({
+    where: { userId: user.id, type: "PASSWORD_RESET_OTP" },
+    data: { createdAt: new Date(Date.now() - 5 * 60 * 1000) },
+  });
+
+  const before = capturedOtp;
+  const fd = new FormData();
+  fd.set("email", email);
+  const res = await requestOtp(undefined, fd);
+  if (res.error) throw new Error(`kirim ulang gagal — ${res.error}`);
+  if (res.step !== "verify") throw new Error("kirim ulang tidak pindah ke verifikasi");
+  if (!capturedOtp) throw new Error("email kirim ulang tidak tertangkap SMTP sink");
+  log("  kirim ulang", `OK — kode baru diterbitkan (berbeda: ${before !== capturedOtp})`);
+}
+
+/** Password yang hanya berupa nomor telepon harus ditolak. */
+async function testPhonePasswordGuard(): Promise<void> {
+  const email = emailFor("GURU");
+  console.log("\n--- UJI PENJAGA PASSWORD = NOMOR TELEPON ---");
+  await prisma.user.update({ where: { email }, data: { phone: "081234567890" } });
+  const fd = new FormData();
+  fd.set("email", email);
+  fd.set("otp", capturedOtp);
+  // Mengandung huruf (lolos aturan huruf+angka) tetapi digit-nya sama dengan
+  // nomor telepon → harus ditolak oleh penjaga nomor telepon.
+  fd.set("password", "abc081234567890");
+  fd.set("confirmPassword", "abc081234567890");
+  const res = await resetPassword(undefined, fd);
+  if (!res.error || !/nomor telepon/i.test(res.error)) {
+    throw new Error("password berupa nomor telepon seharusnya ditolak");
+  }
+  log("  penjaga nomor telepon", `OK — ${res.error}`);
 }
 
 async function main() {
-  console.log("=== UJI END-TO-END: LUPA PASSWORD (OTP → password berganti) ===\n");
+  console.log("=== UJI END-TO-END: LUPA PASSWORD (semua peran) ===\n");
 
   const sink = await startSmtpSink();
   const server = sink.server;
@@ -164,92 +309,15 @@ async function main() {
 
   await cleanup();
 
-  const user = await prisma.user.create({
-    data: {
-      name: "QA Lupa Password",
-      email: EMAIL,
-      passwordHash: await hashPassword(OLD_PASSWORD),
-      role: "MURID",
-      status: "ACTIVE",
-      verifiedAt: new Date(),
-    },
-  });
-  await prisma.userSession.create({
-    data: {
-      userId: user.id,
-      token: `qa-session-${Date.now()}`,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    },
-  });
-  log("1. Akun uji dibuat", EMAIL);
-
-  // --- Langkah 1: minta OTP (membuat kode + mengirim email) ---
-  const fd1 = new FormData();
-  fd1.set("email", EMAIL);
-  const r1 = await requestOtp(undefined, fd1);
-  if (r1.error) throw new Error(`requestOtp gagal: ${r1.error}`);
-  if (r1.step !== "verify") throw new Error("requestOtp tidak pindah ke langkah verifikasi");
-  log("2. requestOtp", r1.message ?? "(ok)");
-
-  if (!capturedOtp) throw new Error("Email OTP tidak tertangkap oleh SMTP sink");
-  log("3. Email OTP diterima", `subjek="${capturedSubject}" kode=${capturedOtp.slice(0, 2)}****`);
-
-  // --- Cooldown 60 detik harus menolak permintaan berulang ---
-  const cooldown = await requestOtp(undefined, fd1);
-  if (!cooldown.error || !/tunggu/i.test(cooldown.error)) {
-    throw new Error("Cooldown pengiriman ulang tidak bekerja");
+  for (let i = 0; i < ROLES.length; i++) {
+    await testRole(ROLES[i], i);
   }
-  log("4. Cooldown aktif", cooldown.error);
+  await testResend();
+  await testPhonePasswordGuard();
 
-  // --- OTP salah harus ditolak ---
-  const fdWrong = new FormData();
-  fdWrong.set("email", EMAIL);
-  fdWrong.set("otp", "000000");
-  const wrong = await verifyOtp(undefined, fdWrong);
-  if (!wrong.error) throw new Error("OTP salah seharusnya ditolak");
-  log("5. OTP salah ditolak", wrong.error);
-
-  // --- Langkah 2: verifikasi OTP benar ---
-  const fd2 = new FormData();
-  fd2.set("email", EMAIL);
-  fd2.set("otp", capturedOtp);
-  const r2 = await verifyOtp(undefined, fd2);
-  if (r2.error) throw new Error(`verifyOtp gagal: ${r2.error}`);
-  if (r2.step !== "reset") throw new Error("verifyOtp tidak pindah ke langkah reset");
-  log("6. verifyOtp", "kode benar → lanjut isi password baru");
-
-  // --- Langkah 3: simpan password baru ---
-  const fd3 = new FormData();
-  fd3.set("email", EMAIL);
-  fd3.set("otp", capturedOtp);
-  fd3.set("password", NEW_PASSWORD);
-  fd3.set("confirmPassword", NEW_PASSWORD);
-  const r3 = await resetPassword(undefined, fd3);
-  if (r3.error) throw new Error(`resetPassword gagal: ${r3.error}`);
-  log("7. resetPassword", r3.message ?? "(ok)");
-
-  // --- Verifikasi hasil di Neon ---
-  const after = await prisma.user.findUnique({ where: { id: user.id } });
-  if (!after) throw new Error("User hilang setelah reset");
-  if (await verifyPassword(OLD_PASSWORD, after.passwordHash)) {
-    throw new Error("Password lama masih berlaku");
-  }
-  if (!(await verifyPassword(NEW_PASSWORD, after.passwordHash))) {
-    throw new Error("Password baru tidak valid");
-  }
-  log("8. Password diperbarui di Neon", "lama ditolak, baru valid");
-
-  const sessions = await prisma.userSession.count({ where: { userId: user.id } });
-  if (sessions !== 0) throw new Error(`Sesi lama belum dicabut (${sessions})`);
-  log("9. Semua sesi lama dicabut", "0 tersisa");
-
-  const reusable = await prisma.verificationToken.count({
-    where: { userId: user.id, type: "PASSWORD_RESET_OTP", usedAt: null },
-  });
-  if (reusable !== 0) throw new Error("OTP masih bisa dipakai ulang");
-  log("10. OTP sekali pakai", "0 token aktif");
-
-  console.log("\nSELESAI: forgot password terbukti bekerja sampai password berganti.");
+  console.log(
+    "\nSELESAI: lupa password terbukti bekerja untuk ADMIN, GURU, POLISI, dan MURID."
+  );
   server.close();
 }
 

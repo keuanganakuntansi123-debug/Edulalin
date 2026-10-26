@@ -5,6 +5,7 @@ import { logoutAction } from "@/app/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { LogOut, MailCheck, MailWarning } from "lucide-react";
 import { getMailStatus } from "@/lib/mail";
+import { SmtpTestButton } from "./smtp-test-button";
 
 export const instant = false;
 
@@ -84,6 +85,12 @@ export default async function AdminSettingsPage() {
               Settings → Environment Variables (produksi).
             </p>
           )}
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+            <p className="text-xs text-muted-foreground">
+              Kirim email percobaan ke alamat Anda untuk memastikan App Password benar.
+            </p>
+            <SmtpTestButton />
+          </div>
         </CardContent>
       </Card>
 

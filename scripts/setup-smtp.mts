@@ -57,8 +57,8 @@ async function main() {
     .toLowerCase();
 
   if (pushVercel === "y" || pushVercel === "ya") {
-    // Nama proyek Vercel sebenarnya memakai tanda hubung di akhir: "edulalin-".
-    const projectName = process.env.VERCEL_PROJECT ?? "edulalin-";
+    // Nama proyek Vercel sebenarnya: "edulalin" (lihat .vercel/repo.json).
+    const projectName = process.env.VERCEL_PROJECT ?? "edulalin";
     for (const scope of ["production", "preview"]) {
       console.log(`\nMengirim SMTP_PASS ke Vercel (${scope})...`);
       const res = spawnSync(

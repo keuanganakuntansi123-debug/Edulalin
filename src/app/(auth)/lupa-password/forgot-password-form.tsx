@@ -52,6 +52,10 @@ export function ForgotPasswordForm() {
       const result = await requestOtp(undefined, fd);
       setRequestState(result);
       if (result.step === "verify") {
+        // Mulai langkah baru dengan state bersih (tanpa error langkah lama).
+        setVerifyState(undefined);
+        setResetState(undefined);
+        setOtp("");
         setStep("verify");
         setEmail(result.email ?? "");
         setCountdown(result.resendIn ?? 60);
@@ -66,6 +70,9 @@ export function ForgotPasswordForm() {
       const result = await verifyOtp(undefined, fd);
       setVerifyState(result);
       if (result.step === "reset") {
+        setResetState(undefined);
+        // Simpan OTP terverifikasi agar ikut terkirim saat menyimpan password.
+        setOtp(String(fd.get("otp") ?? ""));
         setStep("reset");
         setEmail(result.email ?? "");
       }
@@ -78,10 +85,17 @@ export function ForgotPasswordForm() {
     setCountdown(60);
     startTransition(async () => {
       const result = await requestOtp(undefined, fd);
-      setRequestState(result);
+      // Tampilkan hasil kirim ulang pada langkah verifikasi (bukan langkah 1),
+      // agar notifikasi keberhasilan/kegagalan benar-benar terlihat pengguna.
+      setVerifyState(result);
+      setOtp("");
       if (result.step === "verify") {
         setStep("verify");
         setEmail(result.email ?? "");
+      } else if (result.error) {
+        // Kirim ulang gagal (mis. cooldown) — pulihkan hitung mundur agar tombol
+        // bisa dicoba lagi tanpa menunggu penuh.
+        setCountdown(0);
       }
     });
   }
@@ -99,6 +113,7 @@ export function ForgotPasswordForm() {
     setRequestState(undefined);
     setVerifyState(undefined);
     setResetState(undefined);
+    setOtp("");
     setStep("request");
   }
 
@@ -228,7 +243,17 @@ export function ForgotPasswordForm() {
       )}
 
       {/* Langkah 3: password baru */}
-      {step === "reset" && !done && (
+      {step === "reset" && !done && otp.length !== 6 && (
+        <div className="space-y-4">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            Sesi verifikasi tidak ditemukan. Silakan ulangi proses lupa password dari awal.
+          </p>
+          <Button type="button" className="w-full" onClick={backToEmail}>
+            Mulai Ulang
+          </Button>
+        </div>
+      )}
+      {step === "reset" && !done && otp.length === 6 && (
         <form onSubmit={handleReset} className="space-y-4">
           <input type="hidden" name="email" value={email} />
           <input type="hidden" name="otp" value={otp} />

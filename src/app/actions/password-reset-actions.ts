@@ -2,9 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
-import { generateOtp, sendMail } from "@/lib/mail";
+import { generateOtp, getMailStatus, sendMail, verifyMailConnection } from "@/lib/mail";
 import { logActivity } from "@/lib/audit";
 import { getRequestMeta, safeRevalidatePath } from "@/lib/request-context";
+import { requireRole } from "@/lib/guards";
 
 /** Masa berlaku OTP: 5 menit. */
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -12,6 +13,18 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const RESEND_COOLDOWN_S = 60;
 /** Batas maksimal percobaan verifikasi OTP salah. */
 const MAX_VERIFY_ATTEMPTS = 5;
+/** Pesan seragam untuk email yang tidak terdaftar / tidak dapat digunakan. */
+const NOT_REGISTERED = "Email tidak terdaftar di EDULALIN.";
+
+/**
+ * Alur lupa password berlaku untuk SEMUA aktor (ADMIN, GURU, POLISI, MURID) —
+ * tidak ada pembatasan peran, hanya status akun yang diperiksa.
+ *
+ * Aturan status:
+ *  - `INACTIVE` / sudah dihapus (`deletedAt`) → ditolak ("Email tidak terdaftar").
+ *  - `PENDING` → diizinkan; akun diaktifkan otomatis setelah password baru
+ *    tersimpan sehingga pengguna dapat langsung login.
+ */
 
 export type ForgotPasswordState = {
   step?: "request" | "verify" | "reset";
@@ -41,8 +54,8 @@ export async function requestOtp(
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || user.deletedAt || user.status === "INACTIVE" || user.status === "PENDING") {
-    return { error: "Email tidak terdaftar di EDULALIN." };
+  if (!user || user.deletedAt || user.status === "INACTIVE") {
+    return { error: NOT_REGISTERED };
   }
 
   // Cegah pengiriman berulang dalam waktu singkat.
@@ -161,7 +174,7 @@ export async function verifyOtp(
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.deletedAt || user.status === "INACTIVE") {
-    return { error: "Email tidak terdaftar di EDULALIN." };
+    return { error: NOT_REGISTERED };
   }
 
   const token = await prisma.verificationToken.findFirst({
@@ -196,11 +209,18 @@ export async function verifyOtp(
     return { step: "verify", email, error: "Kode OTP salah. Periksa kembali atau kirim ulang kode." };
   }
 
-  // OTP benar — tandai terpakai (single-use).
-  await prisma.verificationToken.update({
-    where: { id: token.id },
-    data: { usedAt: new Date() },
-  });
+  // OTP benar — tandai terpakai (single-use) dan perbarui masa berlaku agar
+  // pengguna mendapat 5 menit penuh untuk mengisi password baru.
+  await prisma.$transaction([
+    prisma.verificationToken.update({
+      where: { id: token.id },
+      data: { usedAt: new Date(), expiresAt: new Date(Date.now() + OTP_TTL_MS) },
+    }),
+    prisma.verificationToken.updateMany({
+      where: { userId: user.id, type: "PASSWORD_RESET_OTP", usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+  ]);
 
   const meta = await getRequestMeta();
   logActivity({
@@ -238,21 +258,34 @@ export async function resetPassword(
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.deletedAt || user.status === "INACTIVE") {
-    return { error: "Email tidak terdaftar di EDULALIN." };
+    return { error: NOT_REGISTERED };
+  }
+  // Cegah password yang terlalu lemah/berbahaya: tidak boleh sama dengan nomor
+  // telepon terdaftar (sering diisi pengguna karena formatnya hanya angka).
+  if (user.phone && password.replace(/\D/g, "") === user.phone.replace(/\D/g, "")) {
+    return {
+      step: "reset",
+      email,
+      otp,
+      error: "Password baru tidak boleh sama dengan nomor telepon terdaftar.",
+    };
   }
 
-  // Pastikan OTP yang sama sudah diverifikasi (usedAt terisi, tidak kedaluwarsa).
+  // Pastikan OTP sudah diverifikasi DAN masih dalam jendela 5 menit setelah
+  // verifikasi (expiresAt diperbarui saat verifyOtp sukses).
   const token = await prisma.verificationToken.findFirst({
     where: {
       userId: user.id,
       type: "PASSWORD_RESET_OTP",
       usedAt: { not: null },
-      createdAt: { gt: new Date(Date.now() - OTP_TTL_MS) },
+      expiresAt: { gt: new Date() },
     },
     orderBy: { createdAt: "desc" },
   });
   if (!token) {
-    return { error: "Sesi verifikasi tidak valid. Silakan ulangi dari awal." };
+    return {
+      error: "Sesi verifikasi kedaluwarsa. Silakan ulangi dari awal.",
+    };
   }
 
   const newHash = await hashPassword(password);
@@ -286,4 +319,42 @@ export async function resetPassword(
     success: true,
     message: "Password berhasil diperbarui. Silakan masuk dengan password baru.",
   };
+}
+
+/**
+ * ADMIN-only — uji koneksi & autentikasi SMTP lalu kirim email percobaan.
+ * Memastikan App Password benar sebelum pengguna diminta menunggu kode OTP.
+ */
+export async function testSmtpConnection(): Promise<
+  { ok: true; message: string } | { ok: false; error: string }
+> {
+  const admin = await requireRole("ADMIN");
+
+  const status = getMailStatus();
+  if (!status.configured) {
+    return {
+      ok: false,
+      error: `Variabel ${status.missing.join(" & ")} belum diisi. Set Gmail App Password 16 karakter.`,
+    };
+  }
+
+  const conn = await verifyMailConnection();
+  if (!conn.ok) {
+    return { ok: false, error: `Koneksi SMTP gagal: ${conn.error}` };
+  }
+
+  const mail = await sendMail({
+    to: admin.email,
+    subject: "Uji SMTP EDULALIN",
+    text: `Halo ${admin.name},\n\nKonfigurasi email EDULALIN berhasil. Fitur Lupa Password siap mengirim kode OTP.\n\n— Tim EDULALIN`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+      <h2 style="color:#1d4ed8;margin:0 0 8px;">Uji SMTP Berhasil</h2>
+      <p style="color:#334155;line-height:1.6;">Halo <strong>${admin.name}</strong>, konfigurasi email EDULALIN berhasil. Fitur Lupa Password siap mengirim kode OTP.</p>
+      <p style="color:#94a3b8;font-size:12px;margin-top:20px;">— Tim EDULALIN · Edukasi Lalu Lintas</p>
+    </div>`,
+  });
+  if (!mail.ok) {
+    return { ok: false, error: `Gagal mengirim email percobaan: ${mail.error}` };
+  }
+  return { ok: true, message: `Email uji berhasil dikirim ke ${admin.email}.` };
 }
