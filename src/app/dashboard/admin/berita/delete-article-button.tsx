@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toaster";
 
 /**
  * Tombol hapus artikel dengan konfirmasi. Wajib Client Component —
@@ -22,8 +23,21 @@ export function DeleteArticleButton({
   const handleDelete = () => {
     if (!confirm("Hapus artikel ini? Tindakan tidak dapat dibatalkan.")) return;
     startTransition(async () => {
-      await onDelete(articleId);
-      router.refresh();
+      try {
+        const result = (await onDelete(articleId)) as { ok?: boolean; error?: string } | void;
+        if (result && "error" in result && result.error) {
+          toast({ title: "Gagal", description: String(result.error), variant: "error" });
+          return;
+        }
+        toast({ title: "Artikel berhasil dihapus", variant: "success" });
+        router.refresh();
+      } catch (error) {
+        toast({
+          title: "Gagal",
+          description: error instanceof Error ? error.message : "Tidak dapat menghapus artikel.",
+          variant: "error",
+        });
+      }
     });
   };
 

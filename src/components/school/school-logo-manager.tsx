@@ -8,7 +8,13 @@ import { toast } from "@/components/ui/toaster";
 import { SchoolLogo } from "@/components/school/school-logo";
 import { setSchoolLogo } from "@/app/actions/admin-actions";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string };
+type UploadedMeta = {
+  id: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  embedded?: string | null;
+};
 
 /**
  * Pengelola logo sekolah: unggah, ganti, dan hapus.
@@ -18,18 +24,21 @@ export function SchoolLogoManager({
   schoolId,
   schoolName,
   logoUrl,
+  logoEmbedded,
 }: {
   schoolId: string;
   schoolName: string;
   logoUrl: string | null;
+  logoEmbedded?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [logo, setLogo] = useState<UploadedMeta | null>(null);
 
-  const save = (fileId?: string, remove?: boolean) => {
+  const save = (fileId?: string, remove?: boolean, embedded?: string | null) => {
     const fd = new FormData();
     fd.set("schoolId", schoolId);
     if (fileId) fd.set("logoFileId", fileId);
+    if (embedded) fd.set("logoEmbedded", embedded);
     if (remove) fd.set("removeLogo", "1");
     startTransition(async () => {
       const res = await setSchoolLogo(fd);
@@ -45,7 +54,7 @@ export function SchoolLogoManager({
     });
   };
 
-  const displayUrl = logo?.url ?? logoUrl;
+  const displayUrl = logo?.embedded ?? logo?.url ?? logoEmbedded ?? logoUrl;
 
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-slate-50 p-4">
@@ -57,7 +66,7 @@ export function SchoolLogoManager({
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {logo ? (
-            <Button type="button" size="sm" disabled={pending} onClick={() => save(logo.id)}>
+            <Button type="button" size="sm" disabled={pending} onClick={() => save(logo.id, false, logo.embedded)}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Simpan Logo
             </Button>

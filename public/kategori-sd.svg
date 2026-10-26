@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Ilustrasi edukasi lalu lintas jenjang SD">
+  <defs>
+    <linearGradient id="sd-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#sd-bg)"/>
+  <circle cx="60" cy="56" r="36" fill="#ffffff" opacity="0.14"/>
+  <rect x="18" y="88" width="84" height="15" rx="7.5" fill="#ffffff" opacity="0.92"/>
+  <path d="M30 95.5h12M52 95.5h16M74 95.5h16" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="60" cy="38" r="9" fill="#ffffff"/>
+  <path d="M60 47v20" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M60 54l-11 8M60 54l12 6" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M60 66l-9 15M60 66l10 15" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+</svg>

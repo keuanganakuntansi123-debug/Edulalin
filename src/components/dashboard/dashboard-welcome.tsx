@@ -18,6 +18,7 @@ export function DashboardWelcome({
   schoolLevel,
   subject,
   logoUrl,
+  logoEmbedded,
   policeLevel,
   policeUnit,
   policeDivision,
@@ -31,6 +32,7 @@ export function DashboardWelcome({
   schoolLevel?: string | null;
   subject?: string | null;
   logoUrl?: string | null;
+  logoEmbedded?: string | null;
   policeLevel?: string | null;
   policeUnit?: string | null;
   policeDivision?: string | null;
@@ -62,7 +64,13 @@ export function DashboardWelcome({
       <div className="relative flex flex-wrap items-center justify-between gap-4 p-6 lg:p-8">
         <div className="min-w-0 max-w-xl">
           {logoUrl ? (
-            <SchoolLogo logoUrl={logoUrl} name={name} size="lg" className="mb-3 border-2 border-white/50 bg-white/20" />
+            <SchoolLogo
+              logoUrl={logoUrl}
+              embedded={logoEmbedded}
+              name={name}
+              size="lg"
+              className="mb-3 border-2 border-white/50 bg-white/20"
+            />
           ) : null}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
             {role === "MURID" ? "🎓" : role === "GURU" ? "👩‍🏫" : role === "POLISI" ? "🛡️" : "🖥️"}

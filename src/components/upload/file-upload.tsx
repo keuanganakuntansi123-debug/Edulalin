@@ -14,6 +14,7 @@ type UploadedMeta = {
   mimeType: string;
   size: number;
   storedName?: string;
+  embedded?: string | null;
 };
 
 export function FileUpload({

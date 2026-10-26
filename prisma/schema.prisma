@@ -139,6 +139,7 @@ model School {
   province       String
   logoUrl        String?
   logoFileId     String?         @unique
+  logoEmbedded   String?         // data URI logo sekolah (persist saat storage /tmp ephemeral)
   status         SchoolStatus    @default(ACTIVE)
   deletedAt      DateTime?
   deletedBy      String?

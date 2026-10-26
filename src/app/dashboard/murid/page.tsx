@@ -11,27 +11,17 @@ import { BookOpen, ClipboardList, GraduationCap, Trophy } from "lucide-react";
 import { DashboardWelcome } from "@/components/dashboard/dashboard-welcome";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { SchoolLogo } from "@/components/school/school-logo";
+import { DashboardClock } from "@/components/dashboard/live-clock";
+import { ScoreTrend } from "@/components/charts/score-trend";
+import { CategoryBreakdown } from "@/components/charts/category-breakdown";
+import { ProgressBars } from "@/components/charts/progress-bars";
 
 export const instant = false;
 
 export default async function MuridDashboardPage() {
   const user = await requireRole("MURID");
 
-  // Fetch current date and time in WIB
-  const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Asia/Jakarta",
-  };
-  const formattedDateTime = now.toLocaleString("id-ID", options);
-
-  const [modules, quizCount, bestScore, simAvailable] = await Promise.all([
+  const [modules, quizCount, bestScore, simAvailable, attempts] = await Promise.all([
     listModulesForMurid({
       userId: user.id,
       schoolId: user.schoolId,
@@ -65,6 +55,11 @@ export default async function MuridDashboardPage() {
       select: { score: true },
     }),
     Promise.resolve(canAccessSim(user.birthDate)),
+    prisma.quizAttempt.findMany({
+      where: { userId: user.id, status: "COMPLETED" },
+      orderBy: { submittedAt: "asc" },
+      select: { score: true, passed: true, submittedAt: true },
+    }),
   ]);
 
   const completedModules = modules.filter((m) => m.progresses[0]?.completed).length;
@@ -75,20 +70,22 @@ export default async function MuridDashboardPage() {
       )
     : 0;
   const age = user.birthDate ? getAge(user.birthDate) : null;
+  const passedCount = attempts.filter((a) => a.passed).length;
+  const trendData = attempts.map((a, i) => ({ label: `Kuis #${i + 1}`, score: a.score ?? 0 }));
+  const progressData = modules.slice(0, 8).map((m) => ({
+    label: m.title.length > 24 ? `${m.title.slice(0, 24)}…` : m.title,
+    value: m.progresses[0]?.progress ?? 0,
+  }));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-6 py-4 sm:flex-row sm:gap-0">
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-primary">Selamat Datang, {user.name}!</h1>
-        </div>
-        <p className="text-xl font-bold text-primary">{formattedDateTime}</p>
-      </div>
+      <DashboardClock />
       {/* Sapaan */}
       <DashboardWelcome
         role="MURID"
         name={user.name}
         logoUrl={user.school?.logoUrl}
+        logoEmbedded={user.school?.logoEmbedded}
         description={`${user.school?.name ?? "Sekolah"} • ${user.educationLevel ? levelDisplayLabel(user.educationLevel) : "-"}${
           user.classLevel ? ` • Kelas ${user.classLevel}` : ""
         }${user.major ? ` • ${user.major}` : ""}${age != null ? ` • Usia ${age} tahun` : ""}`}
@@ -96,7 +93,12 @@ export default async function MuridDashboardPage() {
 
       {user.school && (
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
-          <SchoolLogo logoUrl={user.school.logoUrl} name={user.school.name} size="md" />
+          <SchoolLogo
+            logoUrl={user.school.logoUrl}
+            embedded={user.school.logoEmbedded}
+            name={user.school.name}
+            size="md"
+          />
           <div>
             <p className="font-semibold">{user.school.name}</p>
             <p className="text-xs text-muted-foreground">
@@ -136,6 +138,47 @@ export default async function MuridDashboardPage() {
           <Progress value={totalProgress} className="mt-2" />
         </CardContent>
       </Card>
+
+      {/* Grafik statistik pembelajaran (data asli) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Perkembangan Nilai Kuis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {trendData.length > 0 ? (
+              <ScoreTrend data={trendData} />
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                Belum ada nilai kuis. Kerjakan kuis untuk melihat perkembangan nilaimu.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Kelulusan Kuis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryBreakdown
+              data={[
+                { name: "Lulus", value: passedCount, color: "#10b981" },
+                { name: "Belum Lulus", value: attempts.length - passedCount, color: "#f59e0b" },
+              ]}
+              centerValue={`${attempts.length ? Math.round((passedCount / attempts.length) * 100) : 0}%`}
+              centerLabel="Kelulusan"
+            />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Progress per Modul</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProgressBars data={progressData} valueName="Progress" />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Modul SIM status */}
       <Card>

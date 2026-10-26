@@ -9,6 +9,7 @@ import { createModule, toggleModuleStatus, archiveModule } from "@/app/actions/a
 import { fileUrl } from "@/lib/storage";
 import Link from "next/link";
 import { IdCard } from "lucide-react";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 
@@ -127,16 +128,27 @@ export default async function AdminModulesPage() {
                             <Link href={`/dashboard/admin/modules/${m.id}`}>
                               <Button size="sm" variant="outline">Edit</Button>
                             </Link>
-                            <form action={toggleModuleAction.bind(null, m.id)}>
+                            <ActionForm
+                              action={toggleModuleAction.bind(null, m.id)}
+                              successMessage={
+                                m.status === "ACTIVE"
+                                  ? "Modul berhasil dinonaktifkan"
+                                  : "Modul berhasil diaktifkan"
+                              }
+                            >
                               <Button type="submit" size="sm" variant="outline">
                                 {m.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
                               </Button>
-                            </form>
-                            <form action={archiveModuleAction.bind(null, m.id)}>
+                            </ActionForm>
+                            <ActionForm
+                              action={archiveModuleAction.bind(null, m.id)}
+                              successMessage="Modul berhasil diarsipkan"
+                              confirmMessage={`Arsipkan modul "${m.title}"? Modul tidak akan tampil lagi bagi murid.`}
+                            >
                               <Button type="submit" size="sm" variant="ghost" className="text-red-600">
                                 Arsipkan
                               </Button>
-                            </form>
+                            </ActionForm>
                           </div>
                         </div>
                       </CardContent>

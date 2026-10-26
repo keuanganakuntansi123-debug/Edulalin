@@ -5,25 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Users, BookOpen, ClipboardList, GraduationCap } from "lucide-react";
 import { DashboardWelcome } from "@/components/dashboard/dashboard-welcome";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { DashboardClock } from "@/components/dashboard/live-clock";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressBars } from "@/components/charts/progress-bars";
+import { CategoryBreakdown } from "@/components/charts/category-breakdown";
 
 export const instant = false;
 
 export default async function GuruDashboardPage() {
   const user = await requireRole("GURU");
-
-  // Fetch current date and time in WIB
-  const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Asia/Jakarta",
-  };
-  const formattedDateTime = now.toLocaleString("id-ID", options);
 
   const [murid, modul, quizzes, avgScore] = await Promise.all([
     prisma.user.count({ where: { schoolId: user.schoolId, role: "MURID", deletedAt: null } }),
@@ -73,6 +63,52 @@ export default async function GuruDashboardPage() {
     include: { user: { select: { name: true } }, quiz: { select: { title: true } } },
   });
 
+  // Data grafik (asli dari Neon DB): progress per modul & distribusi nilai kuis.
+  const [modulesWithProgress, allAttempts] = await Promise.all([
+    prisma.module.findMany({
+      where: {
+        deletedAt: null,
+        status: "ACTIVE",
+        OR: [
+          { schoolId: null },
+          ...(user.schoolId
+            ? [
+                { schoolId: user.schoolId },
+                { moduleToSchools: { some: { schoolId: user.schoolId } } },
+              ]
+            : []),
+        ],
+      },
+      include: {
+        progresses: { where: { user: { schoolId: user.schoolId, deletedAt: null } } },
+      },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      take: 10,
+    }),
+    prisma.quizAttempt.findMany({
+      where: { status: "COMPLETED", user: { schoolId: user.schoolId, role: "MURID" } },
+      select: { score: true, passed: true },
+    }),
+  ]);
+
+  // Rata-rata progress penyelesaian per modul (0–100).
+  const moduleProgressData = modulesWithProgress.map((m) => {
+    const total = m.progresses.length;
+    const avg = total
+      ? Math.round(m.progresses.reduce((a, p) => a + p.progress, 0) / total)
+      : 0;
+    return {
+      label: m.title.length > 24 ? `${m.title.slice(0, 24)}…` : m.title,
+      value: avg,
+    };
+  });
+
+  const totalAttempts = allAttempts.length;
+  const passedAttempts = allAttempts.filter((a) => a.passed).length;
+  const avgAttemptScore = totalAttempts
+    ? Math.round(allAttempts.reduce((a, x) => a + (x.score ?? 0), 0) / totalAttempts)
+    : 0;
+
   const stats = [
     { label: "Murid", value: murid, icon: Users, href: "/dashboard/guru/murid" },
     { label: "Modul Tersedia", value: modul, icon: BookOpen, href: "/dashboard/guru/modules" },
@@ -82,12 +118,7 @@ export default async function GuruDashboardPage() {
 
   return (
     <div>
-      <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-6 py-4 sm:flex-row sm:gap-0">
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-primary">Selamat Datang, {user.name}!</h1>
-        </div>
-        <p className="text-xl font-bold text-primary">{formattedDateTime}</p>
-      </div>
+      <DashboardClock className="mb-4" />
       <DashboardWelcome
         role="GURU"
         name={user.name}
@@ -95,6 +126,7 @@ export default async function GuruDashboardPage() {
         schoolLevel={user.school?.educationLevel}
         subject={user.subject}
         logoUrl={user.school?.logoUrl}
+        logoEmbedded={user.school?.logoEmbedded}
         description={
           user.school
             ? `Anda mengajar di ${user.school.name}. Pantau murid dan nilai pembelajaran lalu lintas dari sekolah Anda.`
@@ -121,6 +153,33 @@ export default async function GuruDashboardPage() {
           accent="amber"
           suffix={avgScore._avg.score ? "/100" : undefined}
         />
+      </div>
+
+      {/* Grafik statistik (data asli dari Neon DB) */}
+      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Progress Belajar per Modul</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProgressBars data={moduleProgressData} valueName="Rata-rata progress" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Kelulusan Kuis Murid</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryBreakdown
+              data={[
+                { name: "Lulus", value: passedAttempts, color: "#10b981" },
+                { name: "Belum Lulus", value: totalAttempts - passedAttempts, color: "#f59e0b" },
+              ]}
+              centerValue={`${totalAttempts ? Math.round((passedAttempts / totalAttempts) * 100) : 0}%`}
+              centerLabel={`Rata-rata ${avgAttemptScore}`}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mt-8">

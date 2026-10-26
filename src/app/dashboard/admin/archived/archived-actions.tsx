@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { restoreUser, permanentDeleteUser } from "@/app/actions/admin-actions";
+import { toast } from "@/components/ui/toaster";
 
 export function ArchivedActions({
   userId,
@@ -22,8 +23,9 @@ export function ArchivedActions({
     startTransition(async () => {
       const result = await restoreUser(userId);
       if (result?.error) {
-        window.alert(result.error);
+        toast({ title: "Gagal", description: String(result.error), variant: "error" });
       } else {
+        toast({ title: "Akun berhasil dipulihkan", variant: "success" });
         router.refresh();
       }
     });
@@ -37,8 +39,9 @@ export function ArchivedActions({
     startTransition(async () => {
       const result = await permanentDeleteUser(userId);
       if (result?.error) {
-        window.alert(result.error);
+        toast({ title: "Gagal", description: String(result.error), variant: "error" });
       } else {
+        toast({ title: "Akun berhasil dihapus permanen", variant: "success" });
         router.refresh();
       }
     });

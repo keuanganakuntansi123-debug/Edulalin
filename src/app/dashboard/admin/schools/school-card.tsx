@@ -17,6 +17,7 @@ type SchoolRow = {
   city: string;
   status: "ACTIVE" | "INACTIVE";
   logoUrl?: string | null;
+  logoEmbedded?: string | null;
 };
 
 type DeleteAction = (id: string) => Promise<{ ok?: boolean; error?: string } | void>;
@@ -190,7 +191,7 @@ export function SchoolCard({
         <div className="flex flex-1 flex-col p-5">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-start gap-3">
-              <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="md" />
+              <SchoolLogo logoUrl={school.logoUrl} embedded={school.logoEmbedded} name={school.name} size="md" />
               <Link href={`/dashboard/admin/schools/${school.id}`} className="min-w-0">
                 <h3 className="font-semibold leading-tight text-foreground hover:text-primary">{school.name}</h3>
               </Link>
@@ -273,7 +274,7 @@ export function DeletedSchoolRow({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-slate-50 p-4">
       <div className="flex min-w-0 items-center gap-3">
-        <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="sm" />
+        <SchoolLogo logoUrl={school.logoUrl} embedded={school.logoEmbedded} name={school.name} size="sm" />
         <div className="min-w-0">
           <p className="font-medium">{school.name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">

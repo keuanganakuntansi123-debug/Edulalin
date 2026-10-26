@@ -21,6 +21,7 @@ import {
   BookMarked,
 } from "lucide-react";
 import { archiveUser, restoreUser, toggleUserStatus } from "@/app/actions/admin-actions";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 
@@ -127,22 +128,34 @@ export default async function AdminUserDetailPage({
         <div className="flex gap-2">
           {!isArchived && user.role !== "ADMIN" && (
             <>
-              <form action={toggleAction.bind(null, user.id)}>
+              <ActionForm
+                action={toggleAction.bind(null, user.id)}
+                successMessage={
+                  user.status === "ACTIVE" ? "Akun berhasil dinonaktifkan" : "Akun berhasil diaktifkan"
+                }
+              >
                 <Button size="sm" variant="outline">
                   {user.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
                 </Button>
-              </form>
-              <form action={archiveAction.bind(null, user.id)}>
+              </ActionForm>
+              <ActionForm
+                action={archiveAction.bind(null, user.id)}
+                successMessage="Akun berhasil dihapus"
+                confirmMessage={`Hapus akun "${user.name}"? Akun dapat dipulihkan dari menu Pengguna Terhapus.`}
+              >
                 <Button size="sm" variant="ghost" className="text-red-600">
                   Hapus Akun
                 </Button>
-              </form>
+              </ActionForm>
             </>
           )}
           {isArchived && (
-            <form action={restoreAction.bind(null, user.id)}>
+            <ActionForm
+              action={restoreAction.bind(null, user.id)}
+              successMessage="Akun berhasil dipulihkan"
+            >
               <Button size="sm">Pulihkan Akun</Button>
-            </form>
+            </ActionForm>
           )}
         </div>
       </div>

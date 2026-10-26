@@ -10,6 +10,7 @@ import { SchoolFilter } from "./school-filter";
 import { ArchivedActions } from "../archived/archived-actions";
 import { createGuruPolisi, archiveUser, toggleUserStatus } from "@/app/actions/admin-actions";
 import { Search, Archive, User } from "lucide-react";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 type SearchParams = { tab?: string; q?: string; school?: string };
@@ -155,14 +156,25 @@ export default async function AdminUsersPage({ searchParams }: Params) {
                       <Link href={`/dashboard/admin/users/${u.id}`}>
                         <Button size="sm" variant="ghost"><User className="h-4 w-4" /> Detail</Button>
                       </Link>
-                      <form action={toggleUserStatusAction.bind(null, u.id)}>
+                      <ActionForm
+                        action={toggleUserStatusAction.bind(null, u.id)}
+                        successMessage={
+                          u.status === "ACTIVE"
+                            ? "Akun berhasil dinonaktifkan"
+                            : "Akun berhasil diaktifkan"
+                        }
+                      >
                         <Button size="sm" variant="outline">
                           {u.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
                         </Button>
-                      </form>
-                      <form action={archiveUserAction.bind(null, u.id)}>
+                      </ActionForm>
+                      <ActionForm
+                        action={archiveUserAction.bind(null, u.id)}
+                        successMessage="Akun berhasil dihapus"
+                        confirmMessage={`Hapus akun "${u.name}"? Akun dapat dipulihkan dari menu Pengguna Terhapus.`}
+                      >
                         <Button size="sm" variant="ghost" className="text-red-600"><Archive className="h-4 w-4" /> Hapus</Button>
-                      </form>
+                      </ActionForm>
                     </div>
                   </div>
                 ))}
@@ -263,9 +275,13 @@ export default async function AdminUsersPage({ searchParams }: Params) {
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <Link href={`/dashboard/admin/users/${u.id}`}><Button size="sm" variant="outline">Detail</Button></Link>
-                            <form action={archiveUserAction.bind(null, u.id)}>
+                            <ActionForm
+                              action={archiveUserAction.bind(null, u.id)}
+                              successMessage="Akun murid berhasil dihapus"
+                              confirmMessage={`Hapus akun "${u.name}"? Akun dapat dipulihkan dari menu Pengguna Terhapus.`}
+                            >
                               <Button size="sm" variant="ghost" className="text-red-600"><Archive className="h-4 w-4" /></Button>
-                            </form>
+                            </ActionForm>
                           </div>
                         </td>
                       </tr>
@@ -317,14 +333,25 @@ export default async function AdminUsersPage({ searchParams }: Params) {
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <Link href={`/dashboard/admin/users/${u.id}`}><Button size="sm" variant="outline">Detail</Button></Link>
-                            <form action={toggleUserStatusAction.bind(null, u.id)}>
+                            <ActionForm
+                              action={toggleUserStatusAction.bind(null, u.id)}
+                              successMessage={
+                                u.status === "ACTIVE"
+                                  ? "Akun berhasil dinonaktifkan"
+                                  : "Akun berhasil diaktifkan"
+                              }
+                            >
                               <Button size="sm" variant="ghost">
                                 {u.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
                               </Button>
-                            </form>
-                            <form action={archiveUserAction.bind(null, u.id)}>
+                            </ActionForm>
+                            <ActionForm
+                              action={archiveUserAction.bind(null, u.id)}
+                              successMessage="Akun berhasil dihapus"
+                              confirmMessage={`Hapus akun "${u.name}"? Akun dapat dipulihkan dari menu Pengguna Terhapus.`}
+                            >
                               <Button size="sm" variant="ghost" className="text-red-600"><Archive className="h-4 w-4" /></Button>
-                            </form>
+                            </ActionForm>
                           </div>
                         </td>
                       </tr>

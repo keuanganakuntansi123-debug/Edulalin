@@ -14,15 +14,16 @@ import { fileUrl } from "@/lib/storage";
 import Link from "next/link";
 import { Newspaper, Pencil, Eye } from "lucide-react";
 import { DeleteArticleButton } from "./delete-article-button";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 
 const CATEGORIES = [
-  { value: "SD", label: "SD", emoji: "🧒" },
-  { value: "SMP", label: "SMP", emoji: "🧑" },
-  { value: "SMA", label: "SMA", emoji: "🧑‍🎓" },
-  { value: "SMK", label: "SMK", emoji: "👷" },
-  { value: "SIM", label: "SIM", emoji: "🪪" },
+  { value: "SD", label: "SD", icon: "/kategori-sd.svg" },
+  { value: "SMP", label: "SMP", icon: "/kategori-smp.svg" },
+  { value: "SMA", label: "SMA", icon: "/kategori-sma.svg" },
+  { value: "SMK", label: "SMK", icon: "/kategori-smk.svg" },
+  { value: "SIM", label: "SIM", icon: "/kategori-sim.svg" },
 ];
 
 async function toggleAction(id: string) {
@@ -64,11 +65,14 @@ export default async function AdminBeritaPage() {
         {/* Daftar berita */}
         <div className="space-y-4 lg:col-span-2">
           <div className="flex flex-wrap gap-2">
-            {byCategory.map(({ value, label, articles: list }) => (
+            {byCategory.map(({ value, label, icon, articles: list }) => (
               <details key={value} className="w-full" open={list.length > 0}>
                 <summary className="flex cursor-pointer select-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold hover:border-primary/50">
                   <span className="flex items-center gap-2">
-                    <span aria-hidden="true">{label === "SIM" ? "🪪" : label === "SD" ? "🧒" : label === "SMP" ? "🧑" : label === "SMA" ? "🧑‍🎓" : "👷"}</span>
+                    <span className="inline-flex h-6 w-6 overflow-hidden rounded-md">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={icon} alt="" className="h-6 w-6" />
+                    </span>
                     Kategori {label}
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       {list.length}
@@ -127,11 +131,18 @@ export default async function AdminBeritaPage() {
                                   <Pencil className="h-3.5 w-3.5" /> Edit
                                 </Button>
                               </Link>
-                              <form action={toggleAction.bind(null, a.id)}>
+                              <ActionForm
+                                action={toggleAction.bind(null, a.id)}
+                                successMessage={
+                                  a.status === "ACTIVE"
+                                    ? "Artikel berhasil dinonaktifkan"
+                                    : "Artikel berhasil diaktifkan"
+                                }
+                              >
                                 <Button size="sm" variant={a.status === "ACTIVE" ? "secondary" : "default"}>
                                   {a.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
                                 </Button>
-                              </form>
+                              </ActionForm>
                               <DeleteArticleButton articleId={a.id} onDelete={deleteAction} />
                             </div>
                           </div>

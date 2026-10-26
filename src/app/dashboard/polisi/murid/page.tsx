@@ -20,6 +20,7 @@ export default async function PolisiMuridPage() {
       id: true,
       name: true,
       logoUrl: true,
+      logoEmbedded: true,
       educationLevel: true,
       _count: { select: { users: { where: { role: "MURID", deletedAt: null } } } },
     },
@@ -40,7 +41,7 @@ export default async function PolisiMuridPage() {
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
                   <div className="flex min-w-0 items-center gap-3">
-                    <SchoolLogo logoUrl={s.logoUrl} name={s.name} size="md" />
+                    <SchoolLogo logoUrl={s.logoUrl} embedded={s.logoEmbedded} name={s.name} size="md" />
                     <div className="min-w-0">
                       <p className="font-medium line-clamp-1">{s.name}</p>
                       <p className="text-xs text-muted-foreground">{levelDisplayLabel(s.educationLevel)}</p>

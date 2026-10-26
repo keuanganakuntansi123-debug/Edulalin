@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Ilustrasi edukasi lalu lintas jenjang SMP">
+  <defs>
+    <linearGradient id="smp-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#smp-bg)"/>
+  <circle cx="60" cy="60" r="36" fill="#ffffff" opacity="0.14"/>
+  <circle cx="40" cy="76" r="16" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <circle cx="82" cy="76" r="16" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <path d="M40 76l18-26h15l9 26M58 50h22" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M58 50l-9-7M80 50l7-7" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+</svg>

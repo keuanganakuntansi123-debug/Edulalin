@@ -31,7 +31,12 @@ export default async function GuruModulesPage() {
       {user.school && (
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-white p-5">
-            <SchoolLogo logoUrl={user.school.logoUrl} name={user.school.name} size="lg" />
+            <SchoolLogo
+              logoUrl={user.school.logoUrl}
+              embedded={user.school.logoEmbedded}
+              name={user.school.name}
+              size="lg"
+            />
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{user.school.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -49,6 +54,7 @@ export default async function GuruModulesPage() {
             schoolId={user.school.id}
             schoolName={user.school.name}
             logoUrl={user.school.logoUrl}
+            logoEmbedded={user.school.logoEmbedded}
           />
         </div>
       )}

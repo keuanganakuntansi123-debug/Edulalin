@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { NEWS_CATEGORY_META } from "./news-constants";
+import { CategoryImage } from "./category-image";
 
 type DisplayArticle = {
   id: string;
@@ -88,13 +89,14 @@ export function NewsCatalog({
             type="button"
             onClick={() => setCategory(value)}
             className={cn(
-              "rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200",
+              "inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-4 text-sm font-medium transition-all duration-200",
               category === value
                 ? "border-primary bg-primary text-white shadow-sm shadow-blue-600/25"
                 : "border-border bg-white text-slate-600 hover:border-primary/50 hover:text-primary"
             )}
           >
-            {meta.emoji} {meta.label}
+            <CategoryImage value={value} size={24} className="h-6 w-6 rounded-md" />
+            {meta.label}
           </button>
         ))}
       </div>
@@ -129,8 +131,8 @@ export function NewsCatalog({
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-blue-100 to-sky-50 text-6xl">
-                      <span aria-hidden="true">📰</span>
+                    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-blue-100 to-sky-50">
+                      <CategoryImage value={featured.category} size={96} className="h-24 w-24 rounded-2xl opacity-90" />
                     </div>
                   )}
                   <span className="absolute left-4 top-4">
@@ -140,7 +142,8 @@ export function NewsCatalog({
                 <div className="flex flex-col justify-center p-6 md:p-8">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <Badge className={NEWS_CATEGORY_META[featured.category]?.classes}>
-                      {NEWS_CATEGORY_META[featured.category]?.emoji} {featured.category}
+                      <CategoryImage value={featured.category} size={16} className="mr-1.5 h-4 w-4 rounded-sm" />
+                      {featured.category}
                     </Badge>
                     {featured.authorName && (
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -213,14 +216,15 @@ function NewsCard({
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50 text-5xl transition-transform duration-500 group-hover:scale-110">
-              <span aria-hidden="true">📰</span>
+            <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50 transition-transform duration-500 group-hover:scale-110">
+              <CategoryImage value={meta.label} size={72} className="h-18 w-18 rounded-2xl opacity-90" />
             </div>
           )}
           <div className="absolute inset-0 bg-linear-to-t from-slate-900/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <span className="absolute left-3 top-3">
             <Badge className={cn("shadow-sm", meta.classes)}>
-              {meta.emoji} {meta.label}
+              <CategoryImage value={meta.label} size={16} className="mr-1.5 h-4 w-4 rounded-sm" />
+              {meta.label}
             </Badge>
           </span>
         </div>

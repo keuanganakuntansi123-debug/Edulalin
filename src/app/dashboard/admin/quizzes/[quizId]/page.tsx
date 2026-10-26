@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DraftPdfTools, type ReviewQuestion } from "../draft-pdf-tools";
 import { fileUrl } from "@/lib/storage";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 
@@ -76,11 +77,14 @@ export default async function AdminQuizDetailPage({
           <span className="flex-1">
             Kuis masih draf. {missingKeys > 0 ? `${missingKeys} soal belum memiliki kunci jawaban.` : "Semua soal sudah memiliki kunci jawaban."} Periksa dan terbitkan agar terlihat murid.
           </span>
-          <form action={publishQuizAction.bind(null, quiz.id)}>
+          <ActionForm
+            action={publishQuizAction.bind(null, quiz.id)}
+            successMessage="Kuis berhasil diterbitkan"
+          >
             <Button size="sm" type="submit" disabled={missingKeys > 0}>
               <Send className="h-4 w-4" /> Terbitkan Kuis
             </Button>
-          </form>
+          </ActionForm>
         </div>
       )}
 
@@ -113,11 +117,15 @@ export default async function AdminQuizDetailPage({
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <form action={deleteQuestionAction.bind(null, q.id, quiz.id)}>
+                    <ActionForm
+                      action={deleteQuestionAction.bind(null, q.id, quiz.id)}
+                      successMessage="Soal berhasil dihapus"
+                      confirmMessage="Hapus soal ini?"
+                    >
                       <Button type="submit" size="sm" variant="ghost" className="text-red-600" aria-label="Hapus soal">
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </form>
+                    </ActionForm>
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-1 text-sm">
@@ -177,10 +185,10 @@ export default async function AdminQuizDetailPage({
 
 async function publishQuizAction(id: string) {
   "use server";
-  await publishQuiz(id);
+  return await publishQuiz(id);
 }
 
 async function deleteQuestionAction(id: string, quizId: string) {
   "use server";
-  await deleteQuestion(id, quizId);
+  return await deleteQuestion(id, quizId);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { MapPin } from "lucide-react";
 import { SchoolLogo } from "@/components/school/school-logo";
 import { LEVEL_LABEL } from "@/lib/constants";
 
@@ -8,8 +9,10 @@ type SchoolItem = {
   id: string;
   name: string;
   logoUrl: string | null;
+  logoEmbedded: string | null;
   educationLevel: string;
   city: string | null;
+  address: string | null;
 };
 
 /**
@@ -45,7 +48,13 @@ export function SchoolMarquee({ schools }: { schools: SchoolItem[] }) {
               key={`${school.id}-${i}`}
               className="flex w-56 shrink-0 flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:w-64"
             >
-              <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="lg" className="h-20 w-20 rounded-2xl" />
+              <SchoolLogo
+                logoUrl={school.logoUrl}
+                embedded={school.logoEmbedded}
+                name={school.name}
+                size="lg"
+                className="h-20 w-20 rounded-2xl"
+              />
               <div className="min-w-0 text-center">
                 <p className="truncate text-sm font-semibold text-slate-800" title={school.name}>
                   {school.name}
@@ -54,6 +63,15 @@ export function SchoolMarquee({ schools }: { schools: SchoolItem[] }) {
                   {LEVEL_LABEL[school.educationLevel as keyof typeof LEVEL_LABEL] ?? school.educationLevel}
                   {school.city ? ` • ${school.city}` : ""}
                 </p>
+                {school.address ? (
+                  <p
+                    className="mt-1 flex items-center justify-center gap-1 text-[11px] leading-snug text-slate-400"
+                    title={school.address}
+                  >
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="line-clamp-1">{school.address}</span>
+                  </p>
+                ) : null}
               </div>
             </div>
           ))}

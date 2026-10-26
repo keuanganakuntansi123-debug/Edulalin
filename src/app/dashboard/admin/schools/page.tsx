@@ -118,6 +118,7 @@ export default async function AdminSchoolsPage({
                 city: s.city,
                 status: s.status,
                 logoUrl: s.logoUrl,
+                logoEmbedded: s.logoEmbedded,
               }}
               guru={countMap.get(s.id)?.guru ?? 0}
               murid={countMap.get(s.id)?.murid ?? 0}
@@ -156,6 +157,7 @@ export default async function AdminSchoolsPage({
                   city: s.city,
                   status: s.status,
                   logoUrl: s.logoUrl,
+                  logoEmbedded: s.logoEmbedded,
                 }}
                 action={restoreSchoolAction}
                 deleteAction={permanentDeleteSchoolAction}

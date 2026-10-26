@@ -11,7 +11,7 @@ import { updateProfile, removeAvatar } from "@/app/actions/profile-actions";
 import { useRouter } from "next/navigation";
 import { policeLevelLabel } from "@/lib/constants";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string; embedded?: string };
+type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string; embedded?: string | null };
 
 export function ProfileForm({
   name,

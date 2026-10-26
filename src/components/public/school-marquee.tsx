@@ -17,8 +17,10 @@ export async function SchoolMarqueeSection() {
       id: true,
       name: true,
       logoUrl: true,
+      logoEmbedded: true,
       educationLevel: true,
       city: true,
+      address: true,
     },
     take: 200,
   });

@@ -74,6 +74,7 @@ export default async function AdminSchoolDetailPage({
           <div className="flex flex-wrap items-center gap-2">
             <SchoolLogo
               logoUrl={school.logoUrl ?? null}
+              embedded={school.logoEmbedded}
               name={school.name}
               size="lg"
             />
@@ -262,6 +263,7 @@ export default async function AdminSchoolDetailPage({
               schoolId={school.id}
               schoolName={school.name}
               logoUrl={school.logoUrl}
+              logoEmbedded={school.logoEmbedded}
             />
           </div>
           <form action={updateSchoolAction.bind(null, school.id)} className="grid gap-4 sm:grid-cols-2">

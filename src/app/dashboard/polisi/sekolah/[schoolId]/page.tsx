@@ -74,7 +74,12 @@ export default async function PolisiSekolahDetailPage({
       </Link>
 
       <div className="flex items-center gap-4">
-        <SchoolLogo logoUrl={school.logoUrl} name={school.name} size="lg" />
+        <SchoolLogo
+          logoUrl={school.logoUrl}
+          embedded={school.logoEmbedded}
+          name={school.name}
+          size="lg"
+        />
         <div>
           <h1 className="text-2xl font-bold">{school.name}</h1>
           <p className="mt-1 text-muted-foreground">

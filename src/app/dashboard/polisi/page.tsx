@@ -5,25 +5,12 @@ import { Button } from "@/components/ui/button";
 import { School, Users, BookOpen, ClipboardList } from "lucide-react";
 import { DashboardWelcome } from "@/components/dashboard/dashboard-welcome";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { DashboardClock } from "@/components/dashboard/live-clock";
 
 export const instant = false;
 
 export default async function PolisiDashboardPage() {
   const user = await requireRole("POLISI");
-
-  // Fetch current date and time in WIB
-  const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Asia/Jakarta",
-  };
-  const formattedDateTime = now.toLocaleString("id-ID", options);
 
   const [sekolah, murid, modul, kuis] = await Promise.all([
     prisma.school.count({ where: { status: "ACTIVE" } }),
@@ -41,12 +28,7 @@ export default async function PolisiDashboardPage() {
 
   return (
     <div>
-      <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-6 py-4 sm:flex-row sm:gap-0">
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-primary">Selamat Datang, {user.name}!</h1>
-        </div>
-        <p className="text-xl font-bold text-primary">{formattedDateTime}</p>
-      </div>
+      <DashboardClock className="mb-4" />
       <DashboardWelcome
         role="POLISI"
         name={user.name}

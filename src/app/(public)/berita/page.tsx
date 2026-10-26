@@ -4,6 +4,7 @@ import { PageHero } from "@/components/public/page-hero";
 import { fileUrl } from "@/lib/storage";
 import { NewsCatalog } from "./news-catalog";
 import { NEWS_CATEGORIES, NEWS_CATEGORY_VALUES } from "./news-constants";
+import { CategoryImage } from "./category-image";
 
 export const metadata: Metadata = {
   title: "Berita & Edukasi | EDULALIN | Edukasi Lalu Lintas",
@@ -74,8 +75,8 @@ export default async function BeritaPage({
                       : "border-border bg-white hover:border-primary/40"
                   }`}
                 >
-                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-2xl transition-transform duration-300 group-hover:scale-110 ${active ? "bg-white/20" : "bg-slate-100"}`}>
-                    <span aria-hidden="true">{c.emoji}</span>
+                  <span className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-sm transition-transform duration-300 group-hover:scale-110`}>
+                    <CategoryImage value={c.value} size={56} className="h-14 w-14" />
                   </span>
                   <p className={`mt-3 font-bold ${active ? "text-white" : "text-foreground"}`}>
                     Kategori {c.label}

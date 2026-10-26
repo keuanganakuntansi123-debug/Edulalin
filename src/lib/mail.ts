@@ -22,7 +22,8 @@ function createTransporter(): Transporter | null {
   const host = process.env.SMTP_HOST ?? "smtp.gmail.com";
   const port = Number(process.env.SMTP_PORT ?? 465);
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  // App Password Gmail sering tersalin dengan spasi — buang semua whitespace.
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
 
   if (!user || !pass) {
     console.warn(
@@ -31,10 +32,16 @@ function createTransporter(): Transporter | null {
     return null;
   }
 
+  // secure ditentukan oleh port (465 = SSL) atau eksplisit via SMTP_SECURE.
+  const secureEnv = process.env.SMTP_SECURE?.toLowerCase();
+  const secure = secureEnv ? secureEnv === "true" : port === 465;
+
   return nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,
+    secure,
+    // Untuk port 587/STARTTLS, paksa upgrade ke TLS.
+    requireTLS: !secure && port === 587,
     auth: { user, pass },
     // Timeout agar request tidak menggantung saat email gagal.
     connectionTimeout: 10_000,

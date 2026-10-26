@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
-import { removeStoredFile, fileUrl } from "@/lib/storage";
+import { removeStoredFile, fileUrl, readStoredBuffer } from "@/lib/storage";
 import { validateCategorySchoolMatch } from "@/lib/module-service";
 
 async function actorContext() {
@@ -811,6 +811,8 @@ export async function setSchoolLogo(
   const actor = await requireRole("ADMIN", "GURU");
   const schoolId = String(formData.get("schoolId") ?? "");
   const logoFileId = String(formData.get("logoFileId") ?? "") || null;
+  const logoEmbeddedInput =
+    String(formData.get("logoEmbedded") ?? "") || null;
   const removeLogo = formData.get("removeLogo") === "1";
 
   const school = await prisma.school.findUnique({ where: { id: schoolId } });
@@ -823,7 +825,10 @@ export async function setSchoolLogo(
   if (removeLogo) {
     // Hapus referensi; file fisik dihapus setelah relasi dilepas.
     const oldFileId = school.logoFileId;
-    await prisma.school.update({ where: { id: schoolId }, data: { logoFileId: null, logoUrl: null } });
+    await prisma.school.update({
+      where: { id: schoolId },
+      data: { logoFileId: null, logoUrl: null, logoEmbedded: null },
+    });
     if (oldFileId) {
       const old = await prisma.uploadedFile.findUnique({ where: { id: oldFileId } });
       if (old && old.kind === "SCHOOL_LOGO") {
@@ -856,9 +861,17 @@ export async function setSchoolLogo(
 
   const oldFileId = school.logoFileId;
   const logoUrl = fileUrl(file.storedName);
+  // Simpan data URI agar logo tetap tampil setelah redeploy Vercel
+  // (storage /tmp bersifat ephemeral). Client mengirim logoEmbedded, tetapi
+  // bila tidak ada, baca langsung dari penyimpanan sebagai cadangan.
+  let logoEmbedded = logoEmbeddedInput;
+  if (!logoEmbedded) {
+    const buffer = await readStoredBuffer(file.storedName);
+    if (buffer) logoEmbedded = `data:${file.mimeType};base64,${buffer.toString("base64")}`;
+  }
   await prisma.school.update({
     where: { id: schoolId },
-    data: { logoFileId: file.id, logoUrl },
+    data: { logoFileId: file.id, logoUrl, logoEmbedded },
   });
 
   // Hapus file lama bila mengganti logo.

@@ -20,6 +20,7 @@ export default async function PolisiSekolahPage() {
       id: true,
       name: true,
       logoUrl: true,
+      logoEmbedded: true,
       educationLevel: true,
       city: true,
       province: true,
@@ -37,7 +38,7 @@ export default async function PolisiSekolahPage() {
           <Card key={s.id}>
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
-                <SchoolLogo logoUrl={s.logoUrl} name={s.name} size="md" />
+                <SchoolLogo logoUrl={s.logoUrl} embedded={s.logoEmbedded} name={s.name} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-semibold line-clamp-1">{s.name}</h3>

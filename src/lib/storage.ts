@@ -123,7 +123,7 @@ export async function saveUploadedFile(input: {
   // sudah persisten di Vercel Blob.
   // Gambar berita juga di-embed base64 supaya tetap tampil saat redeploy
   // (storage /tmp Vercel ephemeral) meski Blob belum dikonfigurasi.
-  if ((kind === "AVATAR" || kind === "ARTICLE_IMAGE") && buffer) {
+  if ((kind === "AVATAR" || kind === "ARTICLE_IMAGE" || kind === "SCHOOL_LOGO") && buffer) {
     result.embedded = `data:${mime};base64,${buffer.toString("base64")}`;
   }
   return result;
@@ -154,6 +154,21 @@ export async function removeStoredFile(storedName: string): Promise<void> {
     await fs.unlink(storagePath(safe));
   } catch {
     // file tidak ada — abaikan
+  }
+}
+
+/** Baca seluruh isi file dari penyimpanan (Blob atau lokal) sebagai Buffer. */
+export async function readStoredBuffer(storedName: string): Promise<Buffer | null> {
+  if (isBlobPathname(storedName)) {
+    const { readBlobBuffer } = await import("@/lib/blob-storage");
+    return readBlobBuffer(storedName);
+  }
+  const filePath = await getStoredFilePath(storedName);
+  if (!filePath) return null;
+  try {
+    return await fs.readFile(/* turbopackIgnore: true */ filePath);
+  } catch {
+    return null;
   }
 }
 

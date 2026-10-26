@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { fileUrl } from "@/lib/storage";
 import { CalendarDays, User, ArrowLeft, Share2, Newspaper } from "lucide-react";
-import { NEWS_CATEGORY_META } from "../news-constants";
+import { NEWS_CATEGORY_META, NEWS_CATEGORY_VALUES } from "../news-constants";
+import { CategoryImage } from "../category-image";
 import { ShareArticleButton } from "./share-article-button";
 
 export const instant = false;
@@ -78,6 +79,7 @@ export default async function BeritaDetailPage({
     title: r.title,
     slug: r.slug,
     summary: r.summary,
+    category: r.category,
     image:
       r.imageEmbedded ?? (r.imageFile ? fileUrl(r.imageFile.storedName) : r.imageUrl) ?? null,
   }));
@@ -100,7 +102,8 @@ export default async function BeritaDetailPage({
           </Link>
           <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
             <Badge className={meta.classes}>
-              {meta.emoji} Artikel Kategori {meta.label}
+              <CategoryImage value={article.category} size={16} className="mr-1.5 h-4 w-4 rounded-sm" />
+              Artikel Kategori {meta.label}
             </Badge>
             {article.authorName && (
               <span className="inline-flex items-center gap-1.5 text-blue-100">
@@ -180,21 +183,14 @@ export default async function BeritaDetailPage({
             <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="flex items-center gap-2 font-bold">🪪 Kategori Edukasi</h3>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                {(
-                  [
-                    ["SD", "🧒"],
-                    ["SMP", "🧑"],
-                    ["SMA", "🧑‍🎓"],
-                    ["SMK", "👷"],
-                    ["SIM", "🪪"],
-                  ] as const
-                ).map(([value, emoji]) => (
+                {NEWS_CATEGORY_VALUES.map((value) => (
                   <Link
                     key={value}
                     href={`/berita?kategori=${value}`}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-center font-medium text-slate-700 transition-all hover:border-primary/50 hover:bg-blue-50 hover:text-primary"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 pl-2 pr-3 text-center font-medium text-slate-700 transition-all hover:border-primary/50 hover:bg-blue-50 hover:text-primary"
                   >
-                    {emoji} {value}
+                    <CategoryImage value={value} size={22} className="h-5.5 w-5.5 rounded-md" />
+                    {value}
                   </Link>
                 ))}
               </div>
@@ -223,8 +219,8 @@ export default async function BeritaDetailPage({
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50 text-4xl">
-                        <span aria-hidden="true">📰</span>
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50">
+                        <CategoryImage value={r.category} size={64} className="h-16 w-16 rounded-xl opacity-80" />
                       </div>
                     )}
                   </div>

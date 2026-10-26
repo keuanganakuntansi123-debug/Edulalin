@@ -2,13 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { MAX_SIZES, isAllowedMime } from "@/lib/storage";
-import { isBlobPathname } from "@/lib/blob-storage";
+import { isBlobPathname, readBlobBuffer } from "@/lib/blob-storage";
 import { logActivity } from "@/lib/audit";
 import type { FileKind } from "@/generated/prisma/client";
 import { BLOB_PREFIX } from "@/lib/upload-config";
 import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
+
+/** Jenis file yang perlu disimpan sebagai data URI base64 (tahan redeploy). */
+const EMBEDDABLE: FileKind[] = ["AVATAR", "ARTICLE_IMAGE", "SCHOOL_LOGO"];
+
+async function buildEmbedded(
+  kind: FileKind,
+  pathname: string,
+  mime: string
+): Promise<string | null> {
+  if (!EMBEDDABLE.includes(kind)) return null;
+  const buffer = await readBlobBuffer(pathname);
+  if (!buffer) return null;
+  return `data:${mime};base64,${buffer.toString("base64")}`;
+}
 
 const KINDS: FileKind[] = [
   "MODULE_CONTENT",
@@ -100,6 +114,7 @@ export async function POST(req: NextRequest) {
         originalName: record.originalName,
         mimeType: record.mimeType,
         size: record.size,
+        embedded: await buildEmbedded(fKind, pathname, mime),
       },
     });
   } catch (e) {

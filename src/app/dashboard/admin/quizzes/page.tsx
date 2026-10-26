@@ -8,6 +8,7 @@ import { QuizForm } from "./quiz-form";
 import { createQuiz, archiveQuiz, deleteQuiz } from "@/app/actions/admin-actions";
 import Link from "next/link";
 import { DeleteQuizButton } from "./delete-quiz-button";
+import { ActionForm } from "@/components/ui/action-form";
 
 export const instant = false;
 
@@ -111,9 +112,13 @@ export default async function AdminQuizzesPage() {
                               {q.status === "DRAFT" ? "Periksa Draft" : "Kelola Soal"}
                             </Button>
                           </Link>
-                          <form action={archiveQuizAction.bind(null, q.id)}>
+                          <ActionForm
+                            action={archiveQuizAction.bind(null, q.id)}
+                            successMessage="Kuis berhasil diarsipkan"
+                            confirmMessage={`Arsipkan kuis "${q.title}"?`}
+                          >
                             <Button type="submit" size="sm" variant="ghost" className="text-amber-600">Arsipkan</Button>
-                          </form>
+                          </ActionForm>
                           <DeleteQuizButton
                             quizTitle={q.title}
                             action={deleteQuizAction.bind(null, q.id)}

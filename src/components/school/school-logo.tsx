@@ -10,17 +10,20 @@ import { cn } from "@/lib/utils";
  */
 export function SchoolLogo({
   logoUrl,
+  embedded,
   name,
   size = "md",
   className,
 }: {
   logoUrl?: string | null;
+  embedded?: string | null;
   name: string;
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const showImage = !!logoUrl && !failed;
+  const src = embedded ?? logoUrl ?? null;
+  const showImage = !!src && !failed;
 
   const sizes = {
     sm: "h-10 w-10 rounded-lg",
@@ -41,9 +44,10 @@ export function SchoolLogo({
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={logoUrl}
+          src={src}
           alt={`Logo ${name}`}
-          className="h-full w-full object-cover"
+          loading="lazy"
+          className={embedded ? "h-full w-full object-contain p-0.5" : "h-full w-full object-cover"}
           onError={() => setFailed(true)}
         />
       ) : (

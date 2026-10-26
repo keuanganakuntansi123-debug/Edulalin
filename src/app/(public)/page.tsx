@@ -11,6 +11,7 @@ import { SchoolMarqueeSection } from "@/components/public/school-marquee";
 import { fileUrl } from "@/lib/storage";
 import { ArrowRight, CalendarDays } from "lucide-react";
 import { NEWS_CATEGORY_META } from "./berita/news-constants";
+import { CategoryImage } from "./berita/category-image";
 
 export const metadata: Metadata = {
   title: "Beranda | EDULALIN | Edukasi Lalu Lintas",
@@ -235,12 +236,13 @@ export default async function LandingPage() {
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50 text-5xl">
-                        <span aria-hidden="true">📰</span>
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-50">
+                        <CategoryImage value={a.category} size={72} className="h-18 w-18 rounded-2xl opacity-90" />
                       </div>
                     )}
-                    <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-0.5 text-xs font-semibold shadow-sm">
-                      {NEWS_CATEGORY_META[a.category]?.emoji} {NEWS_CATEGORY_META[a.category]?.label}
+                    <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 py-0.5 pl-1 pr-2.5 text-xs font-semibold shadow-sm">
+                      <CategoryImage value={a.category} size={20} className="h-5 w-5 rounded-md" />
+                      {NEWS_CATEGORY_META[a.category]?.label}
                     </span>
                   </div>
                   <div className="flex flex-1 flex-col p-5">
