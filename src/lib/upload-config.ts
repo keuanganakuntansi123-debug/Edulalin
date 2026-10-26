@@ -17,6 +17,13 @@ export function maxSizeLabel(kind: FileKind): string {
   return `${Math.round(MAX_SIZES[kind] / MB)} MB`;
 }
 
+/**
+ * Batas ukuran yang di-embed sebagai data URI base64 (mis. logo sekolah,
+ * avatar, gambar berita). File lebih besar tetap dilayani lewat /api/files
+ * agar ukuran baris database tetap terkendali.
+ */
+export const EMBED_MAX_BYTES = 4 * MB;
+
 export const ALLOWED_MIME: Record<FileKind, string[]> = {
   MODULE_CONTENT: [
     "application/pdf",

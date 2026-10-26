@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { vi } from "vitest";
-import { blobPathname, isAllowedMime, MAX_SIZES, BLOB_PREFIX } from "@/lib/upload-config";
+import { blobPathname, isAllowedMime, MAX_SIZES, BLOB_PREFIX, EMBED_MAX_BYTES, MB } from "@/lib/upload-config";
 import { fileUrl, storedNameFromUrl } from "@/lib/storage";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
@@ -52,6 +52,13 @@ describe("isAllowedMime", () => {
 
   it("batas ukuran logo maksimal 50 MB", () => {
     expect(MAX_SIZES.SCHOOL_LOGO).toBe(50 * 1024 * 1024);
+  });
+
+  it("batas embed base64 lebih kecil dari batas unggah (jaga ukuran baris DB)", () => {
+    expect(EMBED_MAX_BYTES).toBe(4 * MB);
+    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.SCHOOL_LOGO);
+    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.AVATAR);
+    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.ARTICLE_IMAGE);
   });
 });
 

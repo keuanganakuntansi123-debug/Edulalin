@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { MAX_SIZES, isAllowedMime } from "@/lib/storage";
+import { EMBED_MAX_BYTES } from "@/lib/upload-config";
 import { isBlobPathname, readBlobBuffer } from "@/lib/blob-storage";
 import { logActivity } from "@/lib/audit";
 import type { FileKind } from "@/generated/prisma/client";
@@ -21,6 +22,7 @@ async function buildEmbedded(
   if (!EMBEDDABLE.includes(kind)) return null;
   const buffer = await readBlobBuffer(pathname);
   if (!buffer) return null;
+  if (buffer.byteLength > EMBED_MAX_BYTES) return null;
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -83,6 +85,7 @@ export async function POST(req: NextRequest) {
         originalName: existing.originalName,
         mimeType: existing.mimeType,
         size: existing.size,
+        embedded: await buildEmbedded(fKind, pathname, existing.mimeType),
       },
     });
   }

@@ -16,6 +16,9 @@ import type { Transporter } from "nodemailer";
  *  1. Aktifkan "2-Step Verification" pada akun Google pengirim.
  *  2. Buat App Password di https://myaccount.google.com/apppasswords.
  *  3. Gunakan App Password sebagai SMTP_PASS.
+ *  4. SMTP_USER harus alamat Gmail (mis. keuanganakuntansi123@gmail.com).
+ *     SMTP_PASS = App Password 16 karakter, bukan password akun.
+ *     SMTP_FROM hanya nama tampilan pengirim (default: EDULALIN).
  */
 
 function createTransporter(): Transporter | null {

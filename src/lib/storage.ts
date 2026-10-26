@@ -3,9 +3,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { FileKind } from "@/generated/prisma/client";
-import { MAX_SIZES, isAllowedMime } from "@/lib/upload-config";
+import { EMBED_MAX_BYTES, MAX_SIZES, isAllowedMime } from "@/lib/upload-config";
 import { isBlobPathname } from "@/lib/blob-storage";
-export { MAX_SIZES, maxSizeLabel, isAllowedMime } from "@/lib/upload-config";
+export { EMBED_MAX_BYTES, MAX_SIZES, maxSizeLabel, isAllowedMime } from "@/lib/upload-config";
 
 const DEFAULT_STORAGE_DIR =
   process.env.VERCEL === "1"
@@ -85,6 +85,15 @@ export async function saveUploadedFile(input: {
     const { uploadToBlobServer } = await import("@/lib/blob-storage");
     const uploaded = await uploadToBlobServer({ file, kind });
     storedName = uploaded.pathname;
+    // Logo/avatar/gambar berita di-embed base64 supaya tetap tampil walau
+    // object storage belum/tidak dapat dibaca. Ambil byte dari Blob karena
+    // file tidak pernah menyentuh filesystem lokal pada jalur ini.
+    if (
+      (kind === "AVATAR" || kind === "ARTICLE_IMAGE" || kind === "SCHOOL_LOGO") &&
+      file.size <= EMBED_MAX_BYTES
+    ) {
+      buffer = await readStoredBuffer(storedName);
+    }
   } else {
     await ensureStoredDir();
     storedName = `${crypto.randomUUID()}${extFor(mime)}`;
@@ -123,7 +132,11 @@ export async function saveUploadedFile(input: {
   // sudah persisten di Vercel Blob.
   // Gambar berita juga di-embed base64 supaya tetap tampil saat redeploy
   // (storage /tmp Vercel ephemeral) meski Blob belum dikonfigurasi.
-  if ((kind === "AVATAR" || kind === "ARTICLE_IMAGE" || kind === "SCHOOL_LOGO") && buffer) {
+  if (
+    (kind === "AVATAR" || kind === "ARTICLE_IMAGE" || kind === "SCHOOL_LOGO") &&
+    buffer &&
+    buffer.byteLength <= EMBED_MAX_BYTES
+  ) {
     result.embedded = `data:${mime};base64,${buffer.toString("base64")}`;
   }
   return result;
