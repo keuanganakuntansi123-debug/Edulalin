@@ -120,9 +120,9 @@ export default async function PolisiKuisPage({
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-border">
+        <table className="w-full min-w-190 text-sm">
+          <thead className="whitespace-nowrap bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Murid</th>
               <th className="px-4 py-3">Sekolah</th>

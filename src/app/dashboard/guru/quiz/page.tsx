@@ -55,7 +55,7 @@ export default async function GuruQuizPage() {
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border">
+      <div className="mt-6 rounded-xl border border-border">
         <div className="flex items-center justify-between border-b border-border bg-slate-50 px-4 py-3">
           <p className="text-sm text-muted-foreground">
             {attempts.length} hasil pengerjaan murid
@@ -77,18 +77,19 @@ export default async function GuruQuizPage() {
             }))}
           />
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Murid</th>
-              <th className="px-4 py-3">Kelas / Jurusan</th>
-              <th className="px-4 py-3">Quiz</th>
-              <th className="px-4 py-3">Nilai</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Waktu</th>
-              <th className="px-4 py-3 text-right">Aksi</th>
-            </tr>
-          </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-205 text-sm">
+            <thead className="whitespace-nowrap bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3">Murid</th>
+                <th className="px-4 py-3">Kelas / Jurusan</th>
+                <th className="px-4 py-3">Quiz</th>
+                <th className="px-4 py-3">Nilai</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Waktu</th>
+                <th className="px-4 py-3 text-right">Aksi</th>
+              </tr>
+            </thead>
           <tbody className="divide-y divide-border">
             {attempts.map((a) => (
               <tr key={a.id}>
@@ -136,7 +137,8 @@ export default async function GuruQuizPage() {
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

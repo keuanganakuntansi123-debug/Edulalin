@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { Topbar } from "@/components/dashboard/topbar";
@@ -25,6 +25,16 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Tutup drawer dengan tombol Escape (aksesibilitas keyboard).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   return (
     <div className="flex min-h-screen bg-slate-100/60">
@@ -55,8 +65,8 @@ export function DashboardShell({
       {/* Sidebar mobile */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 flex h-full w-72 flex-col border-r border-slate-800 bg-slate-900">
+          <div className="animate-fade-in absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <aside className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-800 bg-slate-900 shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b border-slate-800 px-4">
               <div className="flex items-center gap-2">
                 <EdulalinLogo size="sm" variant="light" showText={false} />

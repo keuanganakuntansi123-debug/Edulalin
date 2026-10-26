@@ -184,9 +184,9 @@ export default async function GuruDashboardPage() {
 
       <div className="mt-8">
         <h2 className="mb-3 font-semibold">Nilai Terbaru Murid</h2>
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-160 text-sm">
+            <thead className="whitespace-nowrap bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Murid</th>
                 <th className="px-4 py-3">Quiz</th>
