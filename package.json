@@ -13,10 +13,7 @@
     "seed": "tsx prisma/seed.ts",
     "test": "vitest run",
     "sync:smk": "tsx scripts/sync-smk-schools.mts",
-    "test:smtp": "tsx scripts/test-smtp.mts",
-    "test:otp": "tsx scripts/test-otp-mail.mts",
-    "test:forgot": "tsx scripts/test-forgot-password.mts",
-    "setup:smtp": "tsx scripts/setup-smtp.mts"
+    "test:reset": "tsx scripts/test-password-reset.mts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",
@@ -31,7 +28,6 @@
     "lucide-react": "^1.56.0",
     "next": "16.4.0",
     "next-auth": "^5.0.0-beta.32",
-    "nodemailer": "^8.0.11",
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.1",
     "prisma": "^7.10.0",
@@ -44,7 +40,6 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^22.20.5",
-    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

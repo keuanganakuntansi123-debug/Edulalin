@@ -50,18 +50,13 @@ npm run start                    # production server
 | `DATABASE_URL`         | `postgresql://user:pass@127.0.0.1:5432/edulalin` | ✅  |
 | `AUTH_SECRET`          | 32+ karakter acak                             | ✅  |
 | `NEXT_PUBLIC_APP_URL`  | `https://edulalin.example.com`                |  —   |
-| `SMTP_HOST`            | `smtp.gmail.com`                              | ✅* |
-| `SMTP_PORT`            | `465`                                         | ✅* |
-| `SMTP_USER`            | `akun@gmail.com`                              | ✅* |
-| `SMTP_PASS`            | App Password Gmail 16 karakter                | ✅* |
-| `SMTP_FROM`            | `EDULALIN`                                    | ✅* |
+| `STORAGE_DIR`          | `/tmp/storage` (Vercel)                       |  —   |
+| `BLOB_READ_WRITE_TOKEN`| token Vercel Blob (opsional)                  |  —   |
 
-\* Diperlukan agar fitur **Lupa Password** dapat mengirim kode OTP. Lihat
-[AUTHENTICATION.md](AUTHENTICATION.md#konfigurasi-smtp-wajib-agar-kode-terkirim).
-Isi di Vercel → **Settings → Environment Variables** (Production & Preview),
-lalu deploy ulang. Lokal: `npm run setup:smtp` (menulis `.env` + menawarkan
-sinkronisasi ke Vercel), verifikasi dengan `npm run test:smtp`, dan uji alur
-lengkap tanpa email nyata dengan `npm run test:forgot`.
+Fitur **Lupa Password** kini melalui pengajuan Admin dan **tidak memerlukan
+SMTP/Gmail**. Lihat [AUTHENTICATION.md](AUTHENTICATION.md#lupa-password-pengajuan-via-admin).
+Hapus variabel `SMTP_*` lama dari Vercel → **Settings → Environment Variables**
+bila sudah tidak dipakai. Uji alur lengkap dengan `npm run test:reset`.
 
 ## Proxy / Security Checklist
 

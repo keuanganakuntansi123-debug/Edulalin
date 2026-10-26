@@ -88,6 +88,7 @@ async function main() {
   await prisma.collaborationPartner.deleteMany();
   await prisma.verificationToken.deleteMany();
   await prisma.passwordResetToken.deleteMany();
+  await prisma.passwordResetRequest.deleteMany();
   await prisma.userSession.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.user.deleteMany({ where: { role: { in: ["GURU", "MURID", "POLISI"] } } });

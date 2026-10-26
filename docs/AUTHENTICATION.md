@@ -49,78 +49,70 @@ user enumeration.
 - Logout menghapus cookie dan mencatat `LOGOUT`.
 - `AUTH_SECRET` wajib diubah di production (.env, bukan fallback dev).
 
-## Lupa Password (OTP Email)
+## Lupa Password (Pengajuan via Admin)
 
-Alur tiga langkah di `/lupa-password`, seluruhnya dijalankan server-side
-(`src/app/actions/password-reset-actions.ts`):
+Reset password **tidak lagi memakai OTP email/SMTP**. Pengguna mengajukan
+reset dari halaman publik `/lupa-password`, sistem memverifikasi kecocokan
+identitas dengan akun asli di database, lalu Admin menyetel password baru.
+Alur ini berlaku untuk **semua aktor** (ADMIN, GURU, POLISI, MURID).
 
-Berlaku untuk **semua aktor** (ADMIN, GURU, POLISI, MURID) — tidak ada
-pembatasan peran, hanya status akun yang diperiksa.
+Logika inti ada di `src/lib/password-reset-service.ts` (dapat diuji langsung
+terhadap database), sedangkan server action di
+`src/app/actions/password-reset-actions.ts` menambahkan otorisasi, audit, dan
+revalidasi.
 
-1. **Kirim kode** — `requestOtp()` membuat kode OTP 6 digit
-  (`crypto.getRandomValues`), menyimpannya sebagai hash bcrypt di
-  `VerificationToken` (`type = "PASSWORD_RESET_OTP"`), lalu mengirimnya via
-  `sendMail()` (`src/lib/mail.ts`).
-2. **Verifikasi** — `verifyOtp()` mencocokkan kode dengan hash. Kode berlaku
-  **5 menit**, sekali pakai, maksimal **5 percobaan** salah. Saat kode benar,
-  masa berlaku diperbarui sehingga pengguna mendapat **5 menit penuh** untuk
-  mengisi password baru.
-3. **Simpan password baru** — `resetPassword()` menulis hash baru, mengaktifkan
-  akun, membatalkan OTP yang masih aktif, dan **mencabut semua sesi lama**.
+### Alur
 
-Pengaman tambahan:
+1. **Pengajuan** — pengguna mengisi Email, Nama Lengkap, Sekolah, dan Kelas
+  (kolom identitas menyesuaikan aktor: Murid → sekolah/jenjang/kelas/jurusan,
+  Guru → sekolah/jenjang/mapel, Polisi → tingkat/nama kesatuan/divisi,
+  Admin → nama+email). `submitPasswordResetRequest()` mencari akun by email,
+  lalu `verifyResetIdentity()` mencocokkan nama + field identitas lain
+  (skor kecocokan ≥60% & nama cocok = **terverifikasi otomatis**).
+2. **Sinkronisasi** — pengajuan tersimpan di tabel `PasswordResetRequest`
+  (`status = PENDING`, `verified`, `matchScore`, `matchedFields`,
+  `mismatchFields`) dan notifikasi otomatis dikirim ke semua Admin aktif
+  (lonceng in-app → `/dashboard/admin/password-requests`).
+3. **Kelola oleh Admin** — menu **Kelola Lupa Password** menampilkan daftar
+  pengajuan (nama, email, identitas, tanggal, status, skor kecocokan).
+4. **Reset** — Admin mengisi **Password Baru** + **Konfirmasi Password Baru**
+  lalu **Simpan Password**. `completePasswordReset()` hanya berjalan bila
+  pengajuan `PENDING` **dan** identitas terverifikasi; password akun asli
+  diperbarui di Neon, semua sesi lama dicabut, dan pengajuan ditandai
+  `COMPLETED` sehingga hilang dari daftar aktif.
+5. **Login kembali** — pengguna masuk memakai email + password baru tanpa
+  membuat akun baru atau kehilangan data.
 
-- **Cooldown 60 detik** antar-permintaan kode (termasuk tombol "Kirim Ulang OTP").
-- **Notifikasi kirim ulang** yang jelas (berhasil/gagal cooldown) tampil pada
-  langkah verifikasi.
-- Bila email gagal terkirim, OTP dihapus dan dicatat sebagai
-  `PASSWORD_RESET_MAIL_FAILED` agar pengguna tidak terkunci cooldown.
-- Email yang **belum terdaftar**, **nonaktif** (`INACTIVE`), atau sudah dihapus
-  ditolak dengan pesan **"Email tidak terdaftar di EDULALIN."**. Akun berstatus
-  `PENDING` tetap boleh mereset; akun otomatis diaktifkan (`ACTIVE`) setelah
-  password baru tersimpan sehingga bisa langsung login.
-- Password baru wajib min. 8 karakter (huruf + angka) dan **tidak boleh sama
-  dengan nomor telepon** terdaftar.
-- Audit: `PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_OTP_VERIFIED`,
-  `PASSWORD_RESET_COMPLETED`.
+### Pengaman
 
-### Reset Manual oleh Admin
+- Admin **tidak dapat** reset tanpa pengajuan valid: `completePasswordReset()`
+  menolak pengajuan yang tidak terverifikasi / sudah diproses / akun diarsipkan.
+- Bila proses reset gagal, pengajuan **tetap `PENDING`** (tidak hilang) dan
+  pesan gagal ditampilkan.
+- Password disimpan sebagai hash bcrypt (12 rounds); password lama never
+  ditampilkan.
+- Password baru: min. 8 karakter (huruf + angka), boleh dikonfirmasi, dan tidak
+  boleh sama dengan nomor telepon terdaftar.
+- Pengajuan ulang identik dalam 5 menit dianggap duplikat (dikembalikan, bukan
+  baris baru) dan dibatasi maksimal 5 pengajuan/jam per akun.
+- Email tak terdaftar / `INACTIVE` / dihapus ditolak dengan pesan
+  **"Email tidak terdaftar di EDULALIN."** Akun `PENDING` diaktifkan otomatis
+  setelah password baru tersimpan.
+- Audit: `PASSWORD_RESET_REQUEST_SUBMITTED`,
+  `PASSWORD_RESET_COMPLETED_BY_ADMIN`, `PASSWORD_RESET_REQUEST_REJECTED`,
+  `PASSWORD_RESET_REQUEST_DELETED`.
 
-Jaring pengaman bila pengguna tidak dapat menerima email: admin membuka
-**Kelola Pengguna → detail pengguna → Keamanan Akun → Atur Ulang Password**.
-Admin menetapkan password sementara (min. 8 karakter, huruf + angka), sesi lama
-dicabut, dan dicatat sebagai `USER_PASSWORD_RESET_BY_ADMIN`. Pengguna diminta
-mengganti password tersebut dari menu Profil & Pengaturan.
+### Ubah Password Mandiri
 
-### Konfigurasi SMTP (wajib agar kode terkirim)
+Semua aktor dapat mengganti password kapan saja setelah login melalui
+**Profil & Pengaturan → Ubah Password**: password lama (verifikasi) + password
+baru + konfirmasi baru (`changeOwnPassword()`). Dicatat sebagai
+`PASSWORD_CHANGED_BY_USER`.
 
-Kode OTP dikirim lewat Gmail menggunakan **App Password**, bukan password akun.
-Variabel environment yang dibutuhkan:
+### Pengujian
 
-| Variabel | Contoh | Keterangan |
-| --- | --- | --- |
-| `SMTP_HOST` | `smtp.gmail.com` | Server SMTP |
-| `SMTP_PORT` | `465` | Opsional; jika kosong dicoba 465 → 587 → 25 |
-| `SMTP_USER` | `akun@gmail.com` | Alamat Gmail pengirim |
-| `SMTP_PASS` | `abcd efgh ijkl mnop` | **App Password 16 karakter** |
-| `SMTP_FROM` | `EDULALIN` | Nama tampilan pengirim |
-| `SMTP_SECURE` | `true` | Opsional; `true` untuk 465 |
-
-Langkah pengisian:
-
-1. Aktifkan **2-Step Verification** pada akun Google pengirim.
-2. Buat App Password di <https://myaccount.google.com/apppasswords>.
-3. Jalankan `npm run setup:smtp` (memvalidasi 16 karakter, menulis ke `.env`,
-  dan menawarkan sinkronisasi ke Vercel), atau isi `SMTP_PASS` manual.
-4. Verifikasi: `npm run test:smtp`.
-5. Uji seluruh alur lupa password tanpa mengirim email nyata:
-  `npm run test:forgot` (menguji keempat peran ADMIN/GURU/POLISI/MURID,
-  cooldown, kirim ulang, OTP salah/sekali pakai, pencabutan sesi, dan login
-  ulang dengan password baru).
-6. Untuk produksi, set variabel yang sama pada Vercel
-  (Settings → Environment Variables) lalu deploy ulang.
-
-Status konfigurasi SMTP dapat dilihat langsung di
-**Dashboard Admin → Pengaturan → Email OTP (Reset Password)**; halaman itu
-menampilkan host, port, pengguna, dan panjang App Password (tanpa membocorkan
-nilainya).
+`npm run test:reset` menguji seluruh rantai terhadap Neon: pengajuan identitas
+benar/salah, anti-duplikat, penolakan reset tanpa identitas valid, verifikasi
+password lemah/konfirmasi beda, reset oleh Admin, efek tersinkron di DB
+(password baru valid & lama gugur, pengajuan `COMPLETED`), reset ulang ditolak,
+ubah password mandiri, dan penolakan pengajuan.

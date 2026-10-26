@@ -125,6 +125,12 @@ enum ContactMessageStatus {
   DONE
 }
 
+enum PasswordResetStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
 // =====================================================================
 // Schools
 // =====================================================================
@@ -194,6 +200,8 @@ model User {
   sessions           UserSession[]
   passwordResets     PasswordResetToken[]
   verificationTokens VerificationToken[]
+  passwordRequests   PasswordResetRequest[] @relation("UserPasswordRequests")
+  handledRequests    PasswordResetRequest[] @relation("HandledPasswordRequests")
   uploadedFiles      UploadedFile[]
   notifications      Notification[]
 
@@ -223,6 +231,49 @@ model Notification {
 
   @@index([recipientId])
   @@index([readAt])
+  @@index([createdAt])
+}
+
+/**
+ * Pengajuan reset password via Admin.
+ *
+ * Menggantikan alur OTP email: pengguna mengirim identitas, sistem
+ * memverifikasi kecocokan dengan akun asli, lalu Admin menyetel password baru.
+ * Baris tetap tersimpan sebagai riwayat (status COMPLETED/REJECTED) sehingga
+ * pengajuan tidak pernah hilang bila proses reset gagal.
+ */
+model PasswordResetRequest {
+  id             String              @id @default(cuid())
+  userId         String
+  name           String
+  email          String
+  role           Role
+  schoolName     String?
+  schoolId       String?
+  educationLevel EducationLevel?
+  classLevel     String?
+  major          String?
+  policeLevel    PoliceLevel?
+  policeUnit     String?
+  policeDivision String?
+  subject        String?
+  note           String?
+  status         PasswordResetStatus @default(PENDING)
+  verified       Boolean             @default(false)
+  matchScore     Int                 @default(0)
+  matchedFields  Json?
+  mismatchFields Json?
+  handledById    String?
+  handledAt      DateTime?
+  rejectReason   String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  user      User  @relation("UserPasswordRequests", fields: [userId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("HandledPasswordRequests", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
   @@index([createdAt])
 }
 

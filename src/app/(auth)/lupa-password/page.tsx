@@ -8,7 +8,7 @@ export default function LupaPasswordPage() {
   return (
     <AuthCard
       title="Lupa Password"
-      subtitle="Masukkan email terdaftar. Kami akan mengirim kode OTP untuk mengatur ulang password Anda."
+      subtitle="Isi data identitas akun Anda. Pengajuan akan diverifikasi Admin, lalu password diatur ulang."
       variant="signin"
     >
       <ForgotPasswordForm />

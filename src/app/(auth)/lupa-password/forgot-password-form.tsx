@@ -1,319 +1,294 @@
 "use client";
 
-import { useTransition, useEffect, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Input, Label } from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
+import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Loader2, Mail, KeyRound, ShieldCheck, CheckCircle2, ArrowLeft } from "lucide-react";
 import {
-  requestOtp,
-  verifyOtp,
-  resetPassword,
-  type ForgotPasswordState,
+  requestPasswordReset,
+  type PasswordRequestState,
 } from "@/app/actions/password-reset-actions";
+import { CLASS_OPTIONS, EDUCATION_LEVELS, levelDisplayLabel, policeLevelLabel } from "@/lib/constants";
+import {
+  Loader2,
+  Mail,
+  User,
+  School,
+  ShieldCheck,
+  CheckCircle2,
+  Send,
+  GraduationCap,
+  BookMarked,
+  BadgeCheck,
+  Clock,
+} from "lucide-react";
 
-type Step = "request" | "verify" | "reset";
+type ActorRole = "MURID" | "GURU" | "POLISI" | "ADMIN";
+
+const ACTORS: { key: ActorRole; label: string; hint: string }[] = [
+  { key: "MURID", label: "Murid", hint: "Sekolah, jenjang, kelas & jurusan" },
+  { key: "GURU", label: "Guru", hint: "Sekolah & mata pelajaran" },
+  { key: "POLISI", label: "Polisi", hint: "Kesatuan & divisi" },
+  { key: "ADMIN", label: "Admin", hint: "Identitas akun admin" },
+];
+
+const POLICE_LEVELS = ["POLSEK", "POLRES", "POLDA"];
 
 /**
- * Alur Lupa Password berbasis OTP email:
- *  1) Masukkan email → sistem kirim OTP 6 digit (berlaku 5 menit, sekali pakai)
- *  2) Verifikasi OTP (dengan batas percobaan & tombol kirim ulang)
- *  3) Password baru + konfirmasi → simpan (hash aman) → arahkan ke login
+ * Formulir Lupa Password — pengajuan reset melalui Admin.
+ *
+ * Pengguna memilih aktor (Murid/Guru/Polisi/Admin) agar kolom identitas yang
+ * diminta sesuai, lalu mengirim pengajuan. Sistem memverifikasi kecocokan data
+ * dengan akun asli di database sebelum Admin mengatur password baru.
  */
 export function ForgotPasswordForm() {
-  const [step, setStep] = useState<Step>("request");
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [requestState, setRequestState] = useState<ForgotPasswordState>();
-  const [verifyState, setVerifyState] = useState<ForgotPasswordState>();
-  const [resetState, setResetState] = useState<ForgotPasswordState>();
-  const [countdown, setCountdown] = useState(0);
-  const [isPending, startTransition] = useTransition();
+  const [actor, setActor] = useState<ActorRole>("MURID");
+  const [state, setState] = useState<PasswordRequestState>();
+  const [pending, startTransition] = useTransition();
 
-  const pending = isPending;
+  const actorInfo = useMemo(() => ACTORS.find((a) => a.key === actor)!, [actor]);
 
-  // Hitung mundur untuk tombol "Kirim Ulang OTP".
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const id = window.setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) window.clearInterval(id);
-        return c - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [countdown]);
-
-  function handleRequest(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await requestOtp(undefined, fd);
-      setRequestState(result);
-      if (result.step === "verify") {
-        // Mulai langkah baru dengan state bersih (tanpa error langkah lama).
-        setVerifyState(undefined);
-        setResetState(undefined);
-        setOtp("");
-        setStep("verify");
-        setEmail(result.email ?? "");
-        setCountdown(result.resendIn ?? 60);
-      }
+      const result = await requestPasswordReset(undefined, fd);
+      setState(result);
     });
   }
 
-  function handleVerify(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const result = await verifyOtp(undefined, fd);
-      setVerifyState(result);
-      if (result.step === "reset") {
-        setResetState(undefined);
-        // Simpan OTP terverifikasi agar ikut terkirim saat menyimpan password.
-        setOtp(String(fd.get("otp") ?? ""));
-        setStep("reset");
-        setEmail(result.email ?? "");
-      }
-    });
+  if (state?.success) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
+          <p className="mt-2 text-center text-sm font-semibold text-emerald-700">
+            Pengajuan Terkirim
+          </p>
+          <p className="mt-1 text-center text-sm text-emerald-700">{state.message}</p>
+          {state.verified ? (
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700">
+              <BadgeCheck className="h-4 w-4" /> Identitas terverifikasi otomatis
+            </p>
+          ) : (
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-amber-700">
+              <Clock className="h-4 w-4" /> Menunggu pemeriksaan identitas oleh Admin
+            </p>
+          )}
+        </div>
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
+          Setelah Admin menyetel password baru, Anda dapat login kembali memakai email dan
+          password tersebut. Seluruh data akun, sekolah, modul, kuis, dan nilai tetap utuh.
+        </div>
+        <Link href="/login">
+          <Button type="button" className="w-full">
+            Kembali ke Login
+          </Button>
+        </Link>
+      </div>
+    );
   }
-
-  function handleResend() {
-    const fd = new FormData();
-    fd.set("email", email);
-    setCountdown(60);
-    startTransition(async () => {
-      const result = await requestOtp(undefined, fd);
-      // Tampilkan hasil kirim ulang pada langkah verifikasi (bukan langkah 1),
-      // agar notifikasi keberhasilan/kegagalan benar-benar terlihat pengguna.
-      setVerifyState(result);
-      setOtp("");
-      if (result.step === "verify") {
-        setStep("verify");
-        setEmail(result.email ?? "");
-      } else if (result.error) {
-        // Kirim ulang gagal (mis. cooldown) — pulihkan hitung mundur agar tombol
-        // bisa dicoba lagi tanpa menunggu penuh.
-        setCountdown(0);
-      }
-    });
-  }
-
-  function handleReset(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const result = await resetPassword(undefined, fd);
-      setResetState(result);
-    });
-  }
-
-  function backToEmail() {
-    setRequestState(undefined);
-    setVerifyState(undefined);
-    setResetState(undefined);
-    setOtp("");
-    setStep("request");
-  }
-
-  const done = resetState?.success === true;
 
   return (
-    <div className="space-y-4">
-      {/* Langkah 1: email */}
-      {step === "request" && !done && (
-        <form onSubmit={handleRequest} className="space-y-4">
-          {requestState?.error && (
-            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {requestState.error}
-            </p>
-          )}
-          {requestState?.message && (
-            <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {requestState.message}
-            </p>
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email Terdaftar</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="email@contoh.id"
-                required
-                autoComplete="email"
-                className="pl-9"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Sistem akan mengirim kode OTP 6 digit ke email ini (berlaku 5 menit).
-            </p>
-          </div>
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Mengirim kode...
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="h-4 w-4" /> Kirim Kode OTP
-              </>
-            )}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Sudah ingat?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
-              Kembali ke login
-            </Link>
-          </p>
-        </form>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {state?.error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {state.error}
+        </p>
       )}
 
-      {/* Langkah 2: verifikasi OTP */}
-      {step === "verify" && !done && (
-        <form onSubmit={handleVerify} className="space-y-4">
-          <input type="hidden" name="email" value={email} />
-          {verifyState?.error && (
-            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {verifyState.error}
-            </p>
-          )}
-          {verifyState?.message && (
-            <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {verifyState.message}
-            </p>
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="otp">Kode OTP</Label>
-            <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="otp"
-                name="otp"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                placeholder="••••••"
-                required
-                className="pl-9 text-center text-lg font-bold tracking-[0.5em]"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Kode dikirim ke <strong>{email}</strong>. Berlaku 5 menit & hanya sekali pakai.
-            </p>
-          </div>
-          <Button type="submit" className="w-full" disabled={pending || otp.length !== 6}>
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Memverifikasi...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" /> Verifikasi Kode
-              </>
-            )}
-          </Button>
-
-          <div className="flex items-center justify-between text-sm">
+      {/* Pilih aktor */}
+      <div className="grid gap-2">
+        <Label>Daftar Sebagai</Label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {ACTORS.map((a) => (
             <button
+              key={a.key}
               type="button"
-              onClick={backToEmail}
-              className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary"
+              onClick={() => setActor(a.key)}
+              className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                actor === a.key
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
+              }`}
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Ubah email
+              {a.label}
             </button>
-            {countdown > 0 ? (
-              <span className="text-xs text-muted-foreground">Kirim ulang dalam {countdown}s</span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleResend}
-                className="font-medium text-primary hover:underline"
-              >
-                Kirim Ulang OTP
-              </button>
-            )}
-          </div>
-        </form>
-      )}
-
-      {/* Langkah 3: password baru */}
-      {step === "reset" && !done && otp.length !== 6 && (
-        <div className="space-y-4">
-          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            Sesi verifikasi tidak ditemukan. Silakan ulangi proses lupa password dari awal.
-          </p>
-          <Button type="button" className="w-full" onClick={backToEmail}>
-            Mulai Ulang
-          </Button>
+          ))}
         </div>
-      )}
-      {step === "reset" && !done && otp.length === 6 && (
-        <form onSubmit={handleReset} className="space-y-4">
-          <input type="hidden" name="email" value={email} />
-          <input type="hidden" name="otp" value={otp} />
-          {resetState?.error && (
-            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {resetState.error}
-            </p>
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="password">Password Baru</Label>
-            <PasswordInput
-              id="password"
-              name="password"
-              placeholder="Min. 8 karakter, huruf & angka"
-              required
-              minLength={8}
-              autoComplete="new-password"
+        <p className="text-xs text-muted-foreground">{actorInfo.hint}</p>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email Terdaftar</Label>
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="email@contoh.id"
+            required
+            autoComplete="email"
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="name">Nama Lengkap</Label>
+        <div className="relative">
+          <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="name"
+            name="name"
+            placeholder="Nama lengkap sesuai akun"
+            required
+            className="pl-9"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Nama akan dicocokkan dengan data akun untuk verifikasi identitas.
+        </p>
+      </div>
+
+      {/* Identitas sesuai aktor */}
+      {(actor === "MURID" || actor === "GURU") && (
+        <div className="grid gap-2">
+          <Label htmlFor="schoolName">Sekolah</Label>
+          <div className="relative">
+            <School className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="schoolName"
+              name="schoolName"
+              placeholder="Nama sekolah"
+              className="pl-9 uppercase"
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Konfirmasi Password Baru</Label>
-            <PasswordInput
-              id="confirmPassword"
-              name="confirmPassword"
-              placeholder="Ulangi password baru"
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...
-              </>
-            ) : (
-              <>
-                <KeyRound className="h-4 w-4" /> Simpan Password Baru
-              </>
-            )}
-          </Button>
-        </form>
-      )}
-
-      {/* Selesai: password berhasil direset */}
-      {done && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-            <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
-            <p className="mt-2 text-sm font-medium text-emerald-700">
-              {resetState?.message ?? "Password berhasil diperbarui."}
-            </p>
-          </div>
-          <Link href="/login">
-            <Button type="button" className="w-full">
-              Masuk dengan Password Baru
-            </Button>
-          </Link>
         </div>
       )}
-    </div>
+
+      {(actor === "MURID" || actor === "GURU") && (
+        <div className="grid gap-2">
+          <Label htmlFor="educationLevel">Jenjang</Label>
+          <Select id="educationLevel" name="educationLevel" defaultValue="">
+            <option value="">— Pilih jenjang —</option>
+            {EDUCATION_LEVELS.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {levelDisplayLabel(lvl)}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      {actor === "MURID" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="classLevel">Kelas</Label>
+            <Select id="classLevel" name="classLevel" defaultValue="">
+              <option value="">— Pilih kelas —</option>
+              {CLASS_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  Kelas {c}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="major">Jurusan</Label>
+            <div className="relative">
+              <GraduationCap className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="major"
+                name="major"
+                placeholder="Mis. MIPA / TKJ"
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {actor === "GURU" && (
+        <div className="grid gap-2">
+          <Label htmlFor="subject">Mata Pelajaran</Label>
+          <div className="relative">
+            <BookMarked className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="subject"
+              name="subject"
+              placeholder="Mis. Pendidikan Kewarganegaraan"
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
+      {actor === "POLISI" && (
+        <>
+          <div className="grid gap-2">
+            <Label htmlFor="policeLevel">Tingkat Kesatuan</Label>
+            <Select id="policeLevel" name="policeLevel" defaultValue="">
+              <option value="">— Pilih tingkat —</option>
+              {POLICE_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {policeLevelLabel(lvl)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="policeUnit">Nama Kesatuan</Label>
+            <Input id="policeUnit" name="policeUnit" placeholder="Mis. Polres Metro Jakarta Selatan" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="policeDivision">Divisi / Bagian / Satuan</Label>
+            <Input id="policeDivision" name="policeDivision" placeholder="Mis. Satlantas" />
+          </div>
+        </>
+      )}
+
+      <div className="grid gap-2">
+        <Label htmlFor="note">Catatan Tambahan (opsional)</Label>
+        <Textarea
+          id="note"
+          name="note"
+          rows={2}
+          placeholder="Informasi tambahan untuk Admin, mis. kontak yang dapat dihubungi."
+        />
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <ShieldCheck className="mr-1 inline h-3.5 w-3.5" />
+        Pengajuan diverifikasi Admin. Demi keamanan, pastikan data identitas di atas sesuai akun
+        Anda agar pengajuan tidak ditolak.
+      </div>
+
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Mengirim pengajuan...
+          </>
+        ) : (
+          <>
+            <Send className="h-4 w-4" /> Kirim Pengajuan
+          </>
+        )}
+      </Button>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Sudah ingat password?{" "}
+        <Link href="/login" className="font-medium text-primary hover:underline">
+          Kembali ke login
+        </Link>
+      </p>
+    </form>
   );
 }

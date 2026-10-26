@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { archiveUser, restoreUser, toggleUserStatus } from "@/app/actions/admin-actions";
 import { ActionForm } from "@/components/ui/action-form";
-import { AdminResetPasswordForm } from "./reset-password-form";
 
 export const instant = false;
 
@@ -196,7 +195,15 @@ export default async function AdminUserDetailPage({
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <KeyRound className="h-4 w-4" /> Keamanan Akun
                 </p>
-                <AdminResetPasswordForm userId={user.id} userName={user.name} />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Reset password hanya dapat dilakukan melalui pengajuan pengguna yang valid.
+                </p>
+                <a
+                  href="/dashboard/admin/password-requests"
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-primary hover:bg-muted"
+                >
+                  <KeyRound className="h-4 w-4" /> Buka Kelola Lupa Password
+                </a>
               </div>
             )}
             {user.role === "POLISI" && (

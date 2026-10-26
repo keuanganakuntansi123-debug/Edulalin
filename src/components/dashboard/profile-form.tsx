@@ -5,9 +5,10 @@ import { Input, Label } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { FileUpload } from "@/components/upload/file-upload";
-import { X, Lock, Mail, KeyRound } from "lucide-react";
+import { X, Lock, Mail, KeyRound, Loader2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { updateProfile, removeAvatar } from "@/app/actions/profile-actions";
+import { changeOwnPassword } from "@/app/actions/password-reset-actions";
 import { useRouter } from "next/navigation";
 import { policeLevelLabel } from "@/lib/constants";
 
@@ -65,6 +66,7 @@ export function ProfileForm({
   };
 
   return (
+    <div className="space-y-6">
     <form action={submit} className="space-y-6">
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative">
@@ -188,47 +190,133 @@ export function ProfileForm({
         </div>
       )}
 
-      {/* Keamanan akun: ubah password */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <KeyRound className="h-4 w-4 text-primary" /> Ubah Password
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Ubah kata sandi Anda secara mandiri. Wajib memasukkan password saat ini sebagai verifikasi.
-        </p>
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="currentPassword">Password Saat Ini</Label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <PasswordInput
-                id="currentPassword"
-                name="currentPassword"
-                placeholder="Password saat ini"
-                autoComplete="current-password"
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="newPassword">Password Baru (kosongkan jika tidak diubah)</Label>
-            <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <PasswordInput
-                id="newPassword"
-                name="newPassword"
-                placeholder="Min. 8 karakter, huruf & angka"
-                autoComplete="new-password"
-                className="pl-9"
-              />
-            </div>
-          </div>
+      <div className="grid gap-2">
+        <Label htmlFor="currentPassword">Password Saat Ini (untuk ubah email)</Label>
+        <div className="relative">
+          <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <PasswordInput
+            id="currentPassword"
+            name="currentPassword"
+            placeholder="Hanya jika mengubah email"
+            autoComplete="current-password"
+            className="pl-9"
+          />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Kolom ini hanya diperlukan bila Anda mengubah email. Untuk mengganti password, gunakan
+          bagian <strong>Ubah Password</strong> di bawah.
+        </p>
       </div>
 
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Menyimpan..." : "Simpan Perubahan"}
       </Button>
     </form>
+
+    <PasswordChangeSection phone={phone} />
+    </div>
+  );
+}
+
+/** Bagian "Ubah Password" mandiri: password lama, password baru, & konfirmasi. */
+function PasswordChangeSection({ phone }: { phone: string | null }) {
+  const [pending, startTransition] = useTransition();
+  const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>();
+  const [formKey, setFormKey] = useState(0);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const fd = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await changeOwnPassword(undefined, fd);
+      setState(result);
+      if (result.success) {
+        toast({ title: "Password diperbarui", description: result.message, variant: "success" });
+        setFormKey((k) => k + 1);
+      } else if (result.error) {
+        toast({ title: "Gagal", description: result.error, variant: "error" });
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <KeyRound className="h-4 w-4 text-primary" /> Ubah Password
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Ganti kata sandi Anda kapan saja. Wajib memasukkan password saat ini sebagai verifikasi.
+      </p>
+      <form key={formKey} onSubmit={handleSubmit} className="mt-4 space-y-4">
+        {state?.error && (
+          <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {state.error}
+          </p>
+        )}
+        {state?.success && (
+          <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+            {state.message ?? "Password berhasil diperbarui."}
+          </p>
+        )}
+        <div className="grid gap-2">
+          <Label htmlFor="currentPasswordOwn">Password Saat Ini</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <PasswordInput
+              id="currentPasswordOwn"
+              name="currentPassword"
+              placeholder="Password saat ini"
+              required
+              autoComplete="current-password"
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="newPasswordOwn">Password Baru</Label>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <PasswordInput
+              id="newPasswordOwn"
+              name="newPassword"
+              placeholder="Min. 8 karakter, huruf & angka"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="confirmPasswordOwn">Konfirmasi Password Baru</Label>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <PasswordInput
+              id="confirmPasswordOwn"
+              name="confirmPassword"
+              placeholder="Ulangi password baru"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...
+            </>
+          ) : (
+            "Simpan Password Baru"
+          )}
+        </Button>
+        {phone ? (
+          <p className="text-xs text-muted-foreground">
+            Demi keamanan, password tidak boleh sama dengan nomor telepon terdaftar.
+          </p>
+        ) : null}
+      </form>
+    </div>
   );
 }

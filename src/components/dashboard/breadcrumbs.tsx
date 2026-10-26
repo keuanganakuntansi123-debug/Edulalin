@@ -13,6 +13,7 @@ const LABELS: Record<string, string> = {
   modules: "Kelola Modul",
   quizzes: "Kelola Kuis",
   users: "Kelola Pengguna",
+  "password-requests": "Kelola Lupa Password",
   archived: "Pengguna Terhapus",
   reports: "Laporan & Statistik",
   activity: "Aktivitas Sistem",

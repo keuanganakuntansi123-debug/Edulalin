@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { removeStoredFile, fileUrl, storedNameFromUrl } from "@/lib/storage";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { verifyPassword } from "@/lib/password";
 
 export async function updateProfile(formData: FormData) {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
@@ -16,7 +16,6 @@ export async function updateProfile(formData: FormData) {
     ? String(formData.get("embeddedAvatar"))
     : null;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const newPassword = String(formData.get("newPassword") ?? "");
   const currentPassword = String(formData.get("currentPassword") ?? "");
 
   if (name.length < 2) return { error: "Nama minimal 2 karakter" };
@@ -26,7 +25,6 @@ export async function updateProfile(formData: FormData) {
     name?: string;
     phone?: string | null;
     email?: string;
-    passwordHash?: string;
   } = { name, phone };
 
   // Ubah email (dengan verifikasi password saat ini)
@@ -39,18 +37,6 @@ export async function updateProfile(formData: FormData) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing && existing.id !== user.id) return { error: "Email sudah digunakan akun lain" };
     data.email = email;
-  }
-
-  // Ubah password (dengan verifikasi password saat ini)
-  if (newPassword) {
-    if (!currentPassword || !(await verifyPassword(currentPassword, user.passwordHash))) {
-      return { error: "Password saat ini salah" };
-    }
-    if (newPassword.length < 8) return { error: "Password baru minimal 8 karakter" };
-    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      return { error: "Password baru wajib mengandung huruf dan angka" };
-    }
-    data.passwordHash = await hashPassword(newPassword);
   }
 
   const avatarUrl = avatarFileId
