@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
     // Nilai sebenarnya (token) tidak pernah diekspos ke browser.
     NEXT_PUBLIC_BLOB_UPLOAD_ENABLED: process.env.BLOB_READ_WRITE_TOKEN ? "1" : "0",
   },
+  experimental: {
+    // Ditandai oleh `next upgrade --agent=security` agar upgrade keamanan
+    // Next.js berikutnya dapat dijalankan otomatis.
+    agentUpgrade: "security",
+  },
   turbopack: {
     rules: {
       "*.css": {
