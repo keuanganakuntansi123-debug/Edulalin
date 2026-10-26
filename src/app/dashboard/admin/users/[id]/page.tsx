@@ -19,9 +19,11 @@ import {
   Phone,
   ShieldCheck,
   BookMarked,
+  KeyRound,
 } from "lucide-react";
 import { archiveUser, restoreUser, toggleUserStatus } from "@/app/actions/admin-actions";
 import { ActionForm } from "@/components/ui/action-form";
+import { AdminResetPasswordForm } from "./reset-password-form";
 
 export const instant = false;
 
@@ -189,6 +191,14 @@ export default async function AdminUserDetailPage({
               Tanggal Daftar: {user.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
             </div>
             <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /> Telepon: {identity(user.phone)}</div>
+            {!isArchived && (
+              <div className="border-t border-border pt-3">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <KeyRound className="h-4 w-4" /> Keamanan Akun
+                </p>
+                <AdminResetPasswordForm userId={user.id} userName={user.name} />
+              </div>
+            )}
             {user.role === "POLISI" && (
               <div className="mt-2 space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700">

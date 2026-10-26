@@ -15,6 +15,7 @@
     "sync:smk": "tsx scripts/sync-smk-schools.mts",
     "test:smtp": "tsx scripts/test-smtp.mts",
     "test:otp": "tsx scripts/test-otp-mail.mts",
+    "test:forgot": "tsx scripts/test-forgot-password.mts",
     "setup:smtp": "tsx scripts/setup-smtp.mts"
   },
   "dependencies": {

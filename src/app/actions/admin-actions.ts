@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/audit";
 import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
 import { removeStoredFile, fileUrl, readStoredBuffer } from "@/lib/storage";
 import { validateCategorySchoolMatch } from "@/lib/module-service";
+import { hashPassword } from "@/lib/password";
 
 async function actorContext() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
@@ -501,6 +502,67 @@ export async function toggleUserStatus(id: string) {
     entityId: target.id,
     metadata: { name: target.name, status: next },
   });
+  revalidatePath("/dashboard/admin/users");
+  return { ok: true };
+}
+
+/**
+ * Reset password pengguna secara manual oleh admin.
+ *
+ * Jaring pengaman ketika pemilik akun tidak dapat menerima kode OTP
+ * (mis. SMTP belum dikonfigurasi atau email tidak dapat diakses). Admin
+ * menetapkan password baru sementara, lalu pengguna diminta menggantinya
+ * sendiri dari menu Profil & Pengaturan.
+ */
+export async function resetUserPassword(id: string, formData: FormData) {
+  const actor = await requireRole("ADMIN");
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target) return { error: "Pengguna tidak ditemukan" };
+  if (target.deletedAt) {
+    return { error: "Pulihkan akun terlebih dahulu sebelum mengatur ulang password." };
+  }
+
+  const password = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (password.length < 8) {
+    return { error: "Password baru minimal 8 karakter." };
+  }
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return { error: "Password baru wajib mengandung huruf dan angka." };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Konfirmasi password tidak sama." };
+  }
+
+  const newHash = await hashPassword(password);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash: newHash,
+        status: target.status === "PENDING" ? "ACTIVE" : target.status,
+        verifiedAt: target.verifiedAt ?? new Date(),
+      },
+    }),
+    // OTP reset yang masih aktif dibatalkan agar tidak bisa dipakai lagi.
+    prisma.verificationToken.updateMany({
+      where: { userId: id, type: "PASSWORD_RESET_OTP", usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+    // Cabut semua sesi aktif agar perangkat lama harus login ulang.
+    prisma.userSession.deleteMany({ where: { userId: id } }),
+  ]);
+
+  fireActivity({
+    actorId: actor.id,
+    schoolId: target.schoolId ?? undefined,
+    action: "USER_PASSWORD_RESET_BY_ADMIN",
+    entity: "USER",
+    entityId: target.id,
+    metadata: { name: target.name, email: target.email, role: target.role },
+  });
+  revalidatePath(`/dashboard/admin/users/${id}`);
   revalidatePath("/dashboard/admin/users");
   return { ok: true };
 }

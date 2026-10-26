@@ -4,8 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { generateOtp, sendMail } from "@/lib/mail";
 import { logActivity } from "@/lib/audit";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { getRequestMeta, safeRevalidatePath } from "@/lib/request-context";
 
 /** Masa berlaku OTP: 5 menit. */
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -83,7 +82,7 @@ export async function requestOtp(
     }),
   ]);
 
-  const reqHeaders = await headers();
+  const meta = await getRequestMeta();
   const mail = await sendMail({
     to: user.email,
     subject: "Kode OTP Reset Password EDULALIN",
@@ -122,8 +121,8 @@ Jika Anda tidak meminta reset password, abaikan email ini.
       entity: "USER",
       entityId: user.id,
       metadata: { email: user.email },
-      ipAddress: reqHeaders.get("x-forwarded-for"),
-      userAgent: reqHeaders.get("user-agent"),
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
     }).catch(() => undefined);
     return { error: `Gagal mengirim email: ${mail.error}. Periksa konfigurasi SMTP.` };
   }
@@ -135,8 +134,8 @@ Jika Anda tidak meminta reset password, abaikan email ini.
     entity: "USER",
     entityId: user.id,
     metadata: { email: user.email },
-    ipAddress: reqHeaders.get("x-forwarded-for"),
-    userAgent: reqHeaders.get("user-agent"),
+    ipAddress: meta.ipAddress,
+    userAgent: meta.userAgent,
   }).catch(() => undefined);
 
   return {
@@ -203,15 +202,15 @@ export async function verifyOtp(
     data: { usedAt: new Date() },
   });
 
-  const reqHeaders = await headers();
+  const meta = await getRequestMeta();
   logActivity({
     actorId: user.id,
     schoolId: user.schoolId,
     action: "PASSWORD_RESET_OTP_VERIFIED",
     entity: "USER",
     entityId: user.id,
-    ipAddress: reqHeaders.get("x-forwarded-for"),
-    userAgent: reqHeaders.get("user-agent"),
+    ipAddress: meta.ipAddress,
+    userAgent: meta.userAgent,
   }).catch(() => undefined);
 
   return { step: "reset", email: user.email, success: true };
@@ -271,18 +270,18 @@ export async function resetPassword(
     prisma.userSession.deleteMany({ where: { userId: user.id } }),
   ]);
 
-  const reqHeaders = await headers();
+  const meta = await getRequestMeta();
   logActivity({
     actorId: user.id,
     schoolId: user.schoolId,
     action: "PASSWORD_RESET_COMPLETED",
     entity: "USER",
     entityId: user.id,
-    ipAddress: reqHeaders.get("x-forwarded-for"),
-    userAgent: reqHeaders.get("user-agent"),
+    ipAddress: meta.ipAddress,
+    userAgent: meta.userAgent,
   }).catch(() => undefined);
 
-  revalidatePath("/dashboard", "layout");
+  safeRevalidatePath("/dashboard", "layout");
   return {
     success: true,
     message: "Password berhasil diperbarui. Silakan masuk dengan password baru.",
