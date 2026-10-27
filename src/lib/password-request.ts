@@ -32,7 +32,7 @@ export type IdentityCheckResult = {
 
 /** Peringatan resmi saat identitas pengajuan tidak cocok dengan akun terdaftar. */
 export const IDENTITY_MISMATCH_MESSAGE =
-  "Data yang Anda masukkan tidak sesuai dengan data akun terdaftar.";
+  "Data identitas tidak sesuai dengan data akun terdaftar.";
 
 const FIELD_LABEL: Record<string, string> = {
   name: "Nama Lengkap",
@@ -87,10 +87,91 @@ function sameText(a: string | null | undefined, b: string | null | undefined): b
   return na.length > 0 && na === nb;
 }
 
+/** Buang semua karakter selain huruf & angka (untuk perbandingan toleran). */
+function compact(value: string | null | undefined): string {
+  return normalizeIdentityText(value).replace(/[^A-Z0-9]/g, "");
+}
+
+/**
+ * Pencocokan nama yang toleran terhadap gelar dan singkatan.
+ *
+ * Nama dianggap cocok bila salah satu terisi dan :
+ * - sama persis setelah normalisasi (huruf besar & spasi rapi), atau
+ * - salah satu memuat yang lain (mis. "BUDI SANTOSO" vs "BUDI SANTOSO, S.PD"), atau
+ * - token huruf tersedianya identik (mis. "A. WIJAYA" vs "ANDI WIJAYA").
+ */
+function nameMatches(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = normalizeIdentityText(a);
+  const nb = normalizeIdentityText(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  // Hindari positif palsu untuk nama satu kata (mis. "ANNA" vs "ANNABEL").
+  if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+  const ta = na.split(" ");
+  const tb = nb.split(" ");
+  if (ta.length >= 2 && tb.length >= 2) {
+    const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+    if (short.every((token, i) => token === long[i])) return true;
+  }
+  return compact(na) === compact(nb);
+}
+
+/**
+ * Bentuk kanonik nama sekolah: menyetarakan singkatan prefiks sehingga
+ * "SMAN 82 JAKARTA", "SMA NEGERI 82 JAKARTA", dan "SMAN 82" menjadi setara.
+ */
+function canonicalSchool(value: string): string {
+  return value
+    .replace(/\bSMAN\b/g, "SMA N")
+    .replace(/\bSMKN\b/g, "SMK N")
+    .replace(/\bSMPN\b/g, "SMP N")
+    .replace(/\bSDN\b/g, "SD N")
+    .replace(/\bSMAS\b/g, "SMA S")
+    .replace(/\bSMKS\b/g, "SMK S")
+    .replace(/\bSMPS\b/g, "SMP S")
+    .replace(/\bSDS\b/g, "SD S")
+    .replace(/\bNEGERI\b/g, "N")
+    .replace(/\bSWASTA\b/g, "S")
+    .replace(/\bSEKOLAH\b/g, "")
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function schoolMatches(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = normalizeIdentityText(a);
+  const nb = normalizeIdentityText(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  // Satu daftar token boleh menjadi awalan daftar lainnya (mis. "SMAN 82"
+  // cocok dengan "SMAN 82 JAKARTA"), tetapi angka harus sama persis sehingga
+  // "SMAN 1" tidak dianggap sama dengan "SMAN 12 JAKARTA".
+  const ta = na.split(" ");
+  const tb = nb.split(" ");
+  const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  if (short.every((token, i) => token === long[i])) return true;
+  const ca = canonicalSchool(na);
+  const cb = canonicalSchool(nb);
+  return ca.length > 0 && ca === cb;
+}
+
+/**
+ * Pencocokan teks detail (kelas, jurusan, mata pelajaran, kesatuan).
+ *
+ * Ketat: "10 OTKP" dengan "12 OTKP" TIDAK cocok. Toleransi hanya diberikan
+ * untuk spasi dan sufiks yang sangat mirip (mis. "XII" vs "XII ").
+ */
+function detailMatches(a: string | null | undefined, b: string | null | undefined): boolean {
+  return sameText(a, b);
+}
+
 /**
  * Bandingkan identitas yang diajukan dengan data akun asli.
- * Hanya field yang diisi pengguna DAN tersedia pada akun yang dihitung,
- * sehingga pengguna dengan data minim (mis. admin) tidak dihukum.
+ *
+ * - Field yang diisi pengguna DAN tersedia pada akun dihitung sebagai
+ *   kecocokan bila valuenya sama.
+ * - Field detail (jenjang, kelas, jurusan, mata pelajaran, kesatuan) yang
+ *   diisi pengguna tetapi TIDAK COCOK otomatis menggagalkan verifikasi.
+ * - Bila akun tidak menyimpan detail apa pun selain nama (mis. admin), hanya
+ *   nama yang diperiksa sehingga pengguna dengan data minim tidak "dihukum".
  */
 export function verifyResetIdentity(
   user: {
@@ -112,19 +193,27 @@ export function verifyResetIdentity(
   const mismatch: string[] = [];
   const applicable: string[] = [];
 
-  const check = (field: string, submittedValue: string | null | undefined, actual: string | null | undefined) => {
+  const check = (
+    field: string,
+    submittedValue: string | null | undefined,
+    actual: string | null | undefined,
+    match: (a: string | null | undefined, b: string | null | undefined) => boolean = detailMatches
+  ) => {
     if (!actual || !submittedValue) return;
     applicable.push(field);
-    if (sameText(submittedValue, actual)) matched.push(field);
+    if (match(submittedValue, actual)) matched.push(field);
     else mismatch.push(field);
   };
 
-  check("name", submitted.name, user.name);
-  check("school", submitted.schoolName, user.school?.name);
+  check("name", submitted.name, user.name, nameMatches);
+  check("school", submitted.schoolName, user.school?.name, schoolMatches);
   check("educationLevel", submitted.educationLevel, user.educationLevel);
   if (user.role === "MURID") {
     check("classLevel", submitted.classLevel, user.classLevel);
-    check("major", submitted.major, user.major);
+    // Jurusan hanya diverifikasi untuk SMA/SMK (SD/SMP tidak memiliki jurusan).
+    if (user.educationLevel === "SMA" || user.educationLevel === "SMK") {
+      check("major", submitted.major, user.major);
+    }
   }
   if (user.role === "GURU") {
     check("subject", submitted.subject, user.subject);
@@ -137,8 +226,9 @@ export function verifyResetIdentity(
 
   const total = matched.length + mismatch.length;
   const score = total === 0 ? 0 : Math.round((matched.length / total) * 100);
-  // Nama wajib cocok + minimal 60% field terverifikasi.
-  const verified = matched.includes("name") && score >= 60;
+  // Nama wajib cocok, tidak boleh ada detail identitas yang bertentangan,
+  // dan minimal 60% field yang dibandingkan terverifikasi.
+  const verified = matched.includes("name") && mismatch.length === 0 && score >= 60;
 
   return {
     verified,

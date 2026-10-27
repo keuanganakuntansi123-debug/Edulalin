@@ -27,6 +27,21 @@ user enumeration.
   role tidak pernah diambil dari form.
 - Validasi `registerSchema`: nama, email, tanggal lahir, sekolah, jenjang,
   kelas, password (min 8, huruf + angka, konfirmasi cocok).
+- **Jurusan**: hanya berlaku untuk jenjang **SMA/SMK**. Untuk **SD/SMP** kolom
+  jurusan disembunyikan di UI dan tidak wajib; nilai jurusan lama untuk SD/SMP
+  diabaikan (`major = null`) agar tidak ada data jurusan yang tidak relevan.
+- **Huruf kapital otomatis**: Nama Lengkap, Nama Sekolah, Kelas, Jurusan, dan
+  Mata Pelajaran disimpan dengan HURUF KAPITAL di UI (`uppercase`) dan
+  dinormalisasi di server (`normalizeIdentityName`). Email tetap format normal.
+- **Standarisasi nama sekolah** (`validateSchoolName` di `src/lib/constants.ts`):
+  - Negeri → `SDN`, `SMPN`, `SMAN`, `SMKN` (contoh: **SMKN 15 JAKARTA**).
+  - Swasta → `SDS`, `SMPS`, `SMAS`, `SMKS` (contoh: **SMKS BUDI LUHUR**).
+  - Prefiks menentukan jenjang & jenis sekolah sekaligus; bila tidak cocok
+    dengan jenjang yang dipilih, pendaftaran ditolak dengan pesan panduan.
+  - Penulisan panjang otomatis disetarakan (mis. `SMP NEGERI 1 JAKARTA` →
+    `SMPN 1 JAKARTA`), sehingga variasi kapitalisasi/spasi **tidak membuat
+    sekolah duplikat** — pencarian sekolah memakai `schoolId` yang sama dengan
+    mode `insensitive`.
 - Setelah create: set cookie + catat `REGISTER`.
 
 ## Session Validasi per Request
@@ -66,11 +81,17 @@ revalidasi.
 1. **Pengajuan** — pengguna mengisi Email, Nama Lengkap, Sekolah, dan Kelas
   (kolom identitas menyesuaikan aktor: Murid → sekolah/jenjang/kelas/jurusan,
   Guru → sekolah/jenjang/mapel, Polisi → tingkat/nama kesatuan/divisi,
-  Admin → nama+email). Data identitas wajib **sesuai akun asli**; format huruf
-  kapital diterapkan pada identitas yang memerlukannya. Bila tidak cocok,
+  Admin → nama+email). Kolom **Jurusan hanya muncul untuk murid SMA/SMK**;
+  SD/SMP tidak memiliki jurusan. Seluruh identitas memakai **HURUF KAPITAL
+  otomatis** (kecuali email), sama seperti registrasi. Bila tidak cocok,
   pengajuan **ditolak** dengan pesan
-  **"Data yang Anda masukkan tidak sesuai dengan data akun terdaftar."** dan
-  data pengguna tidak pernah diubah.
+  **"Data identitas tidak sesuai dengan data akun terdaftar."** dan data
+  pengguna tidak pernah diubah.
+  - **Kecocokan** (`verifyResetIdentity`): nama & sekolah dicocokkan toleran
+    (gelar/singkatan, mis. `SMAN 82 JAKARTA` = `SMA NEGERI 82 JAKARTA`);
+    detail (jenjang, kelas, jurusan SMA/SMK, mata pelajaran, kesatuan)
+    dicocokkan **persis**. Verifikasi lulus bila nama cocok, tidak ada detail
+    yang bertentangan, dan skor ≥ 60.
 2. **Sinkronisasi** — pengajuan yang identitasnya cocok tersimpan di tabel
   `PasswordResetRequest` (`status = PENDING`, `verified`, `matchScore`,
   `matchedFields`, `mismatchFields`). Notifikasi otomatis dikirim ke semua

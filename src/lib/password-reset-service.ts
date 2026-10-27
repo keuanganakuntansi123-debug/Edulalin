@@ -4,6 +4,7 @@ import {
   validatePasswordStrength,
   verifyResetIdentity,
   IDENTITY_MISMATCH_MESSAGE,
+  normalizeIdentityText,
 } from "@/lib/password-request";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -67,7 +68,21 @@ export async function submitPasswordResetRequest(
   input: ResetSubmission
 ): Promise<PasswordRequestResult> {
   const email = input.email.trim().toLowerCase();
-  const name = input.name.trim();
+  const name = normalizeIdentityText(input.name);
+
+  // Normalisasi HURUF KAPITAL untuk seluruh identitas (kecuali email).
+  const submitted = {
+    email,
+    name,
+    schoolName: normalizeIdentityText(input.schoolName),
+    educationLevel: normalizeIdentityText(input.educationLevel),
+    classLevel: normalizeIdentityText(input.classLevel),
+    major: normalizeIdentityText(input.major),
+    subject: normalizeIdentityText(input.subject),
+    policeLevel: normalizeIdentityText(input.policeLevel),
+    policeUnit: normalizeIdentityText(input.policeUnit),
+    policeDivision: normalizeIdentityText(input.policeDivision),
+  };
 
   if (!EMAIL_RE.test(email)) return { error: "Format email tidak valid." };
   if (name.length < 2) return { error: "Nama lengkap wajib diisi." };
@@ -88,35 +103,13 @@ export async function submitPasswordResetRequest(
     return { error: "Terlalu banyak pengajuan. Silakan coba lagi dalam 1 jam." };
   }
 
-  // Hindari duplikat: pengajuan PENDING yang masih baru dianggap sama.
-  const pending = await prisma.passwordResetRequest.findFirst({
-    where: { userId: user.id, status: "PENDING" },
-    orderBy: { createdAt: "desc" },
-  });
-  if (pending && Date.now() - pending.createdAt.getTime() < DUPLICATE_WINDOW_MS) {
-    return {
-      success: true,
-      requestId: pending.id,
-      status: pending.status,
-      verified: pending.verified,
-      message:
-        "Pengajuan Anda sudah diterima dan sedang menunggu verifikasi Admin. Mohon tunggu.",
-      audit: { userId: user.id, schoolId: user.schoolId, role: user.role, email },
-    };
-  }
+  // Jurusan hanya untuk murid SMA/SMK. SD/SMP tidak memiliki jurusan, sehingga
+  // input apa pun di kolom jurusan diabaikan agar tidak memicu mismatch palsu.
+  const majorApplicable =
+    user.role === "MURID" && (user.educationLevel === "SMA" || user.educationLevel === "SMK");
+  if (!majorApplicable) submitted.major = "";
 
-  const check = verifyResetIdentity(user, {
-    email,
-    name,
-    schoolName: input.schoolName,
-    educationLevel: input.educationLevel,
-    classLevel: input.classLevel,
-    major: input.major,
-    subject: input.subject,
-    policeLevel: input.policeLevel,
-    policeUnit: input.policeUnit,
-    policeDivision: input.policeDivision,
-  });
+  const check = verifyResetIdentity(user, submitted);
 
   // Identitas wajib cocok dengan data akun asli. Bila tidak, pengajuan ditolak
   // dengan peringatan resmi dan data pengguna tidak diubah sama sekali.
@@ -132,6 +125,25 @@ export async function submitPasswordResetRequest(
         matchedFields: check.matchedFields,
         mismatchFields: check.mismatchFields,
       },
+    };
+  }
+
+  // Hindari duplikat: pengajuan PENDING yang masih baru dianggap sama.
+  // Diperiksa SETELAH verifikasi identitas agar pengajuan dengan data salah
+  // tetap ditolak dengan peringatan resmi (bukan lolos diam-diam).
+  const pending = await prisma.passwordResetRequest.findFirst({
+    where: { userId: user.id, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (pending && Date.now() - pending.createdAt.getTime() < DUPLICATE_WINDOW_MS) {
+    return {
+      success: true,
+      requestId: pending.id,
+      status: pending.status,
+      verified: pending.verified,
+      message:
+        "Pengajuan Anda sudah diterima dan sedang menunggu verifikasi Admin. Mohon tunggu.",
+      audit: { userId: user.id, schoolId: user.schoolId, role: user.role, email },
     };
   }
 
@@ -151,15 +163,15 @@ export async function submitPasswordResetRequest(
         name,
         email,
         role: user.role,
-        schoolName: input.schoolName?.trim() || user.school?.name || null,
+        schoolName: submitted.schoolName || user.school?.name || null,
         schoolId: user.schoolId,
-        educationLevel: (input.educationLevel?.trim() || user.educationLevel) as never,
-        classLevel: input.classLevel?.trim() || user.classLevel,
-        major: input.major?.trim() || user.major,
-        subject: input.subject?.trim() || user.subject,
-        policeLevel: (input.policeLevel?.trim() || user.policeLevel) as never,
-        policeUnit: input.policeUnit?.trim() || user.policeUnit,
-        policeDivision: input.policeDivision?.trim() || user.policeDivision,
+        educationLevel: (submitted.educationLevel || user.educationLevel) as never,
+        classLevel: submitted.classLevel || user.classLevel,
+        major: majorApplicable ? submitted.major || user.major : user.major,
+        subject: submitted.subject || user.subject,
+        policeLevel: (submitted.policeLevel || user.policeLevel) as never,
+        policeUnit: submitted.policeUnit || user.policeUnit,
+        policeDivision: submitted.policeDivision || user.policeDivision,
         note,
         verified: check.verified,
         matchScore: check.score,

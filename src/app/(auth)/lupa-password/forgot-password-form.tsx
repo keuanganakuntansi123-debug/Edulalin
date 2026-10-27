@@ -8,7 +8,12 @@ import {
   requestPasswordReset,
   type PasswordRequestState,
 } from "@/app/actions/password-reset-actions";
-import { CLASS_OPTIONS, EDUCATION_LEVELS, levelDisplayLabel, policeLevelLabel } from "@/lib/constants";
+import {
+  EDUCATION_LEVELS,
+  classOptionsForLevel,
+  levelDisplayLabel,
+  policeLevelLabel,
+} from "@/lib/constants";
 import {
   Loader2,
   Mail,
@@ -43,10 +48,15 @@ const POLICE_LEVELS = ["POLSEK", "POLRES", "POLDA"];
  */
 export function ForgotPasswordForm() {
   const [actor, setActor] = useState<ActorRole>("MURID");
+  const [level, setLevel] = useState("");
   const [state, setState] = useState<PasswordRequestState>();
   const [pending, startTransition] = useTransition();
 
   const actorInfo = useMemo(() => ACTORS.find((a) => a.key === actor)!, [actor]);
+
+  // Jurusan hanya relevan untuk murid SMA & SMK. SD & SMP tidak memiliki jurusan.
+  const showMajor = actor === "MURID" && (level === "SMA" || level === "SMK");
+  const classOptions = classOptionsForLevel(level);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -144,7 +154,10 @@ export function ForgotPasswordForm() {
             name="name"
             placeholder="Nama lengkap sesuai akun"
             required
-            className="pl-9"
+            className="pl-9 uppercase"
+            onChange={(e) => {
+              e.target.value = e.target.value.toUpperCase();
+            }}
           />
         </div>
         <p className="text-xs text-muted-foreground">
@@ -161,20 +174,29 @@ export function ForgotPasswordForm() {
             <Input
               id="schoolName"
               name="schoolName"
-              placeholder="Nama sekolah"
+              placeholder="Mis. SMKN 15 JAKARTA / SMKS BUDI LUHUR"
               className="pl-9 uppercase"
               onChange={(e) => {
                 e.target.value = e.target.value.toUpperCase();
               }}
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Sekolah negeri: <span className="font-medium">SDN / SMPN / SMAN / SMKN</span>. Sekolah
+            swasta: <span className="font-medium">SDS / SMPS / SMAS / SMKS</span>.
+          </p>
         </div>
       )}
 
       {(actor === "MURID" || actor === "GURU") && (
         <div className="grid gap-2">
           <Label htmlFor="educationLevel">Jenjang</Label>
-          <Select id="educationLevel" name="educationLevel" defaultValue="">
+          <Select
+            id="educationLevel"
+            name="educationLevel"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
             <option value="">— Pilih jenjang —</option>
             {EDUCATION_LEVELS.map((lvl) => (
               <option key={lvl} value={lvl}>
@@ -186,33 +208,43 @@ export function ForgotPasswordForm() {
       )}
 
       {actor === "MURID" && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div
+          className={
+            showMajor
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "grid grid-cols-1 gap-4"
+          }
+        >
           <div className="grid gap-2">
             <Label htmlFor="classLevel">Kelas</Label>
-            <Select id="classLevel" name="classLevel" defaultValue="">
-              <option value="">— Pilih kelas —</option>
-              {CLASS_OPTIONS.map((c) => (
+            <Select id="classLevel" name="classLevel" defaultValue="" disabled={!level}>
+              <option value="">
+                {level ? "— Pilih kelas —" : "— Pilih jenjang dahulu —"}
+              </option>
+              {classOptions.map((c) => (
                 <option key={c} value={c}>
                   Kelas {c}
                 </option>
               ))}
             </Select>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="major">Jurusan</Label>
-            <div className="relative">
-              <GraduationCap className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="major"
-                name="major"
-                placeholder="Mis. MIPA / TKJ"
-                className="pl-9 uppercase"
-                onChange={(e) => {
-                  e.target.value = e.target.value.toUpperCase();
-                }}
-              />
+          {showMajor && (
+            <div className="grid gap-2">
+              <Label htmlFor="major">Jurusan</Label>
+              <div className="relative">
+                <GraduationCap className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="major"
+                  name="major"
+                  placeholder="Mis. MIPA / TKJ"
+                  className="pl-9 uppercase"
+                  onChange={(e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -225,7 +257,10 @@ export function ForgotPasswordForm() {
               id="subject"
               name="subject"
               placeholder="Mis. Pendidikan Kewarganegaraan"
-              className="pl-9"
+              className="pl-9 uppercase"
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
             />
           </div>
         </div>
@@ -246,11 +281,27 @@ export function ForgotPasswordForm() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="policeUnit">Nama Kesatuan</Label>
-            <Input id="policeUnit" name="policeUnit" placeholder="Mis. Polres Metro Jakarta Selatan" />
+            <Input
+              id="policeUnit"
+              name="policeUnit"
+              placeholder="Mis. POLRES METRO JAKARTA SELATAN"
+              className="uppercase"
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="policeDivision">Divisi / Bagian / Satuan</Label>
-            <Input id="policeDivision" name="policeDivision" placeholder="Mis. Satlantas" />
+            <Input
+              id="policeDivision"
+              name="policeDivision"
+              placeholder="Mis. SATLANTAS"
+              className="uppercase"
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
+            />
           </div>
         </>
       )}

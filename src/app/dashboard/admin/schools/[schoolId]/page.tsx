@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +16,11 @@ export const instant = false;
 
 async function updateSchoolAction(id: string, formData: FormData) {
   "use server";
-  await updateSchool(id, formData);
+  const result = await updateSchool(id, formData);
+  if (result && "error" in result && result.error) {
+    redirect(`/dashboard/admin/schools/${id}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/dashboard/admin/schools/${id}?saved=1`);
 }
 
 export default async function AdminSchoolDetailPage({
@@ -24,10 +28,10 @@ export default async function AdminSchoolDetailPage({
   searchParams,
 }: {
   params: Promise<{ schoolId: string }>;
-  searchParams: Promise<{ q?: string; role?: string }>;
+  searchParams: Promise<{ q?: string; role?: string; error?: string; saved?: string }>;
 }) {
   const { schoolId } = await params;
-  const { q, role } = await searchParams;
+  const { q, role, error, saved } = await searchParams;
   await requireRole("ADMIN");
 
   const [school, murid, guru, totalMurid, totalGuru] = await Promise.all([
@@ -258,6 +262,16 @@ export default async function AdminSchoolDetailPage({
           <CardTitle>Edit Sekolah</CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          {saved && !error && (
+            <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              Perubahan sekolah berhasil disimpan.
+            </p>
+          )}
           <div className="mb-6">
             <SchoolLogoManager
               schoolId={school.id}
@@ -269,7 +283,18 @@ export default async function AdminSchoolDetailPage({
           <form action={updateSchoolAction.bind(null, school.id)} className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="name">Nama Sekolah</Label>
-              <Input id="name" name="name" defaultValue={school.name} required />
+              <Input
+                id="name"
+                name="name"
+                defaultValue={school.name}
+                required
+                className="uppercase"
+              />
+              <p className="text-xs text-muted-foreground">
+                Negeri: <span className="font-medium">SDN / SMPN / SMAN / SMKN</span>. Swasta:{" "}
+                <span className="font-medium">SDS / SMPS / SMAS / SMKS</span>. Prefiks wajib sama
+                dengan jenjang. Contoh: <span className="font-medium">SMKN 15 JAKARTA</span>.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="educationLevel">Jenjang</Label>

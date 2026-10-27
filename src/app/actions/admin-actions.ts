@@ -8,6 +8,7 @@ import { moduleSchema, quizSchema, questionSchema } from "@/lib/validations";
 import { removeStoredFile, fileUrl, readStoredBuffer } from "@/lib/storage";
 import { validateCategorySchoolMatch } from "@/lib/module-service";
 import { notifyNewModule } from "@/lib/notification-service";
+import { normalizeIdentityName, validateSchoolName } from "@/lib/constants";
 
 async function actorContext() {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
@@ -362,16 +363,17 @@ export async function createGuruPolisi(formData: FormData) {
   const user = await requireRole("ADMIN");
   const role = formData.get("role");
   if (role !== "GURU" && role !== "POLISI") return { error: "Role tidak valid" };
-  const name = String(formData.get("name") ?? "");
+  const name = normalizeIdentityName(String(formData.get("name") ?? ""));
   const email = String(formData.get("email") ?? "").toLowerCase();
   const password = String(formData.get("password") ?? "");
   const schoolId = (formData.get("schoolId") as string) || null;
   const educationLevel = (formData.get("educationLevel") as string) || null;
-  const classLevel = (formData.get("classLevel") as string) || null;
+  const classLevel = normalizeIdentityName((formData.get("classLevel") as string) || "") || null;
   const policeLevel = (formData.get("policeLevel") as string) || null;
-  const policeUnit = (formData.get("policeUnit") as string) || null;
-  const policeDivision = (formData.get("policeDivision") as string) || null;
-  const subject = (formData.get("subject") as string) || null;
+  const policeUnit = normalizeIdentityName((formData.get("policeUnit") as string) || "") || null;
+  const policeDivision =
+    normalizeIdentityName((formData.get("policeDivision") as string) || "") || null;
+  const subject = normalizeIdentityName((formData.get("subject") as string) || "") || null;
   if (name.length < 2 || !email.includes("@") || password.length < 8) {
     return { error: "Data tidak valid" };
   }
@@ -814,7 +816,14 @@ export async function updateSchool(id: string, formData: FormData) {
   // Perbarui data sekolah tanpa menyentuh kolom internal `code` (NPSN dihapus dari UI).
   const { code: _internalCode, ...updates } = parsed.data;
   void _internalCode;
-  const school = await prisma.school.update({ where: { id }, data: updates });
+
+  // Standarisasi nama sekolah: prefiks wajib sesuai jenjang & jenis sekolah.
+  const check = validateSchoolName(updates.name, updates.educationLevel);
+  if (!check.ok) return { error: check.error ?? "Nama sekolah tidak valid" };
+  const school = await prisma.school.update({
+    where: { id },
+    data: { ...updates, name: check.normalized },
+  });
   fireActivity({
     actorId: user.id,
     schoolId: school.id,
@@ -1190,7 +1199,7 @@ export async function updateUserSettings(
   formData: FormData
 ): Promise<{ ok?: boolean; error?: string }> {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeIdentityName(String(formData.get("name") ?? ""));
   const phone = String(formData.get("phone") ?? "") || null;
   const avatarUrl = String(formData.get("avatarUrl") ?? "") || null;
   const birthDateRaw = formData.get("birthDate");

@@ -147,6 +147,165 @@ export const LEVEL_LABEL: Record<EducationLevel, string> = {
 
 export const CLASS_OPTIONS = ["10", "11", "12", "1", "2", "3", "4", "5", "6"];
 
+/** Pilihan kelas sesuai jenjang: SD 1-6, SMP 7-9, SMA/SMK 10-12. */
+export const CLASS_OPTIONS_BY_LEVEL: Record<"SD" | "SMP" | "SMA" | "SMK", string[]> = {
+  SD: ["1", "2", "3", "4", "5", "6"],
+  SMP: ["7", "8", "9"],
+  SMA: ["10", "11", "12"],
+  SMK: ["10", "11", "12"],
+};
+
+/**
+ * Daftar kelas yang sah untuk sebuah jenjang. Mengembalikan daftar kosong bila
+ * jenjang belum dipilih/tidak dikenali, sehingga pengguna tidak bisa memilih
+ * kelas yang tidak sesuai (mis. kelas 10 untuk SD).
+ */
+export function classOptionsForLevel(level: EducationLevel | string | null | undefined): string[] {
+  const lvl = String(level ?? "").toUpperCase();
+  if (lvl === "SD" || lvl === "SMP" || lvl === "SMA" || lvl === "SMK") {
+    return CLASS_OPTIONS_BY_LEVEL[lvl];
+  }
+  return [];
+}
+
+// =====================================================================
+// Standarisasi nama sekolah
+// =====================================================================
+
+export type SchoolType = "NEGERI" | "SWASTA";
+
+/**
+ * Prefiks resmi nama sekolah per jenjang & jenis.
+ * - Negeri : SDN, SMPN, SMAN, SMKN
+ * - Swasta : SDS, SMPS, SMAS, SMKS
+ */
+export const SCHOOL_PREFIX: Record<"SD" | "SMP" | "SMA" | "SMK", Record<SchoolType, string>> = {
+  SD: { NEGERI: "SDN", SWASTA: "SDS" },
+  SMP: { NEGERI: "SMPN", SWASTA: "SMPS" },
+  SMA: { NEGERI: "SMAN", SWASTA: "SMAS" },
+  SMK: { NEGERI: "SMKN", SWASTA: "SMKS" },
+};
+
+export function schoolTypeLabel(type: SchoolType): string {
+  return type === "NEGERI" ? "Negeri" : "Swasta";
+}
+
+/** Prefiks resmi untuk kombinasi jenjang + jenis, mis. SMK + NEGERI -> "SMKN". */
+export function schoolPrefixFor(
+  level: EducationLevel | string | null | undefined,
+  type: SchoolType
+): string | null {
+  const lvl = String(level ?? "").toUpperCase();
+  if (lvl === "SD" || lvl === "SMP" || lvl === "SMA" || lvl === "SMK") {
+    return SCHOOL_PREFIX[lvl][type];
+  }
+  return null;
+}
+
+/** Rapikan teks identitas: kapital, tanpa spasi berlebih. */
+export function normalizeIdentityName(value: string | null | undefined): string {
+  return (value ?? "")
+    .toString()
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+/**
+ * Setarakan penulisan panjang menjadi prefiks resmi, mis.
+ * "SMP NEGERI 1 JAKARTA" -> "SMPN 1 JAKARTA", "SMA SWASTA BUDI" -> "SMAS BUDI".
+ * Membuat input pengguna tetap diterima tanpa menghasilkan sekolah duplikat.
+ */
+function canonicalizeSchoolPrefix(value: string): string {
+  return value
+    .replace(/^SD\s+NEGERI\b/, "SDN")
+    .replace(/^SMP\s+NEGERI\b/, "SMPN")
+    .replace(/^SMA\s+NEGERI\b/, "SMAN")
+    .replace(/^SMK\s+NEGERI\b/, "SMKN")
+    .replace(/^SD\s+SWASTA\b/, "SDS")
+    .replace(/^SMP\s+SWASTA\b/, "SMPS")
+    .replace(/^SMA\s+SWASTA\b/, "SMAS")
+    .replace(/^SMK\s+SWASTA\b/, "SMKS");
+}
+
+/** Deteksi jenis sekolah (Negeri/Swasta) dari prefiks nama sekolah. */
+export function detectSchoolType(
+  name: string | null | undefined
+): SchoolType | null {
+  const raw = canonicalizeSchoolPrefix(normalizeIdentityName(name));
+  if (!raw) return null;
+  const first = raw.split(" ")[0];
+  if (["SDN", "SMPN", "SMAN", "SMKN"].includes(first)) return "NEGERI";
+  if (["SDS", "SMPS", "SMAS", "SMKS"].includes(first)) return "SWASTA";
+  return null;
+}
+
+export type SchoolNameCheck = {
+  ok: boolean;
+  educationLevel: "SD" | "SMP" | "SMA" | "SMK" | null;
+  schoolType: SchoolType | null;
+  normalized: string;
+  error: string | null;
+};
+
+/**
+ * Validasi & normalisasi nama sekolah sesuai format resmi:
+ * `SDN 01 JAKARTA` (Negeri) atau `SMKS BUDI LUHUR` (Swasta).
+ *
+ * Prefiks menentukan jenjang sekaligus jenis sekolah, sehingga data tetap
+ * sinkron dan tidak membuat duplikat akibat perbedaan penulisan/ kapitalisasi.
+ * Bila `expectedLevel` diberikan, jenjang dari prefiks harus cocok dengannya.
+ */
+export function validateSchoolName(
+  name: string | null | undefined,
+  expectedLevel?: EducationLevel | string | null
+): SchoolNameCheck {
+  const normalized = canonicalizeSchoolPrefix(normalizeIdentityName(name));
+  if (!normalized) {
+    return {
+      ok: false,
+      educationLevel: null,
+      schoolType: null,
+      normalized,
+      error: "Nama sekolah wajib diisi.",
+    };
+  }
+  const first = normalized.split(" ")[0];
+  const found = (Object.keys(SCHOOL_PREFIX) as ("SD" | "SMP" | "SMA" | "SMK")[]).find(
+    (lvl) => SCHOOL_PREFIX[lvl].NEGERI === first || SCHOOL_PREFIX[lvl].SWASTA === first
+  );
+  if (!found) {
+    return {
+      ok: false,
+      educationLevel: null,
+      schoolType: null,
+      normalized,
+      error:
+        "Format nama sekolah tidak sesuai. Gunakan SDN/SMPN/SMAN/SMKN untuk sekolah negeri atau SDS/SMPS/SMAS/SMKS untuk sekolah swasta. Contoh: SMKN 15 JAKARTA atau SMKS BUDI LUHUR.",
+    };
+  }
+  const schoolType: SchoolType =
+    SCHOOL_PREFIX[found].NEGERI === first ? "NEGERI" : "SWASTA";
+
+  if (expectedLevel) {
+    const expected = String(expectedLevel).trim().toUpperCase();
+    if (
+      (expected === "SD" || expected === "SMP" || expected === "SMA" || expected === "SMK") &&
+      expected !== found
+    ) {
+      return {
+        ok: false,
+        educationLevel: found,
+        schoolType,
+        normalized,
+        error: `Nama sekolah berawalan "${first}" menandakan jenjang ${found}, tetapi jenjang yang dipilih ${expected}. Samakan keduanya.`,
+      };
+    }
+  }
+
+  return { ok: true, educationLevel: found, schoolType, normalized, error: null };
+}
+
 export type PoliceLevel = "POLSEK" | "POLRES" | "POLDA";
 
 export const POLICE_LEVEL_LABEL: Record<PoliceLevel, string> = {

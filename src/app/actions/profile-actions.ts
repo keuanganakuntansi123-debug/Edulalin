@@ -6,10 +6,11 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { removeStoredFile, fileUrl, storedNameFromUrl } from "@/lib/storage";
 import { verifyPassword } from "@/lib/password";
+import { normalizeIdentityName } from "@/lib/constants";
 
 export async function updateProfile(formData: FormData) {
   const user = await requireRole("ADMIN", "GURU", "POLISI", "MURID");
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeIdentityName(String(formData.get("name") ?? ""));
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const avatarFileId = formData.get("avatarFileId") ? String(formData.get("avatarFileId")) : null;
   const embeddedAvatar = formData.get("embeddedAvatar")

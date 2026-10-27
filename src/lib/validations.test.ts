@@ -51,6 +51,65 @@ describe("registerSchema", () => {
     const res = registerSchema.safeParse({ ...valid, password: "A1", confirmPassword: "A1" });
     expect(res.success).toBe(false);
   });
+
+  it("tidak mewajibkan jurusan untuk SD/SMP", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "SDN BUDI LUHUR",
+      educationLevel: "SD",
+      classLevel: "5",
+    });
+    expect(res.success).toBe(true);
+  });
+
+  it("mewajibkan jurusan untuk SMA/SMK", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "SMKN 15 JAKARTA",
+      educationLevel: "SMK",
+      classLevel: "12",
+      major: "",
+    });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues.some((i) => i.path.join(".") === "major")).toBe(true);
+    }
+  });
+
+  it("menerima jurusan untuk SMA/SMK", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "smkn 15 jakarta",
+      educationLevel: "SMK",
+      classLevel: "12",
+      major: "tkj",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.major).toBe("TKJ");
+  });
+
+  it("menolak nama sekolah tanpa prefiks resmi", () => {
+    const res = registerSchema.safeParse({ ...valid, schoolName: "SEKOLAH BEBAS" });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues.some((i) => i.path.join(".") === "schoolName")).toBe(true);
+    }
+  });
+
+  it("normalisasi identitas menjadi huruf kapital", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      name: "murid baru",
+      schoolName: "smpn 1 jakarta",
+      classLevel: "8a",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.name).toBe("MURID BARU");
+      expect(res.data.schoolName).toBe("SMPN 1 JAKARTA");
+      expect(res.data.classLevel).toBe("8A");
+    }
+  });
 });
 
 describe("moduleSchema", () => {

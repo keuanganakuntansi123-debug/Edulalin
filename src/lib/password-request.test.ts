@@ -4,6 +4,7 @@ import {
   normalizeIdentityText,
   validatePasswordStrength,
   identityFieldLabel,
+  IDENTITY_MISMATCH_MESSAGE,
 } from "@/lib/password-request";
 
 const baseMurid = {
@@ -124,6 +125,72 @@ describe("identityFieldLabel", () => {
   it("menerjemahkan kode field ke label", () => {
     expect(identityFieldLabel("policeUnit")).toBe("Nama Kesatuan");
     expect(identityFieldLabel("unknownField")).toBe("unknownField");
+  });
+});
+
+describe("IDENTITY_MISMATCH_MESSAGE", () => {
+  it("memakai kalimat resmi sesuai ketentuan", () => {
+    expect(IDENTITY_MISMATCH_MESSAGE).toBe(
+      "Data identitas tidak sesuai dengan data akun terdaftar."
+    );
+  });
+});
+
+describe("verifyResetIdentity — toleransi & ketelitian detail", () => {
+  it("mencocokkan nama dengan gelar / singkatan", () => {
+    const result = verifyResetIdentity(
+      { ...baseMurid, name: "BUDI SANTOSO, S.PD" },
+      { email: baseMurid.email, name: "budi santoso" }
+    );
+    expect(result.matchedFields).toContain("name");
+    expect(result.verified).toBe(true);
+  });
+
+  it("mencocokkan sekolah dengan singkatan NEgeri/Sekolah", () => {
+    const result = verifyResetIdentity(baseMurid, {
+      email: baseMurid.email,
+      name: "BUDI SANTOSO",
+      schoolName: "SMA NEGERI 1 JAKARTA",
+    });
+    expect(result.matchedFields).toContain("school");
+    expect(result.mismatchFields).not.toContain("school");
+  });
+
+  it("menolak kelas yang berbeda (detail harus persis)", () => {
+    const result = verifyResetIdentity(baseMurid, {
+      email: baseMurid.email,
+      name: "BUDI SANTOSO",
+      classLevel: "11",
+    });
+    expect(result.mismatchFields).toContain("classLevel");
+    expect(result.verified).toBe(false);
+  });
+
+  it("menolak jurusan yang berbeda untuk SMA/SMK", () => {
+    const result = verifyResetIdentity(baseMurid, {
+      email: baseMurid.email,
+      name: "BUDI SANTOSO",
+      major: "TKJ",
+    });
+    expect(result.mismatchFields).toContain("major");
+    expect(result.verified).toBe(false);
+  });
+
+  it("mengabaikan jurusan untuk murid SD/SMP", () => {
+    const sdMurid = {
+      ...baseMurid,
+      educationLevel: "SD" as const,
+      classLevel: "5",
+      major: "SDN 5",
+    };
+    const result = verifyResetIdentity(sdMurid, {
+      email: sdMurid.email,
+      name: "BUDI SANTOSO",
+      classLevel: "5",
+      major: "APAPUN",
+    });
+    expect(result.applicableFields).not.toContain("major");
+    expect(result.verified).toBe(true);
   });
 });
 

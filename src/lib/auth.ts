@@ -5,7 +5,12 @@ import { logActivity } from "@/lib/audit";
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@/lib/validations";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { dashboardPath, normalizeEducationLevel } from "@/lib/constants";
+import {
+  dashboardPath,
+  normalizeEducationLevel,
+  normalizeIdentityName,
+  validateSchoolName,
+} from "@/lib/constants";
 export { dashboardPath };
 
 export type AuthResult<T = unknown> =
@@ -72,12 +77,27 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
     return { success: false, errors: zodErrors(parsed), message: "Periksa kembali data pendaftaran" };
   }
   const data = parsed.data;
-  const educationLevel = normalizeEducationLevel(data.educationLevel ?? "", data.classLevel);
 
   // Normalisasi data wajib HURUF KAPITAL (per ketentuan platform).
-  const normalizedName = data.name.trim().toUpperCase();
-  const normalizedClass = (data.classLevel ?? "").trim().toUpperCase();
-  const normalizedMajor = (data.major ?? "").trim().toUpperCase();
+  const normalizedName = normalizeIdentityName(data.name);
+  const normalizedClass = normalizeIdentityName(data.classLevel);
+  const normalizedMajor = normalizeIdentityName(data.major);
+
+  // Jenjang diturunkan dari prefiks nama sekolah (SDN/SMPN/SMAN/SMKN/SDS/…)
+  // agar data sekolah, jenjang, dan jurusan selalu sinkron antar aktor.
+  // Nama sekolah yang dipakai adalah bentuk kanonik (mis. "SMA NEGERI 82" →
+  // "SMAN 82") sehingga perbedaan penulisan tidak membuat sekolah duplikat.
+  const schoolCheck = validateSchoolName(data.schoolName, data.educationLevel);
+  const schoolName = schoolCheck.ok
+    ? schoolCheck.normalized
+    : normalizeIdentityName(data.schoolName);
+  const educationLevel: ReturnType<typeof normalizeEducationLevel> = schoolCheck.ok
+    ? (schoolCheck.educationLevel as ReturnType<typeof normalizeEducationLevel>)
+    : normalizeEducationLevel(data.educationLevel ?? "", data.classLevel);
+
+  // Jurusan hanya untuk SMA & SMK. SD & SMP tidak memiliki jurusan.
+  const majorForLevel =
+    educationLevel === "SMA" || educationLevel === "SMK" ? normalizedMajor || null : null;
 
   const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
   if (existing) {
@@ -88,7 +108,6 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
   // Hanya sekolah AKTIF (belum dihapus) yang dipakai, supaya murid baru tidak
   // terhubung ke sekolah yang sudah diarsipkan/dihapus (yang memblokir login).
   // Jika belum ada, sekolah dibuat otomatis sehingga data tetap terintegrasi.
-  const schoolName = data.schoolName.trim().toUpperCase();
   let school = await prisma.school.findFirst({
     where: { name: { equals: schoolName, mode: "insensitive" }, deletedAt: null },
   });
@@ -101,7 +120,7 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
     if (inactive) {
       school = await prisma.school.update({
         where: { id: inactive.id },
-        data: { status: "ACTIVE", deletedAt: null, deletedBy: null },
+        data: { status: "ACTIVE", deletedAt: null, deletedBy: null, name: schoolName, educationLevel },
       });
     }
   }
@@ -136,7 +155,7 @@ export async function register(input: RegisterInput): Promise<AuthResult<{ redir
       schoolId: school.id,
       educationLevel,
       classLevel: normalizedClass || null,
-      major: normalizedMajor || null,
+      major: majorForLevel,
       phone: data.phone ?? null,
       status: "ACTIVE",
       verifiedAt: new Date(),

@@ -15,6 +15,10 @@ export function RegisterForm({
   const [state, formAction, pending] = useActionState(action, undefined);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [level, setLevel] = useState("");
+
+  // Jurusan hanya relevan untuk SMA & SMK. SD & SMP tidak memiliki jurusan.
+  const showMajor = level === "SMA" || level === "SMK";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -67,7 +71,7 @@ export function RegisterForm({
             <Input
               id="schoolName"
               name="schoolName"
-              placeholder="Contoh: SMAN 1 JAKARTA"
+              placeholder="Contoh: SMKN 15 JAKARTA / SMKS BUDI LUHUR"
               required
               className="pl-9 uppercase"
               onChange={(e) => {
@@ -75,11 +79,16 @@ export function RegisterForm({
               }}
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Sekolah negeri: <span className="font-medium">SDN / SMPN / SMAN / SMKN</span>. Sekolah
+            swasta: <span className="font-medium">SDS / SMPS / SMAS / SMKS</span>. Contoh:{" "}
+            <span className="font-medium">SMKN 15 JAKARTA</span>.
+          </p>
           {state?.errors?.schoolName && <p className="text-sm text-red-600">{state.errors.schoolName}</p>}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className={showMajor ? "grid grid-cols-1 gap-4 sm:grid-cols-3" : "grid grid-cols-1 gap-4 sm:grid-cols-2"}>
         <div className="grid gap-2">
           <Label htmlFor="educationLevel">Jenjang</Label>
           <div className="relative">
@@ -88,6 +97,8 @@ export function RegisterForm({
               id="educationLevel"
               name="educationLevel"
               required
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
               className="w-full rounded-xl border border-border bg-white py-2 pl-9 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <option value="">Pilih jenjang...</option>
@@ -113,28 +124,30 @@ export function RegisterForm({
           />
           {state?.errors?.classLevel && <p className="text-sm text-red-600">{state.errors.classLevel}</p>}
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="major">Jurusan</Label>
-          <div className="relative">
-            <BookMarked className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="major"
-              name="major"
-              placeholder="Contoh: MIPA / TKJ"
-              required
-              className="pl-9 uppercase"
-              onChange={(e) => {
-                e.target.value = e.target.value.toUpperCase();
-              }}
-            />
+        {showMajor && (
+          <div className="grid gap-2">
+            <Label htmlFor="major">Jurusan</Label>
+            <div className="relative">
+              <BookMarked className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="major"
+                name="major"
+                placeholder="Contoh: MIPA / TKJ"
+                required
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
+              />
+            </div>
+            {state?.errors?.major && <p className="text-sm text-red-600">{state.errors.major}</p>}
           </div>
-          {state?.errors?.major && <p className="text-sm text-red-600">{state.errors.major}</p>}
-        </div>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground">
         Nama, sekolah, kelas, dan jurusan otomatis disimpan dengan HURUF KAPITAL agar data
-        tersinkronisasi antar pengguna.
+        tersinkronisasi antar pengguna. Kolom jurusan hanya untuk jenjang SMA & SMK.
       </p>
 
       <div className="grid gap-2">

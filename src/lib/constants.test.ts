@@ -11,6 +11,11 @@ import {
   simAllowedForLevel,
   validateSchoolLevelMatch,
   categoryOf,
+  validateSchoolName,
+  detectSchoolType,
+  schoolPrefixFor,
+  normalizeIdentityName,
+  classOptionsForLevel,
 } from "@/lib/constants";
 import { canAccessSim } from "@/lib/module-service";
 
@@ -187,5 +192,88 @@ describe("categoryOf", () => {
     expect(categoryOf("SD")).toBe("SD");
     expect(categoryOf("SMK")).toBe("SMK");
     expect(categoryOf(null)).toBe("SMA");
+  });
+});
+
+describe("normalizeIdentityName", () => {
+  it("mengubah ke huruf kapital dan merapikan spasi", () => {
+    expect(normalizeIdentityName("  smkn   15  jakarta ")).toBe("SMKN 15 JAKARTA");
+    expect(normalizeIdentityName(null)).toBe("");
+  });
+});
+
+describe("schoolPrefixFor", () => {
+  it("memberi prefiks negeri & swasta per jenjang", () => {
+    expect(schoolPrefixFor("SD", "NEGERI")).toBe("SDN");
+    expect(schoolPrefixFor("SMP", "SWASTA")).toBe("SMPS");
+    expect(schoolPrefixFor("SMA", "NEGERI")).toBe("SMAN");
+    expect(schoolPrefixFor("SMK", "SWASTA")).toBe("SMKS");
+  });
+
+  it("null untuk jenjang tak dikenal", () => {
+    expect(schoolPrefixFor("SIM", "NEGERI")).toBeNull();
+    expect(schoolPrefixFor(null, "SWASTA")).toBeNull();
+  });
+});
+
+describe("detectSchoolType", () => {
+  it("mengenali sekolah negeri", () => {
+    expect(detectSchoolType("SDN BUDI LUHUR")).toBe("NEGERI");
+    expect(detectSchoolType("smpn 13 jakarta")).toBe("NEGERI");
+    expect(detectSchoolType("SMKN 15 JAKARTA")).toBe("NEGERI");
+  });
+
+  it("mengenali sekolah swasta", () => {
+    expect(detectSchoolType("SDS TUNAS HARAPAN")).toBe("SWASTA");
+    expect(detectSchoolType("SMKS BUDI LUHUR")).toBe("SWASTA");
+  });
+
+  it("null bila prefiks tidak dikenali", () => {
+    expect(detectSchoolType("SEKOLAH BEBAS")).toBeNull();
+    expect(detectSchoolType("")).toBeNull();
+  });
+});
+
+describe("validateSchoolName", () => {
+  it("menerima sekolah negeri & swasta sesuai format", () => {
+    expect(validateSchoolName("smkn 15 jakarta").ok).toBe(true);
+    expect(validateSchoolName("SMKS BUDI LUHUR").ok).toBe(true);
+    expect(validateSchoolName("SDN BUDI LUHUR").schoolType).toBe("NEGERI");
+    expect(validateSchoolName("SMPS HARAPAN").schoolType).toBe("SWASTA");
+  });
+
+  it("mengembalikan nama ternormalisasi", () => {
+    expect(validateSchoolName("  sman   82  jakarta ").normalized).toBe("SMAN 82 JAKARTA");
+  });
+
+  it("menolak nama tanpa prefiks resmi", () => {
+    const res = validateSchoolName("SEKOLAH BEBAS");
+    expect(res.ok).toBe(false);
+    expect(res.error).toContain("Format nama sekolah");
+  });
+
+  it("menolak bila jenjang tidak cocok dengan prefiks", () => {
+    const res = validateSchoolName("SMKN 15 JAKARTA", "SD");
+    expect(res.ok).toBe(false);
+    expect(res.error).toContain("SMK");
+  });
+
+  it("menerima bila jenjang cocok dengan prefiks", () => {
+    expect(validateSchoolName("SMKN 15 JAKARTA", "SMK").ok).toBe(true);
+  });
+});
+
+describe("classOptionsForLevel", () => {
+  it("SD 1-6, SMP 7-9, SMA/SMK 10-12", () => {
+    expect(classOptionsForLevel("SD")).toEqual(["1", "2", "3", "4", "5", "6"]);
+    expect(classOptionsForLevel("SMP")).toEqual(["7", "8", "9"]);
+    expect(classOptionsForLevel("SMA")).toEqual(["10", "11", "12"]);
+    expect(classOptionsForLevel("SMK")).toEqual(["10", "11", "12"]);
+  });
+
+  it("kosong bila jenjang belum dipilih", () => {
+    expect(classOptionsForLevel("")).toEqual([]);
+    expect(classOptionsForLevel(null)).toEqual([]);
+    expect(classOptionsForLevel("SIM")).toEqual([]);
   });
 });

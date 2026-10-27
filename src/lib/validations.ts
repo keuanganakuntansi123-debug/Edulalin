@@ -1,14 +1,18 @@
 import { z } from "zod";
+import { normalizeIdentityName, validateSchoolName } from "@/lib/constants";
 
 export const registerSchema = z
   .object({
-    name: z.string().min(2, "Nama minimal 2 karakter"),
+    name: z.string().min(2, "Nama minimal 2 karakter").transform(normalizeIdentityName),
     email: z.string().email("Email tidak valid"),
     birthDate: z.coerce.date("Tanggal lahir wajib diisi"),
-    schoolName: z.string().min(2, "Nama sekolah wajib diisi"),
+    schoolName: z.string().min(2, "Nama sekolah wajib diisi").transform(normalizeIdentityName),
     educationLevel: z.string().optional(),
-    classLevel: z.string().min(1, "Kelas wajib diisi"),
-    major: z.string().optional(),
+    classLevel: z.string().min(1, "Kelas wajib diisi").transform(normalizeIdentityName),
+    major: z
+      .string()
+      .optional()
+      .transform((v) => (v && v.trim() ? normalizeIdentityName(v) : "")),
     phone: z.string().optional(),
     password: z
       .string()
@@ -23,6 +27,18 @@ export const registerSchema = z
   })
   .superRefine((d, ctx) => {
     const level = normalizeLevelForValidation(d.educationLevel);
+
+    // Nama sekolah wajib mengikuti format resmi sesuai jenjang & jenis sekolah.
+    const school = validateSchoolName(d.schoolName, level);
+    if (!school.ok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: school.error ?? "Nama sekolah tidak valid",
+        path: ["schoolName"],
+      });
+    }
+
+    // Jurusan HANYA untuk SMA/SMK. SD/SMP tidak memiliki jurusan.
     if ((level === "SMA" || level === "SMK") && !d.major?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -68,7 +68,16 @@ export function CreateUserForm({
             <Label htmlFor="guru-name">Nama Lengkap</Label>
             <div className="relative">
               <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="guru-name" name="name" placeholder="Nama lengkap guru" required className="pl-9" />
+              <Input
+                id="guru-name"
+                name="name"
+                placeholder="Nama lengkap guru"
+                required
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
+              />
             </div>
           </div>
           <div className="grid gap-2">
@@ -86,7 +95,10 @@ export function CreateUserForm({
                 id="guru-subject"
                 name="subject"
                 placeholder="Contoh: Pendidikan Pancasila / IPA / Matematika"
-                className="pl-9"
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">Opsional — dapat diisi belakangan.</p>
@@ -123,7 +135,16 @@ export function CreateUserForm({
             <Label htmlFor="polisi-name">Nama Lengkap</Label>
             <div className="relative">
               <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="polisi-name" name="name" placeholder="Nama lengkap anggota" required className="pl-9" />
+              <Input
+                id="polisi-name"
+                name="name"
+                placeholder="Nama lengkap anggota"
+                required
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
+              />
             </div>
           </div>
           <div className="grid gap-2">
@@ -152,9 +173,12 @@ export function CreateUserForm({
               <Input
                 id="polisi-unit"
                 name="policeUnit"
-                placeholder="Contoh: Polsek Jatinegara / Polres Metro Jakarta Timur / Polda Metro Jaya"
+                placeholder="Contoh: POLRES METRO JAKARTA TIMUR"
                 required
-                className="pl-9"
+                className="pl-9 uppercase"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -166,7 +190,11 @@ export function CreateUserForm({
             <Input
               id="polisi-division"
               name="policeDivision"
-              placeholder="Mis. Satlantas, Bagian Operasional"
+              placeholder="Mis. SATLANTAS, BAGIAN OPERASIONAL"
+              className="uppercase"
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
             />
           </div>
           <div className="grid gap-2">

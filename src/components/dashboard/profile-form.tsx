@@ -110,7 +110,16 @@ export function ProfileForm({
 
       <div className="grid gap-2">
         <Label htmlFor="name">Nama Lengkap</Label>
-        <Input id="name" name="name" defaultValue={name} required />
+        <Input
+          id="name"
+          name="name"
+          defaultValue={name}
+          required
+          className="uppercase"
+          onChange={(e) => {
+            e.target.value = e.target.value.toUpperCase();
+          }}
+        />
         <p className="text-xs text-muted-foreground">
           Nama ini ditampilkan di seluruh dashboard, header, dan sidebar.
         </p>

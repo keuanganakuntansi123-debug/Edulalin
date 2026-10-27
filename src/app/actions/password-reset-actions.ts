@@ -8,6 +8,7 @@ import {
   notifyPasswordChanged,
 } from "@/lib/notification-service";
 import { ROLE_LABEL, levelDisplayLabel, policeLevelLabel } from "@/lib/constants";
+import { normalizeIdentityText } from "@/lib/password-request";
 import {
   submitPasswordResetRequest,
   completePasswordReset,
@@ -74,15 +75,15 @@ export async function requestPasswordReset(
 ): Promise<PasswordRequestState> {
   const submitted = {
     email: clean(formData.get("email")),
-    name: clean(formData.get("name")),
-    schoolName: clean(formData.get("schoolName")),
+    name: normalizeIdentityText(clean(formData.get("name"))),
+    schoolName: normalizeIdentityText(clean(formData.get("schoolName"))),
     educationLevel: clean(formData.get("educationLevel")),
-    classLevel: clean(formData.get("classLevel")),
-    major: clean(formData.get("major")),
-    subject: clean(formData.get("subject")),
+    classLevel: normalizeIdentityText(clean(formData.get("classLevel"))),
+    major: normalizeIdentityText(clean(formData.get("major"))),
+    subject: normalizeIdentityText(clean(formData.get("subject"))),
     policeLevel: clean(formData.get("policeLevel")),
-    policeUnit: clean(formData.get("policeUnit")),
-    policeDivision: clean(formData.get("policeDivision")),
+    policeUnit: normalizeIdentityText(clean(formData.get("policeUnit"))),
+    policeDivision: normalizeIdentityText(clean(formData.get("policeDivision"))),
     note: clean(formData.get("note")),
   };
 

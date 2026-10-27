@@ -100,7 +100,7 @@ async function main() {
   });
   assert(Boolean(wrong.error), "Pengajuan identitas salah ditolak");
   assert(
-    wrong.error === "Data yang Anda masukkan tidak sesuai dengan data akun terdaftar.",
+    wrong.error === "Data identitas tidak sesuai dengan data akun terdaftar.",
     "Pesan peringatan sesuai ketentuan",
   );
   const wrongRows = await prisma.passwordResetRequest.count({ where: { userId: user.id } });
@@ -118,6 +118,29 @@ async function main() {
   assert(ok.verified === true, "Identitas terverifikasi otomatis");
   const requestId = ok.requestId!;
   assert(Boolean(requestId), "Pengajuan punya ID");
+  const okRow = await prisma.passwordResetRequest.findUnique({ where: { id: requestId } });
+  assert(okRow?.name === "QA RESET MURID", "Nama pengajuan tersimpan HURUF KAPITAL");
+
+  console.log("\n[2b] Input huruf kecil tetap diterima (dicocokkan tanpa peka kapital)");
+  const lower = await submitPasswordResetRequest({
+    email: TEST_EMAIL,
+    name: "qa reset murid",
+    educationLevel: "sma",
+    classLevel: "10",
+    major: "mipa",
+  });
+  assert(lower.verified === true, "Huruf kecil terverifikasi");
+
+  console.log("\n[2c] Detail salah (kelas/jurusan) → ditolak");
+  const badDetail = await submitPasswordResetRequest({
+    email: TEST_EMAIL,
+    name: "QA RESET MURID",
+    classLevel: "11",
+  });
+  assert(
+    badDetail.error === "Data identitas tidak sesuai dengan data akun terdaftar.",
+    "Detail identitas salah ditolak",
+  );
 
   console.log("\n[3] Anti-duplikat: pengajuan dalam 5 menit mengembalikan yang sama");
   const dup = await submitPasswordResetRequest({
