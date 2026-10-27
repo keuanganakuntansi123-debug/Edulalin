@@ -110,6 +110,44 @@ describe("registerSchema", () => {
       expect(res.data.classLevel).toBe("8A");
     }
   });
+
+  it("mengosongkan jurusan untuk SD/SMP walau diisi", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "SMPN 13 JAKARTA",
+      educationLevel: "SMP",
+      classLevel: "8",
+      major: "IPA",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.major).toBe("");
+  });
+
+  it("menyetarakan penulisan panjang nama sekolah menjadi bentuk kanonik", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "smp negeri 1 jakarta",
+      educationLevel: "SMP",
+      classLevel: "8",
+      major: "IPA",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.schoolName).toBe("SMPN 1 JAKARTA");
+  });
+
+  it("menolak prefiks sekolah yang tidak sesuai jenjang", () => {
+    const res = registerSchema.safeParse({
+      ...valid,
+      schoolName: "SDN 5 JAKARTA",
+      educationLevel: "SMA",
+      classLevel: "10",
+      major: "IPA",
+    });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues.some((i) => i.path.join(".") === "schoolName")).toBe(true);
+    }
+  });
 });
 
 describe("moduleSchema", () => {

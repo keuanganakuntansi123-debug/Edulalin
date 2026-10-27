@@ -2,9 +2,10 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { Input, Label } from "@/components/ui/form";
+import { Input, Label, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import type { AuthActionState } from "@/app/actions/auth-actions";
+import { classOptionsForLevel } from "@/lib/constants";
 import { User, Mail, CalendarDays, School, Phone, Lock, Eye, EyeOff, Loader2, UserPlus, GraduationCap, BookMarked } from "lucide-react";
 
 export function RegisterForm({
@@ -19,6 +20,7 @@ export function RegisterForm({
 
   // Jurusan hanya relevan untuk SMA & SMK. SD & SMP tidak memiliki jurusan.
   const showMajor = level === "SMA" || level === "SMK";
+  const classOptions = classOptionsForLevel(level);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -79,11 +81,6 @@ export function RegisterForm({
               }}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Sekolah negeri: <span className="font-medium">SDN / SMPN / SMAN / SMKN</span>. Sekolah
-            swasta: <span className="font-medium">SDS / SMPS / SMAS / SMKS</span>. Contoh:{" "}
-            <span className="font-medium">SMKN 15 JAKARTA</span>.
-          </p>
           {state?.errors?.schoolName && <p className="text-sm text-red-600">{state.errors.schoolName}</p>}
         </div>
       </div>
@@ -112,16 +109,14 @@ export function RegisterForm({
         </div>
         <div className="grid gap-2">
           <Label htmlFor="classLevel">Kelas</Label>
-          <Input
-            id="classLevel"
-            name="classLevel"
-            placeholder="Contoh: 10 / 6"
-            required
-            className="uppercase"
-            onChange={(e) => {
-              e.target.value = e.target.value.toUpperCase();
-            }}
-          />
+          <Select id="classLevel" name="classLevel" required defaultValue="" disabled={!level}>
+            <option value="">{level ? "— Pilih kelas —" : "— Pilih jenjang dahulu —"}</option>
+            {classOptions.map((c) => (
+              <option key={c} value={c}>
+                Kelas {c}
+              </option>
+            ))}
+          </Select>
           {state?.errors?.classLevel && <p className="text-sm text-red-600">{state.errors.classLevel}</p>}
         </div>
         {showMajor && (

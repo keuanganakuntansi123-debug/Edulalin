@@ -182,39 +182,35 @@ export function ForgotPasswordForm() {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Sekolah negeri: <span className="font-medium">SDN / SMPN / SMAN / SMKN</span>. Sekolah
-            swasta: <span className="font-medium">SDS / SMPS / SMAS / SMKS</span>.
+            Gunakan HURUF KAPITAL sesuai data akun terdaftar.
           </p>
         </div>
       )}
 
-      {(actor === "MURID" || actor === "GURU") && (
-        <div className="grid gap-2">
-          <Label htmlFor="educationLevel">Jenjang</Label>
-          <Select
-            id="educationLevel"
-            name="educationLevel"
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-          >
-            <option value="">— Pilih jenjang —</option>
-            {EDUCATION_LEVELS.map((lvl) => (
-              <option key={lvl} value={lvl}>
-                {levelDisplayLabel(lvl)}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
-
-      {actor === "MURID" && (
+      {actor === "MURID" ? (
         <div
           className={
             showMajor
-              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-              : "grid grid-cols-1 gap-4"
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-3"
+              : "grid grid-cols-1 gap-4 sm:grid-cols-2"
           }
         >
+          <div className="grid gap-2">
+            <Label htmlFor="educationLevel">Jenjang</Label>
+            <Select
+              id="educationLevel"
+              name="educationLevel"
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+            >
+              <option value="">— Pilih jenjang —</option>
+              {EDUCATION_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {levelDisplayLabel(lvl)}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="classLevel">Kelas</Label>
             <Select id="classLevel" name="classLevel" defaultValue="" disabled={!level}>
@@ -246,7 +242,24 @@ export function ForgotPasswordForm() {
             </div>
           )}
         </div>
-      )}
+      ) : actor === "GURU" ? (
+        <div className="grid gap-2">
+          <Label htmlFor="educationLevel">Jenjang</Label>
+          <Select
+            id="educationLevel"
+            name="educationLevel"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
+            <option value="">— Pilih jenjang —</option>
+            {EDUCATION_LEVELS.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {levelDisplayLabel(lvl)}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
 
       {actor === "GURU" && (
         <div className="grid gap-2">

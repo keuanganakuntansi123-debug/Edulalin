@@ -46,6 +46,20 @@ export const registerSchema = z
         path: ["major"],
       });
     }
+  })
+  // Bentuk kanonik nama sekolah (mis. "SMP NEGERI 1 JAKARTA" → "SMPN 1 JAKARTA")
+  // plus jenjang yang diturunkan dari prefiks, dan jurusan yang dikosongkan
+  // untuk SD/SMP. Dengan begitu semua aktor memakai data identitas yang sama.
+  .transform((d) => {
+    const level = normalizeLevelForValidation(d.educationLevel);
+    const school = validateSchoolName(d.schoolName, level);
+    const majorApplies = level === "SMA" || level === "SMK";
+    return {
+      ...d,
+      schoolName: school.ok ? school.normalized : d.schoolName,
+      educationLevel: school.ok && school.educationLevel ? school.educationLevel : d.educationLevel,
+      major: majorApplies ? (d.major ?? "") : "",
+    };
   });
 
 function normalizeLevelForValidation(level?: string): string | null {
