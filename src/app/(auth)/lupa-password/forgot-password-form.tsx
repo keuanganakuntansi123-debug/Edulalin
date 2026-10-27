@@ -28,13 +28,12 @@ import {
   Clock,
 } from "lucide-react";
 
-type ActorRole = "MURID" | "GURU" | "POLISI" | "ADMIN";
+type ActorRole = "MURID" | "GURU" | "POLISI";
 
 const ACTORS: { key: ActorRole; label: string; hint: string }[] = [
   { key: "MURID", label: "Murid", hint: "Sekolah, jenjang, kelas & jurusan" },
   { key: "GURU", label: "Guru", hint: "Sekolah & mata pelajaran" },
   { key: "POLISI", label: "Polisi", hint: "Kesatuan & divisi" },
-  { key: "ADMIN", label: "Admin", hint: "Identitas akun admin" },
 ];
 
 const POLICE_LEVELS = ["POLSEK", "POLRES", "POLDA"];
@@ -42,7 +41,7 @@ const POLICE_LEVELS = ["POLSEK", "POLRES", "POLDA"];
 /**
  * Formulir Lupa Password — pengajuan reset melalui Admin.
  *
- * Pengguna memilih aktor (Murid/Guru/Polisi/Admin) agar kolom identitas yang
+ * Pengguna memilih aktor (Murid/Guru/Polisi) agar kolom identitas yang
  * diminta sesuai, lalu mengirim pengajuan. Sistem memverifikasi kecocokan data
  * dengan akun asli di database sebelum Admin mengatur password baru.
  */
@@ -110,7 +109,7 @@ export function ForgotPasswordForm() {
       {/* Pilih aktor */}
       <div className="grid gap-2">
         <Label>Daftar Sebagai</Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2">
           {ACTORS.map((a) => (
             <button
               key={a.key}
