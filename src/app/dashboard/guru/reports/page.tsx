@@ -16,7 +16,7 @@ export default async function GuruReportsPage() {
         deletedAt: null,
         status: "ACTIVE",
         OR: [
-          { schoolId: null },
+          { schoolId: null, moduleToSchools: { none: {} } },
           ...(user.schoolId
             ? [
                 { schoolId: user.schoolId },

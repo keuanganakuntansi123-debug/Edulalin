@@ -1,23 +1,39 @@
 import { requireRole } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
 import { LEVEL_LABEL } from "@/lib/constants";
 import { listModulesForGuru } from "@/lib/module-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SchoolLogoManager } from "@/components/school/school-logo-manager";
-import { SchoolLogo } from "@/components/school/school-logo";
+import { OwnSchoolCard } from "@/components/school/own-school-card";
 import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
 import Link from "next/link";
-import { ArrowUpRight, BookOpen, FileText, Video, Link as LinkIcon } from "lucide-react";
+import { BookOpen, FileText, Video, Link as LinkIcon } from "lucide-react";
 
 export const instant = false;
 
 export default async function GuruModulesPage() {
   const user = await requireRole("GURU");
 
-  const modules = await listModulesForGuru({
-    schoolId: user.schoolId,
-    educationLevel: user.school?.educationLevel ?? null,
-  });
+  const [modules, studentCount, teacherCount, moduleCount] = await Promise.all([
+    listModulesForGuru({
+      schoolId: user.schoolId,
+      educationLevel: user.school?.educationLevel ?? null,
+    }),
+    prisma.user.count({ where: { schoolId: user.schoolId, role: "MURID", deletedAt: null } }),
+    prisma.user.count({ where: { schoolId: user.schoolId, role: "GURU", deletedAt: null } }),
+    user.schoolId
+      ? prisma.module.count({
+          where: {
+            deletedAt: null,
+            status: "ACTIVE",
+            OR: [
+              { schoolId: user.schoolId },
+              { moduleToSchools: { some: { schoolId: user.schoolId } } },
+            ],
+          },
+        })
+      : Promise.resolve(0),
+  ]);
 
   const TYPE_ICON = { PDF: FileText, VIDEO: Video, LINK: LinkIcon, DOCUMENT: BookOpen };
 
@@ -29,32 +45,22 @@ export default async function GuruModulesPage() {
       </p>
 
       {user.school && (
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-white p-5">
-            <SchoolLogo
-              logoUrl={user.school.logoUrl}
-              embedded={user.school.logoEmbedded}
-              name={user.school.name}
-              size="lg"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{user.school.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {LEVEL_LABEL[user.school.educationLevel]} • {user.school.city}, {user.school.province}
-              </p>
-              <Link
-                href="/dashboard/guru"
-                className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                Lihat sekolah Anda <ArrowUpRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-          <SchoolLogoManager
-            schoolId={user.school.id}
-            schoolName={user.school.name}
-            logoUrl={user.school.logoUrl}
-            logoEmbedded={user.school.logoEmbedded}
+        <div className="mt-6">
+          <OwnSchoolCard
+            school={{
+              id: user.school.id,
+              code: user.school.code,
+              name: user.school.name,
+              educationLevel: user.school.educationLevel,
+              address: user.school.address,
+              city: user.school.city,
+              province: user.school.province,
+              logoUrl: user.school.logoUrl,
+              logoEmbedded: user.school.logoEmbedded,
+              studentCount,
+              teacherCount,
+              moduleCount,
+            }}
           />
         </div>
       )}
@@ -63,7 +69,8 @@ export default async function GuruModulesPage() {
         {modules.map((m) => {
           const Icon = TYPE_ICON[m.moduleType];
           return (
-            <Card key={m.id} className="hover:shadow-md transition-shadow">
+            <Link key={m.id} href={`/dashboard/guru/modules/${m.id}`} className="block">
+            <Card className="h-full hover:shadow-md transition-shadow">
               <CardContent className="p-0">
                 <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-slate-100">
                   <ModuleThumbnail
@@ -92,6 +99,7 @@ export default async function GuruModulesPage() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
           );
         })}
         {modules.length === 0 && (

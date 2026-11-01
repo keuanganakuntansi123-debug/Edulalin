@@ -16,7 +16,10 @@ export default async function GuruMuridPage() {
     where: { schoolId: user.schoolId, role: "MURID", deletedAt: null },
     orderBy: { name: "asc" },
     include: {
-      moduleProgress: true,
+      moduleProgress: {
+        orderBy: { lastOpened: "desc" },
+        include: { module: { select: { id: true, title: true } } },
+      },
       quizAttempts: {
         where: { status: "COMPLETED" },
         select: { score: true, passed: true, id: true, quiz: { select: { title: true } }, submittedAt: true },
@@ -68,6 +71,30 @@ export default async function GuruMuridPage() {
                   </div>
                   <Progress value={progressPct} className="mt-1" />
                 </div>
+                {m.moduleProgress.length > 0 && (
+                  <details className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                    <summary className="cursor-pointer font-medium text-muted-foreground">
+                      Progres membaca per modul ({m.moduleProgress.length})
+                    </summary>
+                    <ul className="mt-2 space-y-1.5">
+                      {m.moduleProgress.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between gap-2">
+                          <Link
+                            href={`/dashboard/guru/modules/${p.moduleId}`}
+                            className="min-w-0 flex-1 truncate text-foreground hover:text-primary hover:underline"
+                            title={p.module.title}
+                          >
+                            {p.module.title}
+                          </Link>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">
+                            {p.progress}%
+                            {p.totalPages && p.lastPage ? ` (hal. ${p.lastPage}/${p.totalPages})` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 {m.quizAttempts.length > 0 && (
                   <div className="mt-3 space-y-1">
                     {m.quizAttempts.slice(0, 3).map((a) => (

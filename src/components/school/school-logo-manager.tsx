@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/upload/file-upload";
@@ -33,6 +34,7 @@ export function SchoolLogoManager({
 }) {
   const [pending, startTransition] = useTransition();
   const [logo, setLogo] = useState<UploadedMeta | null>(null);
+  const router = useRouter();
 
   const save = (fileId?: string, remove?: boolean, embedded?: string | null) => {
     const fd = new FormData();
@@ -51,6 +53,7 @@ export function SchoolLogoManager({
         variant: "success",
       });
       setLogo(null);
+      router.refresh();
     });
   };
 

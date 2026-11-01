@@ -17,7 +17,7 @@ export default async function MuridProgressPage() {
       AND: [
         {
           OR: [
-            { schoolId: null },
+            { schoolId: null, moduleToSchools: { none: {} } },
             ...(user.schoolId
               ? [
                   { schoolId: user.schoolId },

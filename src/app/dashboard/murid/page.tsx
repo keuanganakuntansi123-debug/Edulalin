@@ -36,7 +36,7 @@ export default async function MuridDashboardPage() {
         AND: [
           {
             OR: [
-              { schoolId: null },
+              { schoolId: null, quizToSchools: { none: {} } },
               ...(user.schoolId
                 ? [
                     { schoolId: user.schoolId },

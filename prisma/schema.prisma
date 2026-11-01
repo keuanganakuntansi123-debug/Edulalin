@@ -579,6 +579,8 @@ model ModuleProgress {
   moduleId    String
   userId      String
   progress    Int       @default(0) // 0-100
+  lastPage    Int?      // halaman terakhir yang dibuka (resume otomatis)
+  totalPages  Int?      // jumlah halaman modul (PDF)
   completed   Boolean   @default(false)
   lastOpened  DateTime  @default(now())
   completedAt DateTime?

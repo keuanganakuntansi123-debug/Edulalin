@@ -6,6 +6,7 @@ import { getModuleForUser } from "@/lib/module-service";
 import { fileUrl } from "@/lib/storage";
 import { LEVEL_LABEL } from "@/lib/constants";
 import { SaveProgressForm } from "./save-progress";
+import { PdfAutoReader } from "./pdf-auto-reader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
@@ -41,6 +42,12 @@ export default async function ModuleDetailPage({
     mod.contentFileId && mod.contentFile
       ? fileUrl(mod.contentFile.storedName)
       : mod.contentUrl;
+
+  const isPdf =
+    mod.moduleType === "PDF" ||
+    (mod.moduleType === "DOCUMENT" &&
+      (mod.contentFile?.mimeType === "application/pdf" ||
+        (!!contentSource && contentSource.toLowerCase().includes(".pdf"))));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -88,7 +95,16 @@ export default async function ModuleDetailPage({
         <CardContent className="pt-5">
           {contentSource ? (
             <div>
-              {mod.moduleType === "PDF" || mod.moduleType === "DOCUMENT" ? (
+              {isPdf ? (
+                <PdfAutoReader
+                  moduleId={mod.id}
+                  fileUrl={contentSource}
+                  title={mod.title}
+                  initialPage={progress?.lastPage ?? null}
+                  initialProgress={progress?.progress ?? 0}
+                  initialTotalPages={progress?.totalPages ?? null}
+                />
+              ) : mod.moduleType === "DOCUMENT" ? (
                 <iframe
                   src={contentSource}
                   className="h-125 w-full rounded-lg border border-border"
@@ -119,12 +135,20 @@ export default async function ModuleDetailPage({
           <div>
             <p className="font-semibold">Progres Belajar Anda</p>
             <p className="text-sm text-muted-foreground">
-              {progress?.completed ? "Modul selesai. Terima kasih sudah belajar!" : "Tandai progres setelah membaca materi."}
+              {isPdf
+                ? progress?.completed
+                  ? "Semua halaman sudah Anda buka. Modul selesai!"
+                  : "Progres dihitung otomatis dari halaman yang Anda buka."
+                : progress?.completed
+                  ? "Modul selesai. Terima kasih sudah belajar!"
+                  : "Tandai progres setelah membaca materi."}
             </p>
           </div>
           <span className="text-2xl font-bold">{progress?.progress ?? 0}%</span>
         </div>
-        <SaveProgressForm moduleId={mod.id} currentProgress={progress?.progress ?? 0} />
+        {isPdf ? null : (
+          <SaveProgressForm moduleId={mod.id} currentProgress={progress?.progress ?? 0} />
+        )}
       </div>
     </div>
   );

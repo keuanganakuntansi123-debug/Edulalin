@@ -30,6 +30,10 @@ export async function saveProgressAction(formData: FormData) {
   const user = await requireRole("MURID");
   const moduleId = String(formData.get("moduleId") ?? "");
   const progress = Number(formData.get("progress") ?? 0);
+  const lastPageRaw = formData.get("lastPage");
+  const totalPagesRaw = formData.get("totalPages");
+  const lastPage = lastPageRaw != null && String(lastPageRaw) !== "" ? Number(lastPageRaw) : null;
+  const totalPages = totalPagesRaw != null && String(totalPagesRaw) !== "" ? Number(totalPagesRaw) : null;
 
   const mod = await getModuleForUser({
     moduleId,
@@ -43,16 +47,28 @@ export async function saveProgressAction(formData: FormData) {
   });
   if (!mod) return { error: "Modul tidak dapat diakses" };
 
-  const updated = await updateModuleProgress({ moduleId, userId: user.id, progress });
+  const updated = await updateModuleProgress({
+    moduleId,
+    userId: user.id,
+    progress,
+    lastPage,
+    totalPages,
+  });
   await logActivity({
     actorId: user.id,
     schoolId: user.schoolId,
     action: "MODULE_PROGRESS",
     entity: "MODULE",
     entityId: moduleId,
-    metadata: { progress: updated.progress, completed: updated.completed },
+    metadata: {
+      progress: updated.progress,
+      completed: updated.completed,
+      lastPage: updated.lastPage,
+      totalPages: updated.totalPages,
+    },
   });
   revalidatePath("/dashboard/murid", "layout");
+  revalidatePath("/dashboard/guru", "layout");
   return { ok: true };
 }
 

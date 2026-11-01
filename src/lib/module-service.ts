@@ -103,12 +103,23 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
       (m.educationLevel === "SIM" && simVisible);
     if (!levelOk) return false;
 
+    // Kelas: modul tanpa kelas berlaku untuk semua kelas. Bila modul
+    // menyebutkan kelas tertentu, murid harus berada di kelas itu — supaya
+    // modul yang diberikan admin ke kelas lain tidak bocor ke murid ini.
+    if (scope.classLevel && m.classLevel && m.classLevel !== scope.classLevel) {
+      return false;
+    }
+
     // Modul milik sekolah tertentu: hanya murid sekolah itu.
     if (isSchoolOwned) return m.schoolId === schoolId;
 
     // Modul yang ditargetkan admin ke sekolah murid: hanya SEKOLAH dengan
     // jenjang yang cocok (levelOk sudah membatasi). ID sekolah tetap diverifikasi.
-    if (isTargeted) return schoolId != null && targets.includes(schoolId);
+    if (isTargeted) {
+      // Tanpa sekolah (mis. murid belum dipetakan): hanya konten global.
+      if (!schoolId) return false;
+      return targets.includes(schoolId);
+    }
 
     // Modul global: kecocokan jenjang (termasuk aturan SIM).
     if (isGlobal) {
@@ -124,7 +135,7 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
         prisma.moduleProgress.count({ where: { moduleId: m.id } }),
         prisma.moduleProgress.findUnique({
           where: { moduleId_userId: { moduleId: m.id, userId } },
-          select: { id: true, progress: true, completed: true },
+          select: { id: true, progress: true, completed: true, lastPage: true, totalPages: true },
         }),
       ]);
       return { ...m, _count: { progresses: countProgress }, progresses: userProgress ? [userProgress] : [] };
@@ -140,6 +151,16 @@ export async function listModulesForMurid(scope: ModuleScope & { userId: string 
   return flagged;
 }
 
+/** Jenjang konten yang boleh dibaca guru berdasarkan jenjang sekolahnya. */
+export function guruAllowedLevels(
+  educationLevel: EducationLevel | null | undefined
+): EducationLevel[] {
+  if (educationLevel === "SMA") return ["SMA", "SIM"];
+  if (educationLevel === "SMK") return ["SMK", "SIM"];
+  if (educationLevel === "SD" || educationLevel === "SMP") return [educationLevel];
+  return ["SD", "SMP", "SMA", "SMK", "SIM"];
+}
+
 /** Daftar modul untuk GURU: modul global + modul sekolah tempat mengajar,
  * diffilter jenjang sekolah. SIM hanya tampil untuk sekolah SMA/SMK. */
 export async function listModulesForGuru(params: {
@@ -147,14 +168,7 @@ export async function listModulesForGuru(params: {
   educationLevel: EducationLevel | null;
 }) {
   const { schoolId, educationLevel } = params;
-  const allowedLevels: EducationLevel[] =
-    educationLevel === "SMA"
-      ? ["SMA", "SIM"]
-      : educationLevel === "SMK"
-        ? ["SMK", "SIM"]
-      : educationLevel === "SD" || educationLevel === "SMP"
-        ? [educationLevel]
-        : ["SD", "SMP", "SMA", "SMK", "SIM"];
+  const allowedLevels = guruAllowedLevels(educationLevel);
   const modules = await prisma.module.findMany({
     where: {
       deletedAt: null,
@@ -183,6 +197,39 @@ export async function listModulesForGuru(params: {
   return modules;
 }
 
+/**
+ * Ambil satu modul untuk GURU (mode baca). Menghormati isolasi sekolah
+ * (modul global, milik sekolah, atau ditargetkan ke sekolah guru) dan
+ * jenjang sekolah guru. Mengembalikan null bila di luar jangkauan.
+ */
+export async function getModuleForGuru(params: {
+  moduleId: string;
+  schoolId: string | null;
+  educationLevel: EducationLevel | null;
+}) {
+  const { moduleId, schoolId, educationLevel } = params;
+  const allowedLevels = guruAllowedLevels(educationLevel);
+  const mod = await prisma.module.findFirst({
+    where: {
+      id: moduleId,
+      deletedAt: null,
+      educationLevel: { in: allowedLevels },
+      OR: [
+        { schoolId: null, moduleToSchools: { none: {} } },
+        ...(schoolId
+          ? [{ schoolId }, { moduleToSchools: { some: { schoolId } } }]
+          : []),
+      ],
+    },
+    include: {
+      moduleToSchools: { select: { schoolId: true } },
+      contentFile: { select: { storedName: true, originalName: true, mimeType: true } },
+      thumbnailFile: { select: { storedName: true, mimeType: true } },
+    },
+  });
+  return mod;
+}
+
 /** Daftar modul untuk POLISI: seluruh modul aktif semua sekolah (read-only). */
 export async function listModulesForPolisi() {
   const modules = await prisma.module.findMany({
@@ -190,11 +237,62 @@ export async function listModulesForPolisi() {
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     include: {
       thumbnailFile: { select: { storedName: true, mimeType: true } },
-      school: { select: { name: true, educationLevel: true } },
+      school: { select: { id: true, name: true, educationLevel: true } },
+      moduleToSchools: {
+        select: { school: { select: { id: true, name: true, educationLevel: true } } },
+      },
       _count: { select: { progresses: true, quizzes: true } },
     },
   });
   return modules;
+}
+
+export type PolisiModule = Awaited<ReturnType<typeof listModulesForPolisi>>[number];
+
+/**
+ * Kelompokkan modul Polisi per jenjang lalu per sekolah.
+ * Modul global (tanpa sekolah tujuan) dikelompokkan ke "Semua Sekolah".
+ * Polisi hanya membaca — tidak ada aksi ubah/nilai.
+ */
+export function groupPolisiModulesByLevelThenSchool(modules: PolisiModule[]) {
+  const byLevel = new Map<
+    string,
+    Map<string, { schoolId: string | null; schoolName: string; modules: PolisiModule[] }>
+  >();
+
+  for (const m of modules) {
+    const level = m.educationLevel;
+    if (!byLevel.has(level)) byLevel.set(level, new Map());
+    const schools = byLevel.get(level)!;
+
+    // Modul milik satu sekolah, atau ditargetkan ke beberapa sekolah,
+    // atau global (tanpa tujuan) → tampil juga di "Semua Sekolah".
+    const targets =
+      m.school != null
+        ? [{ id: m.school.id, name: m.school.name }]
+        : m.moduleToSchools.length > 0
+          ? m.moduleToSchools.map((t) => ({ id: t.school.id, name: t.school.name }))
+          : [{ id: null, name: "Semua Sekolah" }];
+
+    for (const t of targets) {
+      const key = t.id ?? "__global__";
+      if (!schools.has(key)) {
+        schools.set(key, { schoolId: t.id, schoolName: t.name, modules: [] });
+      }
+      schools.get(key)!.modules.push(m);
+    }
+  }
+
+  const levelOrder: EducationLevel[] = ["SD", "SMP", "SMA", "SMK", "SIM"];
+  return [...byLevel.entries()]
+    .sort((a, b) => levelOrder.indexOf(a[0] as EducationLevel) - levelOrder.indexOf(b[0] as EducationLevel))
+    .map(([level, schools]) => ({
+      level: level as EducationLevel,
+      schools: [...schools.values()].sort((a, b) =>
+        a.schoolId === null ? -1 : b.schoolId === null ? 1 : a.schoolName.localeCompare(b.schoolName)
+      ),
+      moduleCount: new Set(schools.values().flatMap((s) => s.modules.map((m) => m.id))).size,
+    }));
 }
 
 /** Cek apakah murid dapat mengakses modul SIM (usia >= 17). */
@@ -261,9 +359,13 @@ export async function updateModuleProgress(params: {
   moduleId: string;
   userId: string;
   progress: number;
+  lastPage?: number | null;
+  totalPages?: number | null;
 }) {
-  const { moduleId, userId, progress } = params;
+  const { moduleId, userId, progress, lastPage, totalPages } = params;
   const clamped = Math.max(0, Math.min(100, progress));
+  const page = lastPage != null ? Math.max(1, Math.floor(lastPage)) : undefined;
+  const pages = totalPages != null ? Math.max(0, Math.floor(totalPages)) : undefined;
   return prisma.moduleProgress.upsert({
     where: { moduleId_userId: { moduleId, userId } },
     create: {
@@ -272,12 +374,16 @@ export async function updateModuleProgress(params: {
       progress: clamped,
       completed: clamped >= 100,
       completedAt: clamped >= 100 ? new Date() : null,
+      lastPage: page ?? null,
+      totalPages: pages ?? null,
     },
     update: {
       progress: clamped,
       completed: clamped >= 100,
       completedAt: clamped >= 100 ? new Date() : null,
       lastOpened: new Date(),
+      ...(page != null ? { lastPage: page } : {}),
+      ...(pages != null ? { totalPages: pages } : {}),
     },
   });
 }

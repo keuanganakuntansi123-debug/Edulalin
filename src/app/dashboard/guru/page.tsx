@@ -9,6 +9,8 @@ import { DashboardClock } from "@/components/dashboard/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressBars } from "@/components/charts/progress-bars";
 import { CategoryBreakdown } from "@/components/charts/category-breakdown";
+import { SchoolInfoCard } from "@/components/school/school-info-card";
+import { ArrowUpRight } from "lucide-react";
 
 export const instant = false;
 
@@ -22,7 +24,7 @@ export default async function GuruDashboardPage() {
         deletedAt: null,
         status: "ACTIVE",
         OR: [
-          { schoolId: null },
+          { schoolId: null, moduleToSchools: { none: {} } },
           ...(user.schoolId
             ? [
                 { schoolId: user.schoolId },
@@ -37,7 +39,7 @@ export default async function GuruDashboardPage() {
         deletedAt: null,
         status: "ACTIVE",
         OR: [
-          { schoolId: null },
+          { schoolId: null, quizToSchools: { none: {} } },
           ...(user.schoolId
             ? [
                 { schoolId: user.schoolId },
@@ -70,7 +72,7 @@ export default async function GuruDashboardPage() {
         deletedAt: null,
         status: "ACTIVE",
         OR: [
-          { schoolId: null },
+          { schoolId: null, moduleToSchools: { none: {} } },
           ...(user.schoolId
             ? [
                 { schoolId: user.schoolId },
@@ -154,6 +156,30 @@ export default async function GuruDashboardPage() {
           suffix={avgScore._avg.score ? "/100" : undefined}
         />
       </div>
+
+      {user.school && (
+        <div className="mt-6">
+          <SchoolInfoCard
+            school={{
+              name: user.school.name,
+              educationLevel: user.school.educationLevel,
+              address: user.school.address,
+              city: user.school.city,
+              province: user.school.province,
+              logoUrl: user.school.logoUrl,
+              logoEmbedded: user.school.logoEmbedded,
+              studentCount: murid,
+              moduleCount: modul,
+            }}
+          />
+          <Link
+            href="/dashboard/guru/modules"
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            Kelola & lihat sekolah Anda <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Grafik statistik (data asli dari Neon DB) */}
       <div className="mt-8 grid gap-4 lg:grid-cols-2">

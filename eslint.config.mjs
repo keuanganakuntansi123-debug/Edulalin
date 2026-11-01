@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "scripts/**",
+    // Aset statis yang di-vendor (worker PDF.js) tidak untuk di-lint.
+    "public/**",
   ]),
 ]);
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
 import { listModulesForMurid } from "@/lib/module-service";
 import { LEVEL_LABEL } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Progress } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Video, Link as LinkIcon, FileText, Lock } from "lucide-react";
 import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
+import { SchoolInfoCard } from "@/components/school/school-info-card";
 
 export const instant = false;
 
@@ -20,13 +22,18 @@ const TYPE_ICON = {
 
 export default async function MateriPage() {
   const user = await requireRole("MURID");
-  const modules = await listModulesForMurid({
-    userId: user.id,
-    schoolId: user.schoolId,
-    educationLevel: user.educationLevel ?? "SMA",
-    classLevel: user.classLevel,
-    birthDate: user.birthDate,
-  });
+  const [modules, studentCount] = await Promise.all([
+    listModulesForMurid({
+      userId: user.id,
+      schoolId: user.schoolId,
+      educationLevel: user.educationLevel ?? "SMA",
+      classLevel: user.classLevel,
+      birthDate: user.birthDate,
+    }),
+    user.schoolId
+      ? prisma.user.count({ where: { schoolId: user.schoolId, role: "MURID", deletedAt: null } })
+      : Promise.resolve(0),
+  ]);
 
   return (
     <div>
@@ -34,6 +41,24 @@ export default async function MateriPage() {
       <p className="mt-1 text-muted-foreground">
         Kelola dan akses modul pembelajaran sesuai jenjang dan kelas Anda.
       </p>
+
+      {user.school && (
+        <div className="mt-6">
+          <SchoolInfoCard
+            school={{
+              name: user.school.name,
+              educationLevel: user.school.educationLevel,
+              address: user.school.address,
+              city: user.school.city,
+              province: user.school.province,
+              logoUrl: user.school.logoUrl,
+              logoEmbedded: user.school.logoEmbedded,
+              studentCount,
+              moduleCount: modules.length,
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((m) => {
@@ -102,7 +127,12 @@ export default async function MateriPage() {
       {modules.length === 0 && (
         <Card className="mt-6">
           <CardContent className="pt-8 text-center">
-            <p className="text-muted-foreground">Belum ada modul untuk jenjang Anda.</p>
+            <BookOpen className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 font-medium">Belum ada modul untuk sekolah dan kelas Anda.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Modul akan muncul otomatis setelah Admin/Kepolisian memberikannya ke sekolah
+              {user.school ? ` ${user.school.name}` : " Anda"} sesuai jenjang dan kelas.
+            </p>
           </CardContent>
         </Card>
       )}
