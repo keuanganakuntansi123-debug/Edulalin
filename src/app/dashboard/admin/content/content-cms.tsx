@@ -46,7 +46,9 @@ import {
   CheckCircle2,
   Link2,
   RotateCcw,
+  Newspaper,
 } from "lucide-react";
+import { ArticlesTab, type AdminArticle } from "./articles-tab";
 
 type Block = {
   id: string;
@@ -129,6 +131,7 @@ const TABS = [
   { id: "beranda", label: "Kelola Beranda", icon: Home },
   { id: "program", label: "Kelola Program", icon: LayoutGrid },
   { id: "modul", label: "Kelola Modul", icon: BookOpen },
+  { id: "berita", label: "Berita & Edukasi", icon: Newspaper },
   { id: "tentang", label: "Kelola Tentang Kami", icon: Info },
   { id: "kolaborasi", label: "Kolaborasi Edukasi", icon: Handshake },
   { id: "kontak", label: "Kelola Kontak", icon: Mail },
@@ -175,6 +178,7 @@ export function ContentCms({
   partners,
   messages,
   modules,
+  articles,
   contactDefaults,
   defaultHeroTitle,
   defaultHeroDesc,
@@ -188,6 +192,7 @@ export function ContentCms({
   partners: Partner[];
   messages: Message[];
   modules: ModuleLite[];
+  articles: AdminArticle[];
   contactDefaults: { email: string; whatsapp: string; phone: string; address: string; social: string };
   defaultHeroTitle: string;
   defaultHeroDesc: string;
@@ -200,8 +205,8 @@ export function ContentCms({
         <div>
           <h1 className="text-2xl font-bold">Kelola Konten Website</h1>
           <p className="text-muted-foreground">
-            Kelola seluruh konten publik EDULALIN dalam satu menu. Perubahan baru terlihat
-            setelah konten diterbitkan.
+            Kelola seluruh konten publik EDULALIN dalam satu menu, termasuk Berita &amp; Edukasi.
+            Perubahan baru terlihat setelah konten diterbitkan.
           </p>
         </div>
       </div>
@@ -241,6 +246,7 @@ export function ContentCms({
         )}
         {tab === "program" && <ProgramTab programs={programs} modules={modules} />}
         {tab === "modul" && <ModulTab />}
+        {tab === "berita" && <ArticlesTab articles={articles} />}
         {tab === "tentang" && (
           <TentangTab blocks={blocks} missions={missions} goals={goals} />
         )}

@@ -3,9 +3,20 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { FileKind } from "@/generated/prisma/client";
-import { EMBED_MAX_BYTES, MAX_SIZES, isAllowedMime } from "@/lib/upload-config";
+import { EMBED_MAX_BYTES, UPLOAD_LIMIT_BYTES, isAllowedMime } from "@/lib/upload-config";
 import { isBlobPathname } from "@/lib/blob-storage";
-export { EMBED_MAX_BYTES, MAX_SIZES, maxSizeLabel, isAllowedMime } from "@/lib/upload-config";
+import { fileUrl } from "@/lib/file-url";
+export { fileUrl, storedNameFromUrl } from "@/lib/file-url";
+export {
+  EMBED_MAX_BYTES,
+  UPLOAD_LIMIT_BYTES,
+  UPLOAD_LIMIT_LABEL,
+  MULTIPART_THRESHOLD_BYTES,
+  maxSizeLabel,
+  formatBytes,
+  isAllowedMime,
+  validateUpload,
+} from "@/lib/upload-config";
 
 const DEFAULT_STORAGE_DIR =
   process.env.VERCEL === "1"
@@ -74,15 +85,15 @@ export async function saveUploadedFile(input: {
   if (!isAllowedMime(kind, mime)) {
     throw new Error(`Tipe file tidak diizinkan untuk ${kind.toLowerCase()}`);
   }
-  if (file.size > MAX_SIZES[kind]) {
-    throw new Error("Ukuran file melebihi batas maksimal");
+  if (file.size > UPLOAD_LIMIT_BYTES) {
+    throw new Error("Ukuran file melebihi kapasitas penyimpanan (500 MB).");
   }
 
   let storedName: string;
   let buffer: Buffer | null = null;
 
   if (isObjectStorageEnabled()) {
-    // Unggah langsung ke Vercel Blob (object storage) — mendukung 50 MB dan
+    // Unggah langsung ke Vercel Blob (object storage) — mendukung file besar dan
     // tahan terhadap redeploy (filesystem /tmp Vercel bersifat ephemeral).
     const { uploadToBlobServer } = await import("@/lib/blob-storage");
     const uploaded = await uploadToBlobServer({ file, kind });
@@ -187,24 +198,4 @@ export async function readStoredBuffer(storedName: string): Promise<Buffer | nul
   } catch {
     return null;
   }
-}
-
-export function fileUrl(storedName: string): string {
-  // Encode per segmen supaya pathname ber-folder (mis. `logos/xxx.png`)
-  // tetap menjadi rute yang valid untuk catch-all /api/files/[...storedName].
-  const segments = storedName.split("/").map((s) => encodeURIComponent(s));
-  return `/api/files/${segments.join("/")}`;
-}
-
-/** Ekstrak storedName dari URL /api/files/... (mendukung path ber-folder). */
-export function storedNameFromUrl(url: string): string | null {
-  const marker = "/api/files/";
-  const idx = url.indexOf(marker);
-  if (idx < 0) return null;
-  const rest = url.slice(idx + marker.length);
-  if (!rest) return null;
-  return rest
-    .split("/")
-    .map((s) => decodeURIComponent(s))
-    .join("/");
 }

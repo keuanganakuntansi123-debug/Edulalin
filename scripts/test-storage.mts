@@ -46,7 +46,7 @@ async function main() {
   );
   const file = new File([payload], "uji-storage-edulalin.txt", { type: "text/plain" });
 
-  console.log("\n[2] Simpan berkas (MODULE_CONTENT, 50 MB)");
+  console.log("\n[2] Simpan berkas (MODULE_CONTENT, batas 500 MB)");
   const saved = await saveUploadedFile({
     file,
     kind: "MODULE_CONTENT",

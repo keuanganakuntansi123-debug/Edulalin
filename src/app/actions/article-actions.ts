@@ -75,6 +75,7 @@ export async function createArticle(formData: FormData) {
     metadata: { title: article.title, category: article.category },
   });
   revalidatePath("/dashboard/admin/berita");
+  revalidatePath("/dashboard/admin/content");
   revalidatePath("/berita");
   revalidatePath("/");
   return { ok: true, id: article.id };
@@ -149,6 +150,7 @@ export async function updateArticle(id: string, formData: FormData) {
     metadata: { title: article.title, category: article.category },
   });
   revalidatePath("/dashboard/admin/berita");
+  revalidatePath("/dashboard/admin/content");
   revalidatePath("/berita");
   revalidatePath("/");
   return { ok: true };
@@ -171,6 +173,7 @@ export async function toggleArticleStatus(id: string) {
     metadata: { title: article.title, status: next },
   });
   revalidatePath("/dashboard/admin/berita");
+  revalidatePath("/dashboard/admin/content");
   revalidatePath("/berita");
   return { ok: true };
 }
@@ -192,6 +195,7 @@ export async function deleteArticle(id: string) {
     metadata: { title: article.title, category: article.category },
   });
   revalidatePath("/dashboard/admin/berita");
+  revalidatePath("/dashboard/admin/content");
   revalidatePath("/berita");
   revalidatePath("/");
   return { ok: true };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { MAX_SIZES, isAllowedMime } from "@/lib/storage";
+import { UPLOAD_LIMIT_BYTES, isAllowedMime } from "@/lib/storage";
 import { EMBED_MAX_BYTES } from "@/lib/upload-config";
 import { isBlobPathname, readBlobBuffer } from "@/lib/blob-storage";
 import { logActivity } from "@/lib/audit";
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tipe file tidak diizinkan" }, { status: 400 });
   }
   const numericSize = Number(size || 0);
-  if (!Number.isFinite(numericSize) || numericSize <= 0 || numericSize > MAX_SIZES[fKind]) {
-    return NextResponse.json({ error: "Ukuran file melebihi batas maksimal 50 MB" }, { status: 400 });
+  if (!Number.isFinite(numericSize) || numericSize <= 0 || numericSize > UPLOAD_LIMIT_BYTES) {
+    return NextResponse.json({ error: "Ukuran file melebihi kapasitas penyimpanan (500 MB)" }, { status: 400 });
   }
 
   // Pastikan pathname memakai folder yang sesuai dengan kind (cegah path aneh).

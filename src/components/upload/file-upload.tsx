@@ -5,7 +5,12 @@ import { UploadCloud, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileKind } from "@/generated/prisma/client";
 import { isBlobUploadEnabled } from "@/lib/upload-client";
-import { maxSizeLabel, blobPathname, MAX_SIZES, ALLOWED_MIME, isAllowedMime } from "@/lib/upload-config";
+import {
+  maxSizeLabel,
+  blobPathname,
+  MULTIPART_THRESHOLD_BYTES,
+  validateUpload,
+} from "@/lib/upload-config";
 
 type UploadedMeta = {
   id: string;
@@ -36,7 +41,7 @@ async function readUploadError(res: Response, fallback: string): Promise<string>
     } catch {
       const compact = text.replace(/\s+/g, " ").trim();
       if (res.status === 413 || /request entity too large|payload too large/i.test(compact)) {
-        return "File terlalu besar untuk dikirim langsung ke server. Penyimpanan Vercel Blob perlu diaktifkan agar file besar dapat diunggah.";
+        return "File terlalu besar untuk dikirim langsung ke server. Aktifkan penyimpanan Vercel Blob agar file besar dapat diunggah tanpa batas aplikasi.";
       }
       if (compact.length > 0 && compact.length <= 200) return compact;
     }
@@ -71,13 +76,7 @@ export function FileUpload({
 
   const validate = (file: File): string | null => {
     const mime = file.type || "application/octet-stream";
-    if (!isAllowedMime(kind, mime)) {
-      return `Tipe file tidak diizinkan (${mime}). Gunakan ${ALLOWED_MIME[kind].join(", ")}.`;
-    }
-    if (file.size > MAX_SIZES[kind]) {
-      return `Ukuran file melebihi batas maksimal ${maxSizeLabel(kind)}`;
-    }
-    return null;
+    return validateUpload(kind, mime, file.size);
   };
 
   const upload = async (file: File) => {
@@ -94,15 +93,15 @@ export function FileUpload({
     setProgress(0);
     try {
       if (isBlobUploadEnabled()) {
-        // Client upload langsung ke Vercel Blob (mendukung file hingga 50 MB
-        // melewati batas body server). Metadata dicatat ke Neon lewat register.
+        // Client upload langsung ke Vercel Blob (mendukung file besar melewati
+        // batas body server). Metadata dicatat ke Neon lewat register.
         const { upload } = await import("@vercel/blob/client");
         // Gunakan pathname ber-prefix folder (mis. `logos/xxx.png`) agar
         // /api/upload/register dapat memvalidasi & menyimpan path yang benar.
         const pathname = blobPathname(kind, file.name);
         const result = await upload(pathname, file, {
           access: "private",
-          multipart: file.size > 5 * 1024 * 1024,
+          multipart: file.size > MULTIPART_THRESHOLD_BYTES,
           handleUploadUrl: "/api/upload/blob-token",
           clientPayload: JSON.stringify({ kind }),
           onUploadProgress: (p) => setProgress(p.percentage ?? 0),
@@ -207,7 +206,7 @@ export function FileUpload({
       )}
       {!uploading && !done && !error && <span className="text-sm font-medium text-slate-700">{label}</span>}
       <span className="text-xs text-muted-foreground">Klik untuk memilih file atau tarik ke sini</span>
-      <span className="text-xs text-muted-foreground">Maks. {maxSizeLabel(kind)} per file</span>
+      <span className="text-xs text-muted-foreground">Maks. {maxSizeLabel()} per file</span>
     </button>
   );
 }

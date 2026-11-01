@@ -56,10 +56,11 @@ npm run start                    # production server
 ### Penyimpanan File (Vercel Blob)
 
 Vercel Function punya batas body request ±4,5 MB. Agar Admin dapat mengunggah
-berkas **hingga 50 MB** (PDF, Word, video, gambar) di Vercel, unggahan dialirkan
-**browser → Vercel Blob langsung** (client upload) dan hanya metadata-nya yang
-masuk ke Neon. `BLOB_READ_WRITE_TOKEN` wajib ada agar jalur ini aktif; tanpa
-token, unggahan besar akan gagal dengan 413.
+berkas besar **hingga 500 MB** (batas per-berkas Vercel Blob: PDF, Word, video,
+gambar, dokumen), unggahan dialirkan **browser → Vercel Blob langsung** (client
+upload, multipart otomatis untuk berkas >5 MB) dan hanya metadata-nya yang masuk
+ke Neon. `BLOB_READ_WRITE_TOKEN` wajib ada agar jalur ini aktif; tanpa token,
+unggahan besar akan gagal dengan 413.
 
 Sambungkan Blob store ke proyek sekali saja:
 

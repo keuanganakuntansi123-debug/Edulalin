@@ -1,19 +1,14 @@
 import { requireRole } from "@/lib/guards";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/dashboard/profile-form";
 import { logoutAction } from "@/app/actions/auth-actions";
 import { Button } from "@/components/ui/button";
-import { LogOut, KeyRound, ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { LogOut } from "lucide-react";
 
 export const instant = false;
 
 export default async function AdminSettingsPage() {
   const user = await requireRole("ADMIN");
-  const pendingRequests = await prisma.passwordResetRequest.count({
-    where: { status: "PENDING" },
-  });
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -35,44 +30,6 @@ export default async function AdminSettingsPage() {
             classLevel={null}
             showSchoolInfo={false}
           />
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Lupa Password (Reset via Admin)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
-            <div className="flex items-start gap-2">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              <div>
-                <p className="font-medium">Reset password tanpa OTP email</p>
-                <p className="text-xs text-muted-foreground">
-                  Pengguna mengajukan reset dari halaman Lupa Password. Admin memverifikasi
-                  identitas, lalu menyetel password baru. Tidak memerlukan SMTP/Gmail.
-                </p>
-              </div>
-            </div>
-            <span className="text-emerald-600">✓ Aktif</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-            <div>
-              <p className="font-medium">
-                {pendingRequests > 0
-                  ? `${pendingRequests} pengajuan menunggu diproses`
-                  : "Tidak ada pengajuan menunggu"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Notifikasi otomatis muncul di lonceng saat ada pengajuan baru.
-              </p>
-            </div>
-            <Link href="/dashboard/admin/password-requests">
-              <Button variant="outline">
-                <KeyRound className="h-4 w-4" /> Kelola Lupa Password
-              </Button>
-            </Link>
-          </div>
         </CardContent>
       </Card>
 

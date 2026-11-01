@@ -2,20 +2,48 @@ import type { FileKind } from "@/generated/prisma/client";
 
 export const MB = 1024 * 1024;
 
-/** Batas upload maksimal per file (byte). Seluruh jenis file kini 50 MB. */
-export const MAX_SIZES: Record<FileKind, number> = {
-  MODULE_CONTENT: 50 * MB, // 50 MB (PDF/video/dokumen)
-  MODULE_THUMBNAIL: 50 * MB, // 50 MB (gambar sampul modul)
-  QUIZ_PDF: 50 * MB, // 50 MB
-  AVATAR: 50 * MB, // 50 MB (foto profil)
-  SITE_IMAGE: 50 * MB, // 50 MB (gambar konten publik)
-  SCHOOL_LOGO: 50 * MB, // 50 MB (logo sekolah)
-  ARTICLE_IMAGE: 50 * MB, // 50 MB (gambar berita & edukasi)
-};
+/**
+ * Batas unggahan mengikuti batas infrastruktur penyimpanan (Vercel Blob),
+ * BUKAN batas aplikasi. Vercel Blob menerima satu berkas hingga 500 MB per
+ * unggahan (mode multipart otomatis untuk berkas besar). Nilai ini menjadi
+ * batas aman sehingga validasi klien memberi pesan jelas sebelum menyentuh
+ * jaringan, dan server hanya menolak berkas yang benar-benar melewati
+ * kapasitas layanan penyimpanan.
+ *
+ * Tidak ada lagi batas per jenis file — PDF berukuran besar, video, dokumen,
+ * gambar, dan tautan semuanya didukung selama berada di bawah kapasitas Blob.
+ */
+export const UPLOAD_LIMIT_BYTES = 500 * MB;
+export const UPLOAD_LIMIT_LABEL = "500 MB";
 
-/** Label batas ukuran per jenis file untuk ditampilkan di UI. */
-export function maxSizeLabel(kind: FileKind): string {
-  return `${Math.round(MAX_SIZES[kind] / MB)} MB`;
+/** Ambang multipart unggahan Blob (di atas ini diunggah bertahap/chunk). */
+export const MULTIPART_THRESHOLD_BYTES = 5 * MB;
+
+/** Label batas ukuran unggahan untuk ditampilkan di UI. */
+export function maxSizeLabel(): string {
+  return UPLOAD_LIMIT_LABEL;
+}
+
+/** Format ukuran byte menjadi label ringkas (KB/MB/GB). */
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * MB) return `${(bytes / (1024 * MB)).toFixed(1)} GB`;
+  if (bytes >= MB) return `${(bytes / MB).toFixed(bytes % MB === 0 ? 0 : 1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/**
+ * Validasi tipe & ukuran berkas untuk sebuah jenis unggahan.
+ * Mengembalikan pesan error (string) atau null bila valid.
+ */
+export function validateUpload(kind: FileKind, mime: string, size: number): string | null {
+  const type = mime || "application/octet-stream";
+  if (!ALLOWED_MIME[kind].includes(type)) {
+    return `Tipe file tidak diizinkan (${type}). Gunakan ${ALLOWED_MIME[kind].join(", ")}.`;
+  }
+  if (size > UPLOAD_LIMIT_BYTES) {
+    return `Ukuran file melebihi kapasitas penyimpanan ${UPLOAD_LIMIT_LABEL}.`;
+  }
+  return null;
 }
 
 /**
@@ -41,7 +69,7 @@ export const ALLOWED_MIME: Record<FileKind, string[]> = {
     "image/png",
     "image/webp",
   ],
-  MODULE_THUMBNAIL: ["image/jpeg", "image/png", "image/webp"],
+  MODULE_THUMBNAIL: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
   QUIZ_PDF: ["application/pdf"],
   AVATAR: ["image/jpeg", "image/png", "image/webp"],
   SITE_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],

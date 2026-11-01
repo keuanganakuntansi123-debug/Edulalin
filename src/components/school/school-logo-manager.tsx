@@ -62,7 +62,7 @@ export function SchoolLogoManager({
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">Logo Sekolah</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Format JPG, PNG, atau WebP (maks. 50 MB). Logo tampil pada kartu, detail sekolah, dan beranda publik.
+          Format JPG, PNG, atau WebP (maks. 500 MB). Logo tampil pada kartu, detail sekolah, dan beranda publik.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {logo ? (

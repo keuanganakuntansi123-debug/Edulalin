@@ -3,8 +3,8 @@ import { LEVEL_LABEL } from "@/lib/constants";
 import { listModulesForPolisi } from "@/lib/module-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
 import { BookOpen, FileText, Video, Link as LinkIcon, Building2 } from "lucide-react";
-import { fileUrl } from "@/lib/storage";
 
 export const instant = false;
 
@@ -26,19 +26,16 @@ export default async function PolisiModulPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((m) => {
           const Icon = TYPE_ICON[m.moduleType];
-          const thumbUrl = m.thumbnailFile?.storedName ? fileUrl(m.thumbnailFile.storedName) : null;
           return (
             <Card key={m.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-0">
                 <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-slate-100">
-                  {thumbUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumbUrl} alt={m.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
-                      <BookOpen className="h-10 w-10 text-primary/40" />
-                    </div>
-                  )}
+                  <ModuleThumbnail
+                    storedName={m.thumbnailFile?.storedName}
+                    mimeType={m.thumbnailFile?.mimeType}
+                    title={m.title}
+                    className="h-full w-full"
+                  />
                   <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
                     <Badge variant="secondary">{LEVEL_LABEL[m.educationLevel]}</Badge>
                     {m.educationLevel === "SIM" && <Badge className="bg-sky-100 text-sky-700">SIM</Badge>}

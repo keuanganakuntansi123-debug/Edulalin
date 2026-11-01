@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { saveUploadedFile } from "@/lib/storage";
 import { logActivity } from "@/lib/audit";
-import { isAllowedMime, MAX_SIZES } from "@/lib/storage";
+import { isAllowedMime, UPLOAD_LIMIT_BYTES } from "@/lib/storage";
 import type { FileKind } from "@/generated/prisma/client";
 
 export const instant = false;
@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
   if (!isAllowedMime(fKind, file.type || "")) {
     return NextResponse.json({ error: "Tipe file tidak diizinkan" }, { status: 400 });
   }
-  if (file.size > MAX_SIZES[fKind]) {
-    return NextResponse.json({ error: "Ukuran file melebihi batas maksimal" }, { status: 400 });
+  if (file.size > UPLOAD_LIMIT_BYTES) {
+    return NextResponse.json({ error: "Ukuran file melebihi kapasitas penyimpanan (500 MB)" }, { status: 413 });
   }
 
   try {

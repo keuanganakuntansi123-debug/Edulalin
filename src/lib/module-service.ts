@@ -16,7 +16,7 @@ export type ModuleScope = {
 
 const MODULE_INCLUDE = {
   moduleToSchools: { select: { schoolId: true } },
-  thumbnailFile: { select: { storedName: true } },
+  thumbnailFile: { select: { storedName: true, mimeType: true } },
 } as const;
 
 export type CategoryLevel = "SD" | "SMP" | "SMA" | "SMK" | "SIM";
@@ -176,7 +176,7 @@ export async function listModulesForGuru(params: {
     },
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     include: {
-      thumbnailFile: { select: { storedName: true } },
+      thumbnailFile: { select: { storedName: true, mimeType: true } },
       _count: { select: { progresses: true, quizzes: true } },
     },
   });
@@ -189,7 +189,7 @@ export async function listModulesForPolisi() {
     where: { deletedAt: null, status: "ACTIVE" },
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     include: {
-      thumbnailFile: { select: { storedName: true } },
+      thumbnailFile: { select: { storedName: true, mimeType: true } },
       school: { select: { name: true, educationLevel: true } },
       _count: { select: { progresses: true, quizzes: true } },
     },
@@ -220,7 +220,7 @@ export async function getModuleForUser(params: {
     include: {
       moduleToSchools: { select: { schoolId: true } },
       contentFile: { select: { storedName: true, originalName: true, mimeType: true } },
-      thumbnailFile: { select: { storedName: true } },
+      thumbnailFile: { select: { storedName: true, mimeType: true } },
     },
   });
   if (!mod) return null;

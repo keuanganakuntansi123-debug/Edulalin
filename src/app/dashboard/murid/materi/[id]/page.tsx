@@ -8,6 +8,7 @@ import { LEVEL_LABEL } from "@/lib/constants";
 import { SaveProgressForm } from "./save-progress";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
 import { ArrowLeft, Clock, FileText, Video, Link as LinkIcon } from "lucide-react";
 
 export const instant = false;
@@ -60,14 +61,12 @@ export default async function ModuleDetailPage({
 
       <div className="mt-4 grid gap-6 sm:grid-cols-[240px_1fr]">
         {mod.thumbnailFile ? (
-          <div className="overflow-hidden rounded-xl border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={fileUrl(mod.thumbnailFile.storedName)}
-              alt={mod.title}
-              className="aspect-3/4 w-full object-cover"
-            />
-          </div>
+          <ModuleThumbnail
+            storedName={mod.thumbnailFile.storedName}
+            mimeType={mod.thumbnailFile.mimeType}
+            title={mod.title}
+            className="aspect-3/4 w-full rounded-xl border border-border"
+          />
         ) : null}
         <div>
           <h1 className="text-3xl font-extrabold">{mod.title}</h1>

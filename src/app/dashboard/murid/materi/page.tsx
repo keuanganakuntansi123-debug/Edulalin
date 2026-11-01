@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Video, Link as LinkIcon, FileText, Lock } from "lucide-react";
-import { fileUrl } from "@/lib/storage";
+import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
 
 export const instant = false;
 
@@ -40,19 +40,16 @@ export default async function MateriPage() {
           const prog = m.progresses[0];
           const Icon = TYPE_ICON[m.moduleType];
           const simLocked = m.isSim && m.simLocked;
-          const thumbUrl = m.thumbnailFile?.storedName ? fileUrl(m.thumbnailFile.storedName) : null;
           return (
             <Card key={m.id} className={simLocked ? "border-amber-300 bg-amber-50/40" : "hover:shadow-md transition-shadow"}>
               <CardContent className="p-0">
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-t-xl bg-slate-100">
-                  {thumbUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumbUrl} alt={m.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
-                      <BookOpen className="h-10 w-10 text-primary/40" />
-                    </div>
-                  )}
+                  <ModuleThumbnail
+                    storedName={m.thumbnailFile?.storedName}
+                    mimeType={m.thumbnailFile?.mimeType}
+                    title={m.title}
+                    className="h-full w-full"
+                  />
                   <div className="absolute left-2 top-2 flex gap-1.5">
                     <Badge variant={simLocked ? "warning" : "secondary"}>{LEVEL_LABEL[m.educationLevel]}</Badge>
                   </div>

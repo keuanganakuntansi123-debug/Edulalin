@@ -1,9 +1,17 @@
 import { get, del, put, head } from "@vercel/blob";
-import { MAX_SIZES, blobPathname, BLOB_PREFIX } from "@/lib/upload-config";
+import {
+  UPLOAD_LIMIT_BYTES,
+  UPLOAD_LIMIT_LABEL,
+  MULTIPART_THRESHOLD_BYTES,
+  ALLOWED_MIME,
+  blobPathname,
+  BLOB_PREFIX,
+} from "@/lib/upload-config";
 import type { FileKind } from "@/generated/prisma/client";
 
 /**
- * Vercel Blob (object storage) untuk file unggahan besar (hingga 50 MB).
+ * Vercel Blob (object storage) untuk file unggahan besar (hingga kapasitas
+ * layanan penyimpanan, 500 MB per berkas).
  * Client upload: browser → Blob langsung (melewati limit body Vercel Function
  * 4.5 MB), metadata & URL disimpan di Neon (tabel UploadedFile).
  *
@@ -23,38 +31,12 @@ export function isBlobPathname(storedName: string): boolean {
 
 export { blobPathname, BLOB_PREFIX };
 
-/** Jenis file yang diizinkan per kind (untuk token upload client). */
+/**
+ * Jenis file yang diizinkan per kind (untuk token upload client).
+ * Delegasi ke `ALLOWED_MIME` agar klien & server selalu sinkron.
+ */
 export function blobAllowedContentTypes(kind: FileKind): string[] {
-  switch (kind) {
-    case "MODULE_CONTENT":
-      return [
-        "application/pdf",
-        "video/mp4",
-        "video/webm",
-        "video/quicktime",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-powerpoint",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/zip",
-        "text/plain",
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ];
-    case "MODULE_THUMBNAIL":
-      return ["image/jpeg", "image/png", "image/webp"];
-    case "QUIZ_PDF":
-      return ["application/pdf"];
-    case "AVATAR":
-      return ["image/jpeg", "image/png", "image/webp"];
-    case "SITE_IMAGE":
-      return ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
-    case "SCHOOL_LOGO":
-      return ["image/jpeg", "image/png", "image/webp"];
-    case "ARTICLE_IMAGE":
-      return ["image/jpeg", "image/png", "image/webp"];
-  }
+  return ALLOWED_MIME[kind];
 }
 
 export type BlobUploaded = {
@@ -73,14 +55,14 @@ export async function uploadToBlobServer(input: {
   if (!isBlobStorageEnabled()) {
     throw new Error("Vercel Blob belum dikonfigurasi");
   }
-  if (file.size > MAX_SIZES[kind]) {
-    throw new Error("Ukuran file melebihi batas maksimal 50 MB");
+  if (file.size > UPLOAD_LIMIT_BYTES) {
+    throw new Error(`Ukuran file melebihi kapasitas penyimpanan ${UPLOAD_LIMIT_LABEL}.`);
   }
   const pathname = blobPathname(kind, file.name);
   const result = await put(pathname, file, {
     access: "private",
     addRandomSuffix: false,
-    multipart: file.size > 5 * 1024 * 1024,
+    multipart: file.size > MULTIPART_THRESHOLD_BYTES,
     contentType: file.type || undefined,
   });
   return {

@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import { fileUrl } from "@/lib/storage";
 import { ModuleForm } from "../module-form";
 import { updateModule } from "@/app/actions/admin-actions";
 
@@ -22,8 +23,8 @@ export default async function AdminModuleDetailPage({
       where: { id: moduleId, deletedAt: null },
       include: {
         moduleToSchools: { select: { schoolId: true } },
-        contentFile: { select: { originalName: true, mimeType: true, size: true } },
-        thumbnailFile: { select: { originalName: true, mimeType: true, size: true } },
+        contentFile: { select: { id: true, storedName: true, originalName: true, mimeType: true, size: true } },
+        thumbnailFile: { select: { id: true, storedName: true, originalName: true, mimeType: true, size: true } },
       },
     }),
     prisma.school.findMany({
@@ -71,6 +72,24 @@ export default async function AdminModuleDetailPage({
                 durationMin: mod.durationMin,
                 status: mod.status,
                 schoolIds: mod.moduleToSchools.map((s) => s.schoolId),
+                contentFile: mod.contentFile
+                  ? {
+                      id: mod.contentFile.id,
+                      url: fileUrl(mod.contentFile.storedName),
+                      originalName: mod.contentFile.originalName,
+                      mimeType: mod.contentFile.mimeType,
+                      storedName: mod.contentFile.storedName,
+                    }
+                  : null,
+                thumbnailFile: mod.thumbnailFile
+                  ? {
+                      id: mod.thumbnailFile.id,
+                      url: fileUrl(mod.thumbnailFile.storedName),
+                      originalName: mod.thumbnailFile.originalName,
+                      mimeType: mod.thumbnailFile.mimeType,
+                      storedName: mod.thumbnailFile.storedName,
+                    }
+                  : null,
               }}
             />
           </CardContent>

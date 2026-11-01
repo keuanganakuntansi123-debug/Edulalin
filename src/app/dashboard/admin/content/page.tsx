@@ -1,7 +1,9 @@
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { DEFAULTS } from "@/lib/site-content";
+import { fileUrl } from "@/lib/storage";
 import { ContentCms } from "./content-cms";
+import type { AdminArticle } from "./articles-tab";
 
 export const instant = false;
 
@@ -19,6 +21,7 @@ export default async function AdminContentCmsPage() {
     messages,
     modules,
     siteContent,
+    articleRows,
   ] = await Promise.all([
     prisma.contentBlock.findMany({ orderBy: { order: "asc" } }),
     prisma.program.findMany({
@@ -40,7 +43,27 @@ export default async function AdminContentCmsPage() {
       select: { id: true, title: true, educationLevel: true },
     }),
     prisma.siteContent.findMany(),
+    prisma.article.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ status: "asc" }, { publishedAt: "desc" }],
+      include: { imageFile: { select: { storedName: true } } },
+    }),
   ]);
+
+  const articles: AdminArticle[] = articleRows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    slug: a.slug,
+    summary: a.summary,
+    category: a.category,
+    status: a.status,
+    authorName: a.authorName,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    image:
+      a.imageEmbedded ??
+      (a.imageFile ? fileUrl(a.imageFile.storedName) : a.imageUrl) ??
+      null,
+  }));
 
   const siteContentMap = new Map(siteContent.map((r) => [r.key, r]));
   const contactDefaults = {
@@ -62,6 +85,7 @@ export default async function AdminContentCmsPage() {
       partners={partners}
       messages={messages}
       modules={modules}
+      articles={articles}
       contactDefaults={contactDefaults}
       defaultHeroTitle={DEFAULTS.HERO_TITLE.body}
       defaultHeroDesc={DEFAULTS.HERO_SUBTITLE.body}

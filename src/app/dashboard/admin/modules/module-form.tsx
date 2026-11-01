@@ -6,9 +6,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { FileUpload } from "@/components/upload/file-upload";
 import { MultiSchoolSelect } from "@/components/upload/multi-school-select";
+import { ModuleThumbnail } from "@/components/dashboard/module-thumbnail";
 import { UploadCloud, X, FileText, IdCard } from "lucide-react";
 
-type UploadedMeta = { id: string; url: string; originalName: string; mimeType: string };
+type UploadedMeta = {
+  id: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  storedName?: string;
+};
 
 const MODULE_TYPE_LABEL: Record<string, string> = {
   PDF: "PDF",
@@ -35,6 +42,8 @@ export function ModuleForm({
     durationMin?: number | null;
     status?: string;
     schoolIds?: string[];
+    contentFile?: UploadedMeta | null;
+    thumbnailFile?: UploadedMeta | null;
   };
 }) {
   const [pending, startTransition] = useTransition();
@@ -46,8 +55,10 @@ export function ModuleForm({
   const [isSim, setIsSim] = useState(
     initialSim
   );
-  const [content, setContent] = useState<UploadedMeta | null>(null);
-  const [thumbnail, setThumbnail] = useState<UploadedMeta | null>(null);
+  const [content, setContent] = useState<UploadedMeta | null>(defaultValues?.contentFile ?? null);
+  const [thumbnail, setThumbnail] = useState<UploadedMeta | null>(
+    defaultValues?.thumbnailFile ?? null
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   // SIM dipilih sebagai toggle — kategori tetap SMA/SMK, data disimpan SIM.
@@ -193,29 +204,41 @@ export function ModuleForm({
       <div className="grid gap-2">
         <Label>Thumbnail (opsional)</Label>
         {thumbnail ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <span className="flex min-w-0 items-center gap-2">
-              <UploadCloud className="h-4 w-4 shrink-0 text-primary" />
-              <span className="truncate">{thumbnail.originalName}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setThumbnail(null)}
-              className="shrink-0 text-muted-foreground hover:text-red-600"
-              aria-label="Hapus thumbnail"
-            >
-              <X className="h-4 w-4" />
-            </button>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2">
+                <UploadCloud className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">{thumbnail.originalName}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setThumbnail(null)}
+                className="shrink-0 text-muted-foreground hover:text-red-600"
+                aria-label="Hapus thumbnail"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ModuleThumbnail
+              url={thumbnail.url}
+              mimeType={thumbnail.mimeType}
+              title="Pratinjau thumbnail"
+              className="h-40 w-full rounded-md border border-border"
+            />
           </div>
         ) : (
           <FileUpload
             kind="MODULE_THUMBNAIL"
-            accept="image/jpeg,image/png,image/webp"
-            label="Unggah thumbnail"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            label="Unggah thumbnail (gambar atau PDF)"
             onUploaded={(f) => setThumbnail(f)}
             onError={(m) => toast({ title: "Gagal unggah", description: m, variant: "error" })}
           />
         )}
+        <p className="text-xs text-muted-foreground">
+          Mendukung gambar (JPG/PNG/WebP) atau PDF. PDF ditampilkan sebagai pratinjau halaman
+          pertama pada daftar dan detail modul.
+        </p>
         {thumbnail && <input type="hidden" name="thumbnailFileId" value={thumbnail.id} />}
       </div>
 

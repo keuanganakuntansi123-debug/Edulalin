@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getCurrentUser } from "@/lib/session";
-import { MAX_SIZES } from "@/lib/storage";
+import { UPLOAD_LIMIT_BYTES } from "@/lib/storage";
 import { blobAllowedContentTypes } from "@/lib/blob-storage";
 import type { FileKind } from "@/generated/prisma/client";
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
         return {
           allowedContentTypes: blobAllowedContentTypes(kind),
-          maximumSizeInBytes: MAX_SIZES[kind],
+          maximumSizeInBytes: UPLOAD_LIMIT_BYTES,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ userId: user.id, kind }),
         };

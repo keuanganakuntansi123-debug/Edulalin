@@ -8,7 +8,7 @@ import { getRoleLabel } from "@/lib/constants";
 import type { Role } from "@/generated/prisma/client";
 import { EdulalinLogo } from "@/components/brand/edulalin-logo";
 import { NotificationCenter } from "@/components/dashboard/notification-center";
-import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { AdminNotificationBell } from "@/components/dashboard/admin-notification-bell";
 import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export function Topbar({
@@ -23,12 +23,7 @@ export function Topbar({
   onMenuClick: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const notifTitle =
-    role === "ADMIN"
-      ? "Notifikasi Admin"
-      : role === "MURID"
-        ? "Notifikasi Saya"
-        : "Notifikasi";
+  const notifTitle = role === "MURID" ? "Notifikasi Saya" : "Notifikasi";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-800 bg-slate-900/95 px-4 backdrop-blur lg:px-6">
@@ -49,10 +44,13 @@ export function Topbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
-        {/* Lonceng notifikasi terpadu — modul baru, pengajuan & perubahan password, hasil kuis */}
-        <NotificationCenter title={notifTitle} limit={15} />
-        {/* Lonceng pesan kontak (khusus Admin) */}
-        {role === "ADMIN" && <NotificationBell />}
+        {/* Admin: satu lonceng terpadu dengan kategori Pesan Publik & Laporan Reset Password */}
+        {role === "ADMIN" ? (
+          <AdminNotificationBell />
+        ) : (
+          /* Aktor lain: lonceng notifikasi terpadu (modul baru, hasil kuis, perubahan password) */
+          <NotificationCenter title={notifTitle} limit={15} />
+        )}
 
         {/* Profil */}
         <div className="relative">

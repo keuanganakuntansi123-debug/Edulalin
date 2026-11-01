@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { vi } from "vitest";
-import { blobPathname, isAllowedMime, MAX_SIZES, BLOB_PREFIX, EMBED_MAX_BYTES, MB } from "@/lib/upload-config";
+import {
+  blobPathname,
+  isAllowedMime,
+  UPLOAD_LIMIT_BYTES,
+  UPLOAD_LIMIT_LABEL,
+  validateUpload,
+  BLOB_PREFIX,
+  EMBED_MAX_BYTES,
+  MB,
+} from "@/lib/upload-config";
 import { fileUrl, storedNameFromUrl } from "@/lib/storage";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
@@ -50,15 +59,21 @@ describe("isAllowedMime", () => {
     expect(isAllowedMime("SCHOOL_LOGO", "application/pdf")).toBe(false);
   });
 
-  it("batas ukuran logo maksimal 50 MB", () => {
-    expect(MAX_SIZES.SCHOOL_LOGO).toBe(50 * 1024 * 1024);
+  it("batas ukuran mengikuti kapasitas infrastruktur (500 MB), bukan batas aplikasi kecil", () => {
+    expect(UPLOAD_LIMIT_BYTES).toBe(500 * MB);
+    expect(UPLOAD_LIMIT_LABEL).toBe("500 MB");
   });
 
-  it("batas embed base64 lebih kecil dari batas unggah (jaga ukuran baris DB)", () => {
+  it("batas embed base64 tetap kecil (jaga ukuran baris DB)", () => {
     expect(EMBED_MAX_BYTES).toBe(4 * MB);
-    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.SCHOOL_LOGO);
-    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.AVATAR);
-    expect(EMBED_MAX_BYTES).toBeLessThan(MAX_SIZES.ARTICLE_IMAGE);
+    expect(EMBED_MAX_BYTES).toBeLessThan(UPLOAD_LIMIT_BYTES);
+  });
+
+  it("validateUpload menerima berkas besar (mis. PDF 120 MB) dan menolak tipe salah", () => {
+    expect(validateUpload("QUIZ_PDF", "application/pdf", 120 * MB)).toBeNull();
+    expect(validateUpload("MODULE_CONTENT", "video/mp4", 300 * MB)).toBeNull();
+    expect(validateUpload("QUIZ_PDF", "application/pdf", 600 * MB)).not.toBeNull();
+    expect(validateUpload("QUIZ_PDF", "image/png", 1 * MB)).not.toBeNull();
   });
 });
 
