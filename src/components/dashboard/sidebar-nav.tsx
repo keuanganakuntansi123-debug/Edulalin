@@ -19,7 +19,6 @@ import {
   Eye,
   KeyRound,
   ChevronRight,
-  Bell,
 } from "lucide-react";
 import type { Role } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
@@ -46,7 +45,6 @@ const NAV: Record<Role, { section: string; items: NavItem[] }[]> = {
     {
       section: "Akun",
       items: [
-        { href: "/dashboard/notifikasi", label: "Notifikasi", icon: Bell },
         { href: "/dashboard/admin/settings", label: "Profil & Pengaturan", icon: Settings },
       ],
     },
