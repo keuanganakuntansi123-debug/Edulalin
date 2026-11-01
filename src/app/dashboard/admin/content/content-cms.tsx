@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ import {
 import {
   Home,
   LayoutGrid,
-  BookOpen,
   Info,
   Mail,
   MessageCircleQuestion,
@@ -44,7 +42,6 @@ import {
   Eye,
   Save,
   CheckCircle2,
-  Link2,
   RotateCcw,
   Newspaper,
 } from "lucide-react";
@@ -130,7 +127,6 @@ type Partner = {
 const TABS = [
   { id: "beranda", label: "Kelola Beranda", icon: Home },
   { id: "program", label: "Kelola Program", icon: LayoutGrid },
-  { id: "modul", label: "Kelola Modul", icon: BookOpen },
   { id: "berita", label: "Berita & Edukasi", icon: Newspaper },
   { id: "tentang", label: "Kelola Tentang Kami", icon: Info },
   { id: "kolaborasi", label: "Kolaborasi Edukasi", icon: Handshake },
@@ -245,7 +241,6 @@ export function ContentCms({
           />
         )}
         {tab === "program" && <ProgramTab programs={programs} modules={modules} />}
-        {tab === "modul" && <ModulTab />}
         {tab === "berita" && <ArticlesTab articles={articles} />}
         {tab === "tentang" && (
           <TentangTab blocks={blocks} missions={missions} goals={goals} />
@@ -940,34 +935,6 @@ function ProgramForm({
           <Button variant="outline" onClick={onDone}>
             Batal
           </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* =====================================================================
-   Tab Modul (link ke Kelola Modul yang sudah ada)
-   ===================================================================== */
-
-function ModulTab() {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex flex-col items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-5">
-          <h3 className="text-lg font-bold">Modul dikelola di menu Kelola Modul</h3>
-          <p className="text-sm text-muted-foreground">
-            Tab ini terhubung langsung dengan fitur <strong>Kelola Modul</strong> yang sudah ada di
-            dashboard Admin. Tidak ada database atau sistem unggahan kedua. Setiap perubahan modul
-            otomatis tersinkronisasi dengan halaman Modul publik dan dashboard murid sesuai hak akses.
-          </p>
-          <Link
-            href="/dashboard/admin/modules"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
-          >
-            <Link2 className="h-4 w-4" />
-            Buka Kelola Modul
-          </Link>
         </div>
       </CardContent>
     </Card>
